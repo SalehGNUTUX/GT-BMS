@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Toggle switch outline -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M7,12 a5,5 0 0 1 10,0 a5,5 0 0 1 -10,0 Z" />
+    <!-- Switch rows -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M3,7 H21" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M3,12 H21" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M3,17 H21" />
+    <!-- Dots indicating on/off -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,7 a1.5,1.5 0 1 1 0,-0.001 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M6,12 a1.5,1.5 0 1 1 0,-0.001 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,17 a1.5,1.5 0 1 1 0,-0.001 Z" />
+</vector>

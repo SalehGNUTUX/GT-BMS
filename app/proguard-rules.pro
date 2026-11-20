@@ -1,0 +1,2 @@
+-keep class com.vanaccess.bms.ble.** { *; }
+-keep class com.github.mikephil.charting.** { *; }

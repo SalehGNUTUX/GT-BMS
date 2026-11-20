@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Battery + Settings are always shown; the other tabs appear only when that device is configured. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/dashboardFragment"
+        android:icon="@drawable/ic_battery"
+        android:title="@string/nav_dashboard" />
+    <item
+        android:id="@+id/smartSolarFragment"
+        android:icon="@drawable/ic_solar"
+        android:title="@string/nav_solar"
+        android:visible="false" />
+    <item
+        android:id="@+id/orionFragment"
+        android:icon="@drawable/ic_dc"
+        android:title="@string/nav_orion"
+        android:visible="false" />
+    <item
+        android:id="@+id/switchPanelFragment"
+        android:icon="@drawable/ic_switch"
+        android:title="@string/nav_switches"
+        android:visible="false" />
+    <item
+        android:id="@+id/settingsFragment"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/nav_settings" />
+</menu>

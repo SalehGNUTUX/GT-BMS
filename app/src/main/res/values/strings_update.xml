@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_title">Updates</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_current">Current version: %1$s</string>
+    <string name="update_up_to_date">You have the latest version (%1$s)</string>
+    <string name="update_error">Could not check: %1$s</string>
+    <string name="update_available_status">New version %1$s available (current %2$s)</string>
+    <string name="update_available_title">GT-BMS %1$s is available</string>
+    <string name="update_available_text">A new version is ready to download and install.</string>
+    <string name="update_download_install">Download &amp; install</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_downloading_pct">Downloading update… %1$d%%</string>
+    <string name="update_ready">Update downloaded — ready to install</string>
+    <string name="update_tap_install">Tap to install</string>
+    <string name="update_install">Install</string>
+    <string name="update_failed">Update download failed</string>
+    <string name="update_auto_check">Check for updates automatically</string>
+    <string name="update_prerelease">Include beta versions</string>
+    <string name="update_allow_install">Allow GT-BMS to install apps, then tap Install again</string>
+</resources>

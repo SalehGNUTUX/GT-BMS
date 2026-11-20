@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GT-BMS · مراقب أنظمة إدارة البطاريات</title>
+<meta name="description" content="GT-BMS: تطبيق أندرويد حرّ يقرأ بطاريات الليثيوم الذكية عبر البلوتوث — Bestway وJBD وJK وDaly وPowerQueen — مع منبّهات الشحن. الإصدار 1.0.0.">
+<meta name="theme-color" content="#0F1117">
+<link rel="icon" type="image/png" href="site-assets/gt-bms-icon.png">
+<meta property="og:title" content="GT-BMS · مراقب أنظمة إدارة البطاريات">
+<meta property="og:description" content="اقرأ بطاريتك الذكية عبر البلوتوث: نسبة الشحن، الخلايا، الحرارة، التنبيهات، ومنبّهات اكتمال الشحن وانخفاض البطارية. برنامج حرّ برخصة GPL v3.">
+<meta property="og:image" content="https://salehgnutux.github.io/GT-BMS/site-assets/gt-bms-icon.png">
+<meta property="og:url" content="https://salehgnutux.github.io/GT-BMS/">
+<meta property="og:type" content="website">
+<style>
+@font-face{font-family:'Ubuntu Arabic';src:url('site-assets/fonts/Ubuntu Arabic Regular.otf') format('opentype');font-weight:400;font-display:swap}
+@font-face{font-family:'Ubuntu Arabic';src:url('site-assets/fonts/Ubuntu Arabic Bold.ttf') format('truetype');font-weight:700;font-display:swap}
+
+/* Colours are the app's own theme (colors.xml / BatteryScreen.kt). */
+:root{
+  --ink:#0F1117; --surface:#1A1D27; --card:#1E2130; --tile:#262A3B; --line:#2C3044;
+  --text:#FFFFFF; --muted:#9BA3B8;
+  --blue:#2196F3; --blue-soft:#4DA3FF; --green:#43D17A; --amber:#F5B83D; --red:#F0544F;
+  --r:18px; --wrap:1040px;
+  --mono:ui-monospace,"DejaVu Sans Mono","Liberation Mono",Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{font-family:'Ubuntu Arabic',system-ui,-apple-system,sans-serif;background:var(--ink);color:var(--text);
+  font-size:16px;line-height:1.75;padding:0 1rem 4rem;overflow-x:hidden}
+html[lang="en"] body{line-height:1.6}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--blue-soft);outline-offset:3px;border-radius:6px}
+html[lang="ar"] [data-lang="en"]{display:none!important}
+html[lang="en"] [data-lang="ar"]{display:none!important}
+.wrap{max-width:var(--wrap);margin:0 auto}
+.mono{font-family:var(--mono);font-size:.88em;direction:ltr;unicode-bidi:isolate}
+
+/* Top bar */
+.bar{position:sticky;top:0;z-index:40;margin:0 -1rem;padding:.6rem 1rem;background:rgba(15,17,23,.9);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:.9rem}
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;text-decoration:none;white-space:nowrap}
+.brand img{width:32px;height:32px;border-radius:8px}
+.nav{display:flex;gap:1rem;overflow-x:auto;flex:1;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{color:var(--muted);text-decoration:none;font-size:.92rem;white-space:nowrap}
+.nav a:hover{color:var(--text)}
+.lang{background:var(--tile);border:1px solid var(--line);color:var(--text);border-radius:999px;
+  padding:.25rem .8rem;font:inherit;font-size:.85rem;cursor:pointer}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:2.5rem;align-items:center;padding:3.5rem 0 2.5rem}
+.tag{display:inline-flex;gap:.4rem;align-items:center;background:rgba(67,209,122,.12);color:var(--green);
+  border:1px solid rgba(67,209,122,.35);border-radius:999px;padding:.15rem .8rem;font-size:.85rem;font-weight:700}
+h1{font-size:clamp(2.1rem,6vw,3.2rem);line-height:1.2;margin:.8rem 0 .6rem}
+h1 b{color:var(--green)}
+.lead{color:var(--muted);font-size:1.08rem;max-width:36em}
+.cta{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.6rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;border-radius:14px;font-weight:700;
+  text-decoration:none;border:1px solid var(--line);background:var(--card);transition:transform .12s,border-color .12s}
+.btn:hover{transform:translateY(-1px);border-color:var(--blue)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn svg{width:20px;height:20px;fill:currentColor;flex:none}
+.meta{color:var(--muted);font-size:.85rem;margin-top:.7rem}
+.hero-icon{justify-self:center;width:min(300px,70vw);filter:drop-shadow(0 20px 50px rgba(33,150,243,.25))}
+.hero-icon img{width:100%;border-radius:22%}
+
+/* Sections */
+section{padding:2.4rem 0;border-top:1px solid var(--line)}
+h2{font-size:1.55rem;margin-bottom:.4rem}
+.sub{color:var(--muted);margin-bottom:1.4rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem}
+.feat{background:var(--card);border-radius:var(--r);padding:1.1rem 1.2rem}
+.feat .ic{font-size:1.5rem;line-height:1}
+.feat b{display:block;margin:.5rem 0 .2rem}
+.feat span{color:var(--muted);font-size:.93rem}
+
+/* Phone mock of the live tab */
+.mock{background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:1rem;max-width:360px}
+.mock .row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.5rem}
+.tile{background:var(--card);border-radius:14px;padding:.6rem .8rem}
+.tile small{color:var(--muted);display:block;font-size:.78rem}
+.tile b{font-size:1.15rem;direction:ltr;unicode-bidi:isolate}
+.soc{display:flex;gap:1rem;align-items:center;background:var(--card);border-radius:16px;padding:.9rem}
+.batt{width:46px;height:78px;border:3px solid var(--green);border-radius:9px;position:relative;padding:4px}
+.batt:before{content:"";position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:18px;height:5px;background:var(--green);border-radius:2px}
+.batt i{position:absolute;bottom:4px;left:4px;right:4px;height:61%;background:var(--green);border-radius:4px}
+.soc .pct{font-size:2.4rem;font-weight:700;color:var(--green);line-height:1}
+.pill{display:inline-block;border:1px solid var(--muted);border-radius:999px;padding:0 .6rem;font-size:.78rem;color:var(--muted)}
+.showcase{display:grid;grid-template-columns:auto 1fr;gap:2rem;align-items:center}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--r);overflow:hidden}
+th,td{padding:.7rem 1rem;text-align:start;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:400;font-size:.88rem}
+tr:last-child td{border-bottom:0}
+.ok{color:var(--green);font-weight:700}.exp{color:var(--amber);font-weight:700}
+
+/* Release */
+.release{background:var(--card);border-radius:var(--r);padding:1.3rem 1.4rem}
+.release ul{padding-inline-start:1.2rem;color:var(--muted)}
+.release li{margin:.25rem 0}
+.release li b{color:var(--text)}
+.files{display:flex;flex-direction:column;gap:.5rem;margin-top:1rem}
+.file{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.4rem;background:var(--tile);border-radius:12px;padding:.6rem .9rem}
+.file a{color:var(--blue-soft);font-weight:700;text-decoration:none;direction:ltr}
+.file .mono{color:var(--muted);word-break:break-all}
+ol.steps{padding-inline-start:1.3rem;color:var(--muted)}
+ol.steps li{margin:.35rem 0}
+ol.steps b{color:var(--text)}
+footer{color:var(--muted);font-size:.88rem;padding-top:2rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;justify-content:space-between}
+footer a{color:var(--blue-soft)}
+@media (max-width:760px){
+  .hero{grid-template-columns:1fr;padding-top:2rem;gap:1.5rem}
+  .hero-icon{grid-row:1;width:150px}
+  .showcase{grid-template-columns:1fr}
+  .mock{margin:0 auto}
+  th,td{padding:.6rem .7rem}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18-1 .01V14l-3.5-3.5L6 12l6 6 6-6-1.5-1.5L13 14V2.01z"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.2-3.1-.1-.4-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M21.4 11.6 12.4 2.6A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7c0 .55.22 1.05.59 1.42l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.82zM6.5 8A1.5 1.5 0 1 1 8 6.5 1.5 1.5 0 0 1 6.5 8z"/></symbol>
+</svg>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="site-assets/gt-bms-icon.png" alt="">GT-BMS</a>
+    <nav class="nav">
+      <a href="#features"><span data-lang="ar">المزايا</span><span data-lang="en">Features</span></a>
+      <a href="#bms"><span data-lang="ar">الأنظمة المدعومة</span><span data-lang="en">Supported BMS</span></a>
+      <a href="#release"><span data-lang="ar">الإصدار 1.0.0</span><span data-lang="en">Release 1.0.0</span></a>
+      <a href="#install"><span data-lang="ar">التثبيت</span><span data-lang="en">Install</span></a>
+    </nav>
+    <button class="lang" id="lang" type="button">English</button>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <div class="hero">
+    <div>
+      <span class="tag">● <span data-lang="ar">الإصدار الأول 1.0.0</span><span data-lang="en">First release 1.0.0</span></span>
+      <h1 data-lang="ar">بطاريتك الذكية،<br><b>واضحة على هاتفك</b></h1>
+      <h1 data-lang="en">Your smart battery,<br><b>clear on your phone</b></h1>
+      <p class="lead" data-lang="ar">GT-BMS تطبيق أندرويد حرّ يتصل بنظام إدارة بطارية الليثيوم (BMS) عبر البلوتوث، فيتعرّف على بروتوكوله تلقائياً ويعرض نسبة الشحن وجهد كل خلية والحرارة والتنبيهات، ويوقظك بمنبّه عند اكتمال الشحن أو انخفاض البطارية.</p>
+      <p class="lead" data-lang="en">GT-BMS is a free Android app that talks to your lithium battery's management system over Bluetooth, detects its protocol automatically and shows state of charge, every cell, temperatures and alerts — and rings an alarm when charging completes or the battery runs low.</p>
+      <div class="cta">
+        <a class="btn primary" id="dl" href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.0.0/GT-BMS-v1.0.0-release.apk">
+          <svg><use href="#i-dl"/></svg><span data-lang="ar">تنزيل لأندرويد</span><span data-lang="en">Download for Android</span></a>
+        <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS"><svg><use href="#i-gh"/></svg><span data-lang="ar">المستودع</span><span data-lang="en">Repository</span></a>
+        <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS/releases"><svg><use href="#i-tag"/></svg><span data-lang="ar">الإصدارات</span><span data-lang="en">Releases</span></a>
+      </div>
+      <p class="meta"><span id="dl-meta" class="mono">GT-BMS-v1.0.0-release.apk</span> ·
+        <span data-lang="ar">أندرويد 8 فأحدث · رخصة GPL v3</span><span data-lang="en">Android 8+ · GPL v3</span></p>
+    </div>
+    <div class="hero-icon"><img src="site-assets/gt-bms-icon.png" alt="GT-BMS"></div>
+  </div>
+
+  <section id="features">
+    <h2 data-lang="ar">ما الذي يقدّمه</h2><h2 data-lang="en">What it does</h2>
+    <p class="sub" data-lang="ar">كل ما يلزمك لقراءة بطاريتك، بالعربية، دون حساب ولا إعلانات ولا خوادم.</p>
+    <p class="sub" data-lang="en">Everything you need to read your battery — no account, no ads, no servers.</p>
+    <div class="showcase">
+      <div class="mock" aria-hidden="true">
+        <div class="soc"><div class="batt"><i></i></div>
+          <div><small style="color:var(--muted)"><span data-lang="ar">نسبة الشحن</span><span data-lang="en">State of charge</span></small>
+            <div class="pct">67%</div><span class="pill"><span data-lang="ar">خامل</span><span data-lang="en">Idle</span></span></div></div>
+        <div class="row">
+          <div class="tile"><small><span data-lang="ar">الجهد</span><span data-lang="en">Voltage</span></small><b>76.64 V</b></div>
+          <div class="tile"><small><span data-lang="ar">التيار</span><span data-lang="en">Current</span></small><b>0.0 A</b></div>
+          <div class="tile"><small><span data-lang="ar">فرق الخلايا</span><span data-lang="en">Cell difference</span></small><b style="color:var(--green)">15 mV</b></div>
+          <div class="tile"><small><span data-lang="ar">الدورات</span><span data-lang="en">Cycles</span></small><b>2</b></div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="feat"><div class="ic">🔍</div><b data-lang="ar">تعرّف تلقائي</b><b data-lang="en">Auto-detection</b>
+          <span data-lang="ar">يجرّب البروتوكولات المناسبة حتى يجيبه أحدها، ثم يحفظه للبطارية فيصبح الاتصال التالي فورياً.</span>
+          <span data-lang="en">Probes the likely protocols until one answers, then remembers it so the next connection is instant.</span></div>
+        <div class="feat"><div class="ic">🔋</div><b data-lang="ar">الخلايا بوضوح</b><b data-lang="en">Every cell</b>
+          <span data-lang="ar">جهد كل خلية بالمللي فولت مع تمييز الأعلى والأدنى ومخطط الانحراف عن المتوسط.</span>
+          <span data-lang="en">Each cell in millivolts, highest and lowest highlighted, with a deviation chart.</span></div>
+        <div class="feat"><div class="ic">⏰</div><b data-lang="ar">منبّهات البطارية</b><b data-lang="en">Battery alarms</b>
+          <span data-lang="ar">اكتمال الشحن وانخفاض البطارية بحدودك أنت، بصوت المنبّه حتى توقفه، دون تكرار مزعج.</span>
+          <span data-lang="en">Full charge and low battery at your thresholds, on the alarm stream until stopped, without spam.</span></div>
+        <div class="feat"><div class="ic">🌡️</div><b data-lang="ar">الحرارة والحماية</b><b data-lang="en">Temperatures & protection</b>
+          <span data-lang="ar">كل حساسات الخلايا والمفاتيح، وحالة الشحن والتفريغ والموازنة، والتنبيهات بالعربية.</span>
+          <span data-lang="en">Every cell and MOS probe, charge/discharge/balance state, and readable alerts.</span></div>
+        <div class="feat"><div class="ic">📜</div><b data-lang="ar">المعلومات والسجل</b><b data-lang="en">Info & history</b>
+          <span data-lang="ar">الطراز والإصدارات والأرقام التسلسلية ومعاملات الحماية وسجل الأحداث المخزّن في النظام.</span>
+          <span data-lang="en">Model, versions, serials, protection parameters and the event log stored in the BMS.</span></div>
+        <div class="feat"><div class="ic">🔒</div><b data-lang="ar">قراءة فقط</b><b data-lang="en">Read-only</b>
+          <span data-lang="ar">لا يغيّر أي إعداد في نظام الإدارة ولا يرسل أوامر تحكّم. ويتحدّث من داخله.</span>
+          <span data-lang="en">Never changes BMS settings or sends control commands. Updates itself from inside.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="bms">
+    <h2 data-lang="ar">الأنظمة المدعومة</h2><h2 data-lang="en">Supported BMS</h2>
+    <p class="sub" data-lang="ar">اختر البروتوكول يدوياً من الإعدادات إن لم يُكتشف تلقائياً.</p>
+    <p class="sub" data-lang="en">You can also pick the protocol manually in Settings.</p>
+    <table>
+      <tr><th data-lang="ar">النظام</th><th data-lang="en">BMS</th><th data-lang="ar">الحالة</th><th data-lang="en">Status</th></tr>
+      <tr><td>Bestway BWBM <span class="mono">(7F)</span></td><td class="ok"><span data-lang="ar">مُختبَر على بطارية حقيقية</span><span data-lang="en">Tested on a real battery</span></td></tr>
+      <tr><td>JBD / Xiaoxiang / Overkill <span class="mono">(DD A5)</span></td><td class="ok"><span data-lang="ar">مدعوم</span><span data-lang="en">Supported</span></td></tr>
+      <tr><td>PowerQueen / LiTime / Redodo</td><td class="ok"><span data-lang="ar">مدعوم</span><span data-lang="en">Supported</span></td></tr>
+      <tr><td>123SmartBMS</td><td class="ok"><span data-lang="ar">مدعوم</span><span data-lang="en">Supported</span></td></tr>
+      <tr><td>JK-BMS <span class="mono">(JK02)</span></td><td class="exp"><span data-lang="ar">تجريبي</span><span data-lang="en">Experimental</span></td></tr>
+      <tr><td>Daly <span class="mono">(Modbus BLE)</span></td><td class="exp"><span data-lang="ar">تجريبي</span><span data-lang="en">Experimental</span></td></tr>
+    </table>
+  </section>
+
+  <section id="release">
+    <h2 data-lang="ar">الإصدار 1.0.0</h2><h2 data-lang="en">Release 1.0.0</h2>
+    <p class="sub"><span data-lang="ar">20 نوفمبر 2026 · الإصدار الأول</span><span data-lang="en">20 November 2026 · first release</span></p>
+    <div class="release">
+      <ul data-lang="ar">
+        <li><b>دعم Bestway BWBM:</b> البيانات المباشرة، والخلايا حتى 32، والحرارة، والسعة، والتنبيهات، ومعلومات الجهاز، ومعاملات الحماية، وسجل الأحداث، ووقت النظام.</li>
+        <li><b>تعرّف تلقائي</b> على JBD وPowerQueen/LiTime و123SmartBMS، ودعم تجريبي لـJK-BMS وDaly.</li>
+        <li><b>شاشة بطارية جديدة</b> بتبويبات: مباشر، الخلايا، المعلومات، السجل.</li>
+        <li><b>منبّهات</b> اكتمال الشحن وانخفاض البطارية.</li>
+        <li><b>البطاريات المحفوظة</b> واتصال أسرع، وواجهة عربية كاملة، وتحديث من داخل التطبيق.</li>
+      </ul>
+      <ul data-lang="en">
+        <li><b>Bestway BWBM support:</b> live data, up to 32 cells, temperatures, capacity, alerts, device info, protection parameters, event history and BMS clock.</li>
+        <li><b>Auto-detection</b> of JBD, PowerQueen/LiTime and 123SmartBMS; experimental JK-BMS and Daly.</li>
+        <li><b>New battery screen</b> with Live, Cells, Info and History tabs.</li>
+        <li><b>Alarms</b> for full charge and low battery.</li>
+        <li><b>Saved batteries</b> with faster reconnect, full Arabic UI, in-app updates.</li>
+      </ul>
+      <div class="files">
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.0.0/GT-BMS-v1.0.0-release.apk">⬇ GT-BMS-v1.0.0-release.apk</a><span class="mono" id="sha">SHA-256: c22ca995eb7b3f6db55647138799d9b65bcfcddd2706425eaa28e0ecf9b78456</span></div>
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.0.0/SHA256SUMS.txt">SHA256SUMS.txt</a>
+          <a href="https://github.com/SalehGNUTUX/GT-BMS/releases/tag/v1.0.0"><span data-lang="ar">صفحة الإصدار ←</span><span data-lang="en">Release page →</span></a></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2 data-lang="ar">التثبيت والبدء</h2><h2 data-lang="en">Install & start</h2>
+    <ol class="steps" data-lang="ar">
+      <li><b>نزّل الحزمة</b> وافتحها، واسمح بالتثبيت من هذا المصدر عند الطلب.</li>
+      <li><b>وافق على صلاحيات</b> البلوتوث والإشعارات.</li>
+      <li>من <b>الإعدادات ← بحث</b> اضغط على بطاريتك ثم <b>بطارية (BMS)</b>. الأنظمة المدعومة تظهر أولاً بعلامة خضراء.</li>
+      <li>فعّل <b>منبّهات البطارية</b> واضبط حدودها، وجرّبها بزر «تجربة المنبه».</li>
+    </ol>
+    <ol class="steps" data-lang="en">
+      <li><b>Download the APK</b> and open it; allow installs from this source when asked.</li>
+      <li><b>Grant</b> Bluetooth and notification permissions.</li>
+      <li>In <b>Settings → Scan</b>, tap your battery, then <b>Battery (BMS)</b>. Supported BMS are listed first with a green mark.</li>
+      <li>Turn on <b>Battery alarms</b>, set the thresholds and try "Test alarm".</li>
+    </ol>
+  </section>
+
+  <footer>
+    <span data-lang="ar">GT-BMS من <a href="https://github.com/SalehGNUTUX">GNUTUX</a> · مبني على <a href="https://gitlab.com/hc51t/VanAccess">VanAccess</a> · رخصة GPL v3 أو أحدث · غير تابع لأي شركة مصنّعة</span>
+    <span data-lang="en">GT-BMS by <a href="https://github.com/SalehGNUTUX">GNUTUX</a> · based on <a href="https://gitlab.com/hc51t/VanAccess">VanAccess</a> · GPL v3 or later · not affiliated with any manufacturer</span>
+    <span><a href="https://github.com/SalehGNUTUX/GT-BMS/blob/main/documentation/PROTOCOL-BWBM.md"><span data-lang="ar">توثيق البروتوكول</span><span data-lang="en">Protocol docs</span></a> ·
+      <a href="https://github.com/SalehGNUTUX/GT-BMS/issues"><span data-lang="ar">الإبلاغ عن مشكلة</span><span data-lang="en">Report an issue</span></a></span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var html = document.documentElement, btn = document.getElementById('lang');
+  function set(l) {
+    html.lang = l; html.dir = l === 'ar' ? 'rtl' : 'ltr';
+    btn.textContent = l === 'ar' ? 'English' : 'العربية';
+    try { localStorage.setItem('gtbms-lang', l); } catch (e) {}
+  }
+  var saved = null; try { saved = localStorage.getItem('gtbms-lang'); } catch (e) {}
+  if (saved) set(saved); else if (!/^ar/i.test(navigator.language || '')) set('en');
+  btn.addEventListener('click', function () { set(html.lang === 'ar' ? 'en' : 'ar'); });
+
+  // Point the main button at the newest release's APK when the API answers;
+  // the static v1.0.0 link stays as the fallback.
+  fetch('https://api.github.com/repos/SalehGNUTUX/GT-BMS/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel || !rel.assets) return;
+      var apk = rel.assets.filter(function (a) { return /\.apk$/i.test(a.name); })[0];
+      if (!apk) return;
+      document.getElementById('dl').href = apk.browser_download_url;
+      document.getElementById('dl-meta').textContent = apk.name;
+    }).catch(function () {});
+})();
+</script>
+</body>
+</html>

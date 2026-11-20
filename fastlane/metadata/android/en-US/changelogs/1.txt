@@ -1,0 +1,1 @@
+First GT-BMS release: Bestway BWBM support, multi-BMS auto-detection, new battery screen, alarms, in-app updates.

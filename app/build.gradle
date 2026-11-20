@@ -1,0 +1,95 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-parcelize'
+}
+
+// Release signing: read from keystore.properties (git-ignored) or environment
+// variables (CI). Without them the release build is left unsigned.
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) keystorePropsFile.withInputStream { keystoreProps.load(it) }
+def signingValue = { String key, String env ->
+    def v = keystoreProps.getProperty(key)
+    (v != null && !v.isBlank()) ? v : System.getenv(env)
+}
+def hasSigningKey = signingValue('storeFile', 'GTBMS_KEYSTORE_FILE') != null
+
+android {
+    namespace 'com.vanaccess.bms'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.gnutux.gtbms"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "BUILD_DATE", "\"${versionName}\""
+    }
+
+    signingConfigs {
+        if (hasSigningKey) {
+            release {
+                storeFile file(signingValue('storeFile', 'GTBMS_KEYSTORE_FILE'))
+                storePassword signingValue('storePassword', 'GTBMS_KEYSTORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'GTBMS_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'GTBMS_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (hasSigningKey) signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // Keep the APK byte-identical regardless of the git state of the
+            // checkout it was built from, so F-Droid can verify reproducibility.
+            vcsInfo {
+                include false
+            }
+        }
+    }
+
+    // Strip the Google-signed dependency metadata blob; F-Droid rejects it.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-service:2.7.0'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

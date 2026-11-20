@@ -1,0 +1,12 @@
+GT-BMS (GNUTUX BMS) reads smart lithium batteries straight from their battery management system over Bluetooth LE.
+
+* Automatic protocol detection: Bestway BWBM, JBD/Xiaoxiang, PowerQueen/LiTime, 123SmartBMS, JK-BMS and Daly (experimental)
+* Live data: state of charge, voltage, current, power, capacity, cycles, temperatures, MOS state, alerts
+* Per-cell voltages with highest/lowest highlighted
+* Device information, protection parameters and event history (Bestway)
+* Full-charge and low-battery alarms
+* Saved batteries and fast reconnect
+* Arabic and English interface
+* Read-only: never changes BMS settings
+
+Based on VanAccess by hc51t. Licensed GPL-3.0-or-later.

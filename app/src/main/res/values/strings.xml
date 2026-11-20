@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">GT-BMS</string>
+    <string name="nav_dashboard">Battery</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_debug">Debug</string>
+    <string name="nav_orion">DC/DC</string>
+    <string name="nav_solar">Solar</string>
+    <string name="nav_switches">Switches</string>
+
+    <!-- Connection / status -->
+    <string name="st_connected">Connected</string>
+    <string name="st_connecting">Connecting…</string>
+    <string name="st_reconnecting">Reconnecting…</string>
+    <string name="st_scanning">Scanning…</string>
+    <string name="st_disconnected">Disconnected</string>
+    <string name="st_charging">Charging</string>
+    <string name="st_discharging">Discharging</string>
+    <string name="st_idle">Idle / Standby</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_remove">Remove</string>
+    <string name="on">ON</string>
+    <string name="off">OFF</string>
+    <string name="none_active">No active alerts</string>
+    <string name="err_bms_service_not_found">No supported BMS service found on this device. Discovered services:</string>
+    <string name="err_no_protocol_answer">The BMS did not answer any known protocol. Choose the protocol manually in Settings.</string>
+    <string name="perm_bt_required">Bluetooth permissions required</string>
+    <string name="no_bt_support">This device does not support Bluetooth</string>
+    <string name="notif_channel_conn">BMS connection</string>
+    <string name="notif_channel_conn_desc">Shows the Bluetooth connection status to the battery</string>
+    <string name="notif_initializing">Initializing…</string>
+    <string name="notif_auto_reconnecting">Auto-reconnecting…</string>
+
+    <!-- Protocol selector -->
+    <string name="protocol">Protocol</string>
+    <string name="protocol_auto">Auto-detect</string>
+    <string name="protocol_value">Protocol: %1$s</string>
+    <string name="protocol_detected">Detected: %1$s</string>
+    <string name="protocol_choose">Choose BMS protocol</string>
+
+    <!-- Roles -->
+    <string name="role_assign">Assign %1$s</string>
+    <string name="role_battery">Battery (BMS)</string>
+    <string name="role_orion">DC-DC converter (Victron Orion)</string>
+    <string name="role_solar">Solar charger (Victron SmartSolar)</string>
+    <string name="role_switch">Switch panel (Ai-Tanker)</string>
+    <string name="remove_title">Remove %1$s?</string>
+    <string name="remove_msg">Disconnect and remove %1$s?</string>
+    <string name="version_fmt">Version: %1$s (%2$d)</string>
+
+    <!-- Battery alarms -->
+    <string name="alarms_title">Battery alarms</string>
+    <string name="alarms_desc">Plays a loud alarm (alarm volume) with a notification until you stop it. Set a value to 0 to ignore it.</string>
+    <string name="alarm_high_label">Full-charge alarm</string>
+    <string name="alarm_high_desc">While charging: SOC ≥ value OR voltage ≥ value</string>
+    <string name="alarm_low_label">Low-battery alarm</string>
+    <string name="alarm_low_desc">While not charging: SOC ≤ value OR voltage ≤ value</string>
+    <string name="alarm_soc_hint">SOC %</string>
+    <string name="alarm_voltage_hint">Voltage (V)</string>
+    <string name="alarm_cooldown_hint">Repeat after (min)</string>
+    <string name="alarm_vibrate">Vibrate</string>
+    <string name="alarm_test">Test alarm</string>
+    <string name="alarm_stop">Stop alarm</string>
+    <string name="alarm_saved">Alarm settings saved</string>
+    <string name="alarm_channel_name">Battery alarms</string>
+    <string name="alarm_channel_desc">Full-charge and low-battery alarms</string>
+    <string name="alarm_high_title">🔋 Battery fully charged</string>
+    <string name="alarm_low_title">⚠️ Battery low</string>
+    <string name="alarm_high_text">Charge reached %1$d%% (%2$.2f V). Disconnect the charger.</string>
+    <string name="alarm_low_text">Battery dropped to %1$d%% (%2$.2f V). Recharge soon.</string>
+    <string name="alarm_test_text">This is a test of the battery alarm.</string>
+    <string name="notif_permission_needed">Allow notifications so alarms can be shown</string>
+</resources>

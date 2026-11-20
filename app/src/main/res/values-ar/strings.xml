@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_dashboard">البطارية</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_debug">التشخيص</string>
+    <string name="nav_orion">محوّل DC</string>
+    <string name="nav_solar">الشمسية</string>
+    <string name="nav_switches">المفاتيح</string>
+
+    <string name="st_connected">متصل</string>
+    <string name="st_connecting">جارٍ الاتصال…</string>
+    <string name="st_reconnecting">إعادة الاتصال…</string>
+    <string name="st_scanning">جارٍ البحث…</string>
+    <string name="st_disconnected">غير متصل</string>
+    <string name="st_charging">يشحن</string>
+    <string name="st_discharging">يفرّغ</string>
+    <string name="st_idle">خامل / استعداد</string>
+    <string name="btn_disconnect">قطع الاتصال</string>
+    <string name="btn_connect">اتصال</string>
+    <string name="btn_save">حفظ</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="btn_remove">إزالة</string>
+    <string name="on">يعمل</string>
+    <string name="off">متوقف</string>
+    <string name="none_active">لا توجد تنبيهات نشطة</string>
+    <string name="err_bms_service_not_found">لم يُعثر على خدمة BMS مدعومة في هذا الجهاز. الخدمات المكتشفة:</string>
+    <string name="err_no_protocol_answer">لم يستجب نظام الإدارة لأي بروتوكول معروف. اختر البروتوكول يدوياً من الإعدادات.</string>
+    <string name="perm_bt_required">صلاحيات البلوتوث مطلوبة</string>
+    <string name="no_bt_support">هذا الجهاز لا يدعم البلوتوث</string>
+    <string name="notif_channel_conn">اتصال نظام الإدارة</string>
+    <string name="notif_channel_conn_desc">يعرض حالة اتصال البلوتوث بالبطارية</string>
+    <string name="notif_initializing">جارٍ التهيئة…</string>
+    <string name="notif_auto_reconnecting">إعادة الاتصال تلقائياً…</string>
+
+    <string name="protocol">البروتوكول</string>
+    <string name="protocol_auto">تعرّف تلقائي</string>
+    <string name="protocol_value">البروتوكول: %1$s</string>
+    <string name="protocol_detected">المُكتشف: %1$s</string>
+    <string name="protocol_choose">اختر بروتوكول نظام الإدارة</string>
+
+    <string name="role_assign">تعيين %1$s</string>
+    <string name="role_battery">بطارية (BMS)</string>
+    <string name="role_orion">محوّل DC-DC (Victron Orion)</string>
+    <string name="role_solar">منظم شحن شمسي (Victron SmartSolar)</string>
+    <string name="role_switch">لوحة مفاتيح (Ai-Tanker)</string>
+    <string name="remove_title">إزالة %1$s؟</string>
+    <string name="remove_msg">قطع الاتصال وإزالة %1$s؟</string>
+    <string name="version_fmt">الإصدار: %1$s (%2$d)</string>
+
+    <string name="alarms_title">منبهات البطارية</string>
+    <string name="alarms_desc">يُشغّل منبهاً عالي الصوت (بمستوى صوت المنبه) مع إشعار حتى تُوقفه. ضع 0 لتجاهل أي قيمة.</string>
+    <string name="alarm_high_label">تنبيه اكتمال الشحن</string>
+    <string name="alarm_high_desc">أثناء الشحن: النسبة ≥ القيمة أو الجهد ≥ القيمة</string>
+    <string name="alarm_low_label">تنبيه انخفاض البطارية</string>
+    <string name="alarm_low_desc">عند عدم الشحن: النسبة ≤ القيمة أو الجهد ≤ القيمة</string>
+    <string name="alarm_soc_hint">النسبة %</string>
+    <string name="alarm_voltage_hint">الجهد (فولت)</string>
+    <string name="alarm_cooldown_hint">التكرار بعد (دقيقة)</string>
+    <string name="alarm_vibrate">اهتزاز</string>
+    <string name="alarm_test">تجربة المنبه</string>
+    <string name="alarm_stop">إيقاف المنبه</string>
+    <string name="alarm_saved">تم حفظ إعدادات المنبهات</string>
+    <string name="alarm_channel_name">منبهات البطارية</string>
+    <string name="alarm_channel_desc">منبهات اكتمال الشحن وانخفاض البطارية</string>
+    <string name="alarm_high_title">🔋 اكتمل شحن البطارية</string>
+    <string name="alarm_low_title">⚠️ البطارية منخفضة</string>
+    <string name="alarm_high_text">وصل الشحن إلى %1$d%% (%2$.2f فولت). افصل الشاحن.</string>
+    <string name="alarm_low_text">انخفضت البطارية إلى %1$d%% (%2$.2f فولت). اشحنها قريباً.</string>
+    <string name="alarm_test_text">هذه تجربة لمنبه البطارية.</string>
+    <string name="notif_permission_needed">اسمح بالإشعارات لعرض المنبهات</string>
+</resources>

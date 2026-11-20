@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_title">التحديثات</string>
+    <string name="update_channel">تحديثات التطبيق</string>
+    <string name="update_check">التحقق من التحديثات</string>
+    <string name="update_checking">جارٍ التحقق…</string>
+    <string name="update_current">الإصدار الحالي: %1$s</string>
+    <string name="update_up_to_date">لديك أحدث إصدار (%1$s)</string>
+    <string name="update_error">تعذّر التحقق: %1$s</string>
+    <string name="update_available_status">يتوفر الإصدار الجديد %1$s (الحالي %2$s)</string>
+    <string name="update_available_title">يتوفر GT-BMS %1$s</string>
+    <string name="update_available_text">إصدار جديد جاهز للتنزيل والتثبيت.</string>
+    <string name="update_download_install">تنزيل وتثبيت</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث…</string>
+    <string name="update_downloading_pct">جارٍ تنزيل التحديث… %1$d%%</string>
+    <string name="update_ready">اكتمل تنزيل التحديث — جاهز للتثبيت</string>
+    <string name="update_tap_install">اضغط للتثبيت</string>
+    <string name="update_install">تثبيت</string>
+    <string name="update_failed">فشل تنزيل التحديث</string>
+    <string name="update_auto_check">التحقق من التحديثات تلقائياً</string>
+    <string name="update_prerelease">تضمين الإصدارات التجريبية</string>
+    <string name="update_allow_install">اسمح لـ GT-BMS بتثبيت التطبيقات ثم اضغط «تثبيت» مجدداً</string>
+</resources>

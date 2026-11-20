@@ -1,0 +1,24 @@
+# سجل التغييرات · Changelog
+
+## v1.0.0 — 2026-11-20
+
+الإصدار الأول من GT-BMS، مبنيّ على VanAccess 1.2.
+
+- دعم Bestway BWBM (بروتوكول ‎7F): البيانات المباشرة، والخلايا حتى 32، والحرارة، والسعة، والدورات،
+  والتنبيهات، ومعلومات الجهاز، ومعاملات الحماية، وسجل الأحداث، ووقت النظام. مُختبر على BWBM-631M-23S40A.
+- بنية برامج تشغيل قابلة للتوسعة مع تعرّف تلقائي: JBD، وJK-BMS (تجريبي)، وDaly (تجريبي)،
+  وPowerQueen/LiTime، و123SmartBMS.
+- شاشة بطارية جديدة بتبويبات: مباشر، الخلايا، المعلومات، السجل.
+- منبّهات اكتمال الشحن وانخفاض البطارية بصوت المنبّه وإشعار إيقاف ومنع للتكرار.
+- البطاريات المحفوظة، واتصال أسرع بالأجهزة المعروفة.
+- عارضة سفلية تتكيّف مع الأجهزة المعيّنة.
+- واجهة عربية كاملة.
+- تحديث من داخل التطبيق عبر إصدارات GitHub.
+- توقيع إصدار ثابت.
+
+---
+
+First GT-BMS release, based on VanAccess 1.2: Bestway BWBM support (live data, cells, temperatures,
+capacity, alarms, device info, parameters, history, clock), pluggable drivers with auto-detection
+(JBD, JK-BMS and Daly experimental, PowerQueen/LiTime, 123SmartBMS), new tabbed battery screen,
+battery alarms, saved batteries and faster reconnect, adaptive bottom bar, full Arabic UI, in-app updates.

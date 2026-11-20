@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.vanaccess.bms.ui.dashboard.DashboardFragment"
+        android:label="Battery" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.vanaccess.bms.ui.settings.SettingsFragment"
+        android:label="Settings" />
+
+    <fragment
+        android:id="@+id/debugFragment"
+        android:name="com.vanaccess.bms.ui.debug.DebugFragment"
+        android:label="Debug" />
+
+    <fragment
+        android:id="@+id/orionFragment"
+        android:name="com.vanaccess.bms.ui.victron.OrionFragment"
+        android:label="DC/DC" />
+
+    <fragment
+        android:id="@+id/smartSolarFragment"
+        android:name="com.vanaccess.bms.ui.victron.SmartSolarFragment"
+        android:label="Solar" />
+
+    <fragment
+        android:id="@+id/switchPanelFragment"
+        android:name="com.vanaccess.bms.ui.switchpanel.SwitchPanelFragment"
+        android:label="Switches" />
+
+</navigation>
