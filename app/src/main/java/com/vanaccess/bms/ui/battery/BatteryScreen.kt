@@ -417,6 +417,7 @@ class BatteryScreen(
             xAxis.textSize = 9f
             xAxis.setDrawGridLines(false)
             xAxis.granularity = 1f
+            setNoDataText(fragment.getString(R.string.chart_no_data))
             setNoDataTextColor(cGrey)
         }
     }

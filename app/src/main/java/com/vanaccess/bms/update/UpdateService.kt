@@ -115,6 +115,11 @@ object UpdateChecker {
  */
 class UpdateService : Service() {
 
+    // Notifications and alarm texts in the language chosen in Settings (Android < 13)
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(com.vanaccess.bms.data.AppLanguage.wrap(base))
+    }
+
     @Volatile private var cancelRequested = false
     @Volatile private var busy = false
 

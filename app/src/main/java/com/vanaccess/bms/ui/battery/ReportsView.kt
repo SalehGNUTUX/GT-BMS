@@ -221,6 +221,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private fun loadChart(chart: LineChart, s: Session) {
         chart.description.isEnabled = false
+        chart.setNoDataText(fragment.getString(R.string.chart_no_data))
         chart.setNoDataTextColor(cGrey)
         chart.legend.textColor = cGrey
         chart.xAxis.textColor = cGrey
@@ -324,6 +325,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private fun styleChart(chart: LineChart) {
         chart.description.isEnabled = false
+        chart.setNoDataText(fragment.getString(R.string.chart_no_data))
         chart.setNoDataTextColor(cGrey)
         chart.legend.textColor = cGrey
         chart.xAxis.textColor = cGrey

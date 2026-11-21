@@ -46,7 +46,7 @@
     <string name="levels_last_deep" formatted="false">Last deep discharge</string>
     <string name="levels_never" formatted="false">—</string>
     <string name="cycles_left">Remaining cycles (estimate)</string>
-    <string name="cycles_left_val">≈ %1$d of %2$d</string>
+    <string name="cycles_left_val">≈ %1$d / %2$d</string>
     <string name="cycle_life">Rated cycle life (cycles)</string>
     <string name="cycle_life_desc">From the battery datasheet. Typical: LiFePO₄ 3000, Li-ion 800. Used only for the remaining-cycles estimate.</string>
     <string name="vehicle_etrike">Electric tricycle / cargo</string>
@@ -59,4 +59,7 @@
     <string name="tone_delta">Cell difference (under load)</string>
     <string name="tone_pick">Choose alarm tone</string>
     <string name="tone_none">(default)</string>
+    <string name="chart_no_data">No data yet — a point is recorded every 10 minutes while the battery is connected.</string>
+    <string name="lang_title">App language</string>
+    <string name="lang_system">Follow the system language</string>
 </resources>

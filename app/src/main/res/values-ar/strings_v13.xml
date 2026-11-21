@@ -46,7 +46,7 @@
     <string name="levels_last_deep" formatted="false">آخر تفريغ عميق</string>
     <string name="levels_never" formatted="false">—</string>
     <string name="cycles_left">دورات الشحن المتبقية (تقديرياً)</string>
-    <string name="cycles_left_val">≈ %1$d من %2$d</string>
+    <string name="cycles_left_val">≈ %1$d / %2$d</string>
     <string name="cycle_life">العمر الافتراضي (عدد الدورات)</string>
     <string name="cycle_life_desc">من ورقة مواصفات البطارية. المعتاد: ليثيوم فوسفات 3000، ليثيوم أيون 800. يُستعمل فقط لتقدير الدورات المتبقية.</string>
     <string name="vehicle_etrike">دراجة ثلاثية كهربائية / بضائع</string>
@@ -59,4 +59,7 @@
     <string name="tone_delta">فرق الخلايا (تحت الحمل)</string>
     <string name="tone_pick">اختر نغمة المنبّه</string>
     <string name="tone_none">(افتراضية)</string>
+    <string name="chart_no_data">لا توجد بيانات بعد — تُسجَّل نقطة كل 10 دقائق أثناء اتصال البطارية.</string>
+    <string name="lang_title">لغة التطبيق</string>
+    <string name="lang_system">حسب لغة النظام</string>
 </resources>

@@ -791,6 +791,23 @@ class SettingsFragment : Fragment() {
             prefs.autoReconnect = checked
         }
 
+        // App language (AndroidX per-app locales): empty list = follow the system
+        val tag = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        binding.radioGroupLang.check(when {
+            tag.startsWith("ar") -> binding.radioLangAr.id
+            tag.startsWith("en") -> binding.radioLangEn.id
+            else -> binding.radioLangSystem.id
+        })
+        binding.radioGroupLang.setOnCheckedChangeListener { _, id ->
+            val newTag = when (id) { binding.radioLangAr.id -> "ar"; binding.radioLangEn.id -> "en"; else -> "" }
+            com.vanaccess.bms.data.AppLanguage.set(requireContext(), newTag)
+            if (newTag != androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags()) {
+                // Recreates the activity in the new language
+                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                    androidx.core.os.LocaleListCompat.forLanguageTags(newTag))
+            }
+        }
+
         binding.radioGroupTemp.check(
             if (prefs.temperatureUnit == "C") binding.radioCelsius.id
             else binding.radioFahrenheit.id

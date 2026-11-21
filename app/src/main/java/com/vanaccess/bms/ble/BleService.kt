@@ -28,6 +28,11 @@ import java.util.UUID
 
 class BleService : LifecycleService() {
 
+    // Notifications and alarm texts in the language chosen in Settings (Android < 13)
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(com.vanaccess.bms.data.AppLanguage.wrap(base))
+    }
+
     companion object {
         const val CHANNEL_ID = "gt_bms_ble"
         const val NOTIFICATION_ID = 1001
