@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="share_section">مشاركة GT-BMS</string>
+    <string name="share_section_hint">النص يرسل نبذة بالروابط، وملف التثبيت يرسل التطبيق نفسه — مفيد لمن لا إنترنت عنده.</string>
+    <string name="share_app_text">شارك التطبيق</string>
+    <string name="share_app_apk">شارك ملف التثبيت</string>
+    <string name="share_subject">GT-BMS — مراقب البطاريات عبر البلوتوث</string>
+    <string name="share_pitch">GT-BMS (GNUTUX BMS): تطبيق أندرويد حرّ يقرأ بطاريات الليثيوم الذكية عبر البلوتوث — Bestway وJBD وJK وDaly وPowerQueen وغيرها. نسبة الشحن، وجهد كل خلية، والحرارة، وتنبيهات الحماية، وسجل الأحداث، ومنبّهات لاكتمال الشحن وانخفاض البطارية. بلا إعلانات ولا تتبّع ولا حساب.</string>
+    <string name="share_version">الإصدار %1$s</string>
+    <string name="share_site_label">الموقع</string>
+    <string name="share_repo_label">الشيفرة المصدرية</string>
+    <string name="share_hashtags">#GT_BMS #GNUTUX #إدارة_البطاريات #بطاريات_الليثيوم #البرمجيات_الحرة #مفتوح_المصدر #أندرويد #BMS #LiFePO4 #GPLv3</string>
+    <string name="share_apk_failed">تعذّر تجهيز ملف التثبيت</string>
+    <string name="share_open_site">الموقع</string>
+    <string name="share_open_repo">المستودع</string>
+</resources>

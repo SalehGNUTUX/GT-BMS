@@ -113,7 +113,7 @@ class DriversTest {
         val rec = listOf(0x01, 0x26, 0x11, 0x16, 0x11, 0x59, 0x01, 0, 0, 0x01, 0x10, 0, 0, 0, 0, 0)
         val out = d.onNotification(frame(0x23, rec))!!
         assertEquals("2026-11-16 11:59:01", out.history!!.single().time)
-        assertEquals(listOf("Charging", "Battery full"), out.history!!.single().events)
+        assertEquals(listOf("Charging", "Cell overvoltage protection"), out.history!!.single().events)
         assertEquals("7F 10 02 07 23 01 44", hex(d.pollCommands().first()))
         val last = d.onNotification(frame(0x23, listOf(0x02) + rec.drop(1)))!!
         assertTrue(last.historyDone)

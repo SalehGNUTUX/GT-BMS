@@ -25,6 +25,7 @@ import com.vanaccess.bms.update.UpdatePhase
 import com.vanaccess.bms.update.UpdateService
 import com.vanaccess.bms.update.Updater
 import com.vanaccess.bms.data.AppPreferences
+import com.vanaccess.bms.data.Share
 import com.vanaccess.bms.databinding.FragmentSettingsBinding
 import com.vanaccess.bms.ui.MainActivity
 import org.json.JSONObject
@@ -65,6 +66,7 @@ class SettingsFragment : Fragment() {
         setupProtocolSelector()
         setupAlarms()
         setupUpdates()
+        setupShare()
         observeData()
 
         binding.tvAboutVersion.text = getString(R.string.version_fmt, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
@@ -123,6 +125,25 @@ class SettingsFragment : Fragment() {
             else -> BmsDrivers.byId(sel)?.displayName ?: sel
         }
         binding.btnBmsProtocol.text = getString(R.string.protocol_value, label)
+    }
+
+    // ── Share the app ───────────────────────────────────────────────────────
+
+    private fun setupShare() {
+        binding.btnShareText.setOnClickListener { Share.shareText(requireContext()) }
+        binding.btnShareApk.setOnClickListener { btn ->
+            btn.isEnabled = false
+            Share.shareApk(requireContext()) { ok ->
+                if (_binding != null) binding.btnShareApk.isEnabled = true
+                if (!ok) context?.let { Toast.makeText(it, R.string.share_apk_failed, Toast.LENGTH_SHORT).show() }
+            }
+        }
+        binding.btnOpenSite.setOnClickListener {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(Share.SITE)))
+        }
+        binding.btnOpenRepo.setOnClickListener {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(Share.REPO)))
+        }
     }
 
     // ── Self-update ─────────────────────────────────────────────────────────

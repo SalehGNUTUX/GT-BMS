@@ -58,4 +58,7 @@
     <string name="saved_connect">Connect</string>
     <string name="saved_none">No saved batteries yet</string>
     <string name="scan_known">Supported BMS</string>
+    <string name="history_cleared">✓ Back to normal (protection released)</string>
+    <string name="history_state">State at that moment: %1$s</string>
+    <string name="history_clock_unset">(BMS clock was not set)</string>
 </resources>

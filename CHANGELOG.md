@@ -1,5 +1,18 @@
 # سجل التغييرات · Changelog
 
+## v1.1.0
+
+- **السجل**: تصحيح معنى «Core over Voltage»؛ هو حدث **حماية جهد الخلية المرتفع** الذي يوقف به النظام الشحن
+  (كان يُعرض خطأً «البطارية ممتلئة» بالأخضر). صار يُعرض تحذيراً برتقالياً، والسجل الفارغ يُعرض «عودة إلى الوضع
+  الطبيعي (زالت الحماية)»، و«يشحن/يفرّغ» حالةً لحظة الحدث لا حدثاً، وتُنبَّه التواريخ السابقة لضبط ساعة النظام.
+- إصلاح ترتيب «الجهد • النسبة» في السجل مع الواجهة العربية.
+- **مشاركة التطبيق**: زر لمشاركة نبذة بالروابط والوسوم، وزر لمشاركة ملف التثبيت نفسه، مع زرّي الموقع والمستودع.
+
+History: "Core over Voltage" is now shown as a cell over-voltage protection event (it was wrongly shown as
+"battery full" in green); empty records mean the protection cleared. New: share the app as text with links
+and hashtags, or as the install file itself.
+
+
 ## v1.0.0 — 2026-11-20
 
 الإصدار الأول من GT-BMS، مبنيّ على VanAccess 1.2.

@@ -69,13 +69,21 @@ Current sign is not explicit; GT-BMS uses status bits r5.0 (charging) / r5.4 (di
 | Byte | Bits |
 |---|---|
 | r5 | 0 charging · 1 charge over-current · 3 charge MOS fault · 4 discharging · 5 discharge over-current · 6 discharge short circuit · 7 discharge MOS fault |
-| r6 | 0 cell sense line open · 1 cell temp sensor open · 2 MOS temp sensor open · 3 AFE fault · 4 standby (history: battery full) · 5 cell low voltage · 6 pack over-voltage · 7 pack under-voltage |
+| r6 | 0 cell sense line open · 1 cell temp sensor open · 2 MOS temp sensor open · 3 AFE fault · 4 standby (in history: cell over-voltage protection) · 5 cell low voltage · 6 pack over-voltage · 7 pack under-voltage |
 | r7 | 0 MOS over-temp · 1 MOS temp difference · 2 charge over-temp · 3 discharge over-temp · 4 charge under-temp · 5 discharge under-temp · 6 charge temp difference · 7 discharge temp difference |
 | r8 | 0 charging disabled by command · 1 discharging disabled by command · 4 thermal runaway warning · 5 cell voltage difference too high · 6 low-voltage charge inhibit · 7 deep under-voltage |
 
 ## 0x23 history
 
 Send `23 00` for the first record, then `23 01` for each next one (the BMS keeps the pointer).
+
+The BMS writes a record whenever its status flags change: when a protection trips, and again
+(with no flags set) when everything has cleared. The vendor app shows r15 bit4 as
+"Core over Voltage" (Chinese resource: 电池充满, "battery full"). On a 23S pack with cell OV
+protection at 3630 mV and release at 3450 mV, these records were logged at 82.1–83.1 V
+(≈3.57–3.61 V/cell average, so the highest cell ≈3.63 V) and the following empty record at
+≈79 V (≈3.44 V/cell): it is the **cell over-voltage protection ending the charge**, then its release.
+Records dated 2000-01-01 were written before the BMS clock was set.
 
 | Offset | Field |
 |---|---|

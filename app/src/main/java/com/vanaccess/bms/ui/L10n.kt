@@ -11,7 +11,8 @@ import com.vanaccess.bms.R
 object L10n {
     private val ar = mapOf(
         // Alerts / events
-        "Charging" to "يشحن", "Discharging" to "يفرّغ", "Battery full" to "البطارية ممتلئة",
+        "Charging" to "يشحن", "Discharging" to "يفرّغ",
+        "Cell overvoltage protection" to "حماية جهد الخلية المرتفع — أوقف النظام الشحن",
         "AFE fault" to "عطل في دارة القياس (AFE)",
         "Balance wire resistance" to "مقاومة أسلاك الموازنة",
         "BMS fault code active" to "رمز عطل نشط في نظام الإدارة",

@@ -97,7 +97,9 @@ object BwbmParams {
 /**
  * BWBM history download (cmd 0x23): "23 00" returns the first record, "23 01" the next one.
  * Reply: r5 flag (1 = record, 2 = last), r6..r11 BCD YY MM DD hh mm ss, r14..r17 status bits
- * (same table as live data, except r15 bit4 = "Battery full"), r20.. same layout as live r11..
+ * (same table as live data, except r15 bit4 = cell over-voltage protection), r20.. same layout as live r11..
+ * The BMS writes a record whenever its status flags change: a protection trip and, later,
+ * an empty record when every flag has cleared again.
  */
 class BwbmHistory {
     private var active = false
@@ -149,7 +151,10 @@ class BwbmHistory {
             val out = mutableListOf<String>()
             fun bit(v: Int, b: Int, t: String) { if (v and (1 shl b) != 0) out += t }
             bit(s0, 0, "Charging"); bit(s0, 4, "Discharging")
-            bit(s1, 4, "Battery full")
+            // r15 bit4: vendor text "Core over Voltage" (zh 电池充满). Recorded at ~3.61 V/cell
+            // average right before the 3630 mV cell-OV protection cut charging, and cleared at
+            // ~3.44 V/cell (release 3450 mV) — i.e. a cell over-voltage protection event.
+            bit(s1, 4, "Cell overvoltage protection")
             out += BwbmDriver.alarmTexts(s0, s1, s2, s3)
             return out
         }

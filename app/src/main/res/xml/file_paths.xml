@@ -2,4 +2,6 @@
 <paths>
     <!-- Downloaded update APKs only -->
     <cache-path name="updates" path="updates/" />
+    <!-- The app's own APK when the user shares it from Settings -->
+    <cache-path name="shared_apk" path="shared_apk/" />
 </paths>

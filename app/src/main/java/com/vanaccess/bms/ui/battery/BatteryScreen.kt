@@ -396,13 +396,23 @@ class BatteryScreen(
         override fun onBindViewHolder(h: VH, pos: Int) {
             val r = items[pos]
             h.box.removeAllViews()
-            h.box.addView(label(r.time, cGrey, 12f))
-            if (r.events.isEmpty()) h.box.addView(label(fragment.getString(R.string.history_no_events), cGrey, 14f))
-            r.events.forEach { e ->
-                val col = when (e) { "Charging", "Battery full" -> cGreen; "Discharging" -> cBlue; else -> cRed }
-                h.box.addView(label(L10n.t(ctx, e), col, 14f, bold = true))
+            val clockUnset = r.time.startsWith("2000-")
+            h.box.addView(label(r.time + if (clockUnset) "  " + fragment.getString(R.string.history_clock_unset) else "", cGrey, 12f))
+            // Charging/Discharging are the state at the moment of the event, not events themselves
+            val states = r.events.filter { it == "Charging" || it == "Discharging" }
+            val events = r.events - states.toSet()
+            if (events.isEmpty()) {
+                // The BMS logs an empty record when every protection flag has cleared again
+                h.box.addView(label(fragment.getString(R.string.history_cleared), cGreen, 14f, bold = true))
             }
-            if (r.extra.isNotBlank()) h.box.addView(label(r.extra, cGrey, 12f))
+            events.forEach { e ->
+                val col = if (e == "Cell overvoltage protection") cOrange else cRed
+                h.box.addView(label("⚠ " + L10n.t(ctx, e), col, 14f, bold = true))
+            }
+            if (states.isNotEmpty()) h.box.addView(label(
+                fragment.getString(R.string.history_state, states.joinToString(" • ") { L10n.t(ctx, it) }), cBlue, 12f))
+            // Isolate the LTR "82.45 V • 100%" so RTL layout does not reorder it
+            if (r.extra.isNotBlank()) h.box.addView(label("\u2066" + r.extra + "\u2069", cGrey, 12f))
         }
     }
 

@@ -1,0 +1,1 @@
+History: cell over-voltage protection shown correctly. Share the app as text or as the install file.

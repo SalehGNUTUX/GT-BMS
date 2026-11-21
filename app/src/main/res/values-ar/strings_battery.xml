@@ -58,4 +58,7 @@
     <string name="saved_connect">اتصال</string>
     <string name="saved_none">لا توجد بطاريات محفوظة بعد</string>
     <string name="scan_known">نظام إدارة مدعوم</string>
+    <string name="history_cleared">✓ عودة إلى الوضع الطبيعي (زالت الحماية)</string>
+    <string name="history_state">الحالة لحظتها: %1$s</string>
+    <string name="history_clock_unset">(ساعة النظام لم تكن مضبوطة)</string>
 </resources>
