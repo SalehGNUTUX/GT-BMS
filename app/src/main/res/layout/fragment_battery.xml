@@ -102,17 +102,38 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                <!-- Active charge / trip banner -->
-                <TextView
-                    android:id="@+id/tv_session_banner"
+                <!-- Active charge / trip / discharge banner (+ manual "End trip") -->
+                <LinearLayout
+                    android:id="@+id/box_session_banner"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:padding="12dp"
-                    android:textColor="@color/white"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="4dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_session_banner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:textColor="@color/white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_end_trip"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/end_trip"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+                </LinearLayout>
 
                 <!-- Hero: gauge + SOC -->
                 <com.google.android.material.card.MaterialCardView

@@ -25,7 +25,7 @@
     <string name="vehicle_emoto">دراجة كهربائية</string>
     <string name="vehicle_ecar">سيارة / عربة كهربائية</string>
     <string name="trips_auto">تسجيل الرحلات تلقائياً</string>
-    <string name="trips_auto_desc">تبدأ الرحلة حين تُفرَّغ البطارية أثناء الحركة، وتنتهي بعد 3 دقائق من التوقف. يُستعمل GPS أثناء الرحلات فقط، وكل البيانات تبقى على الهاتف.</string>
+    <string name="trips_auto_desc">تبدأ الرحلة حين تُفرَّغ البطارية أثناء الحركة، وتنتهي بعد دقيقتين من التوقف، أو بعد دقيقة من الابتعاد عن البطارية، أو بزر «إنهاء الرحلة». يُستعمل GPS أثناء الرحلات فقط، وكل البيانات تبقى على الهاتف.</string>
     <string name="consumption_default">تقديرك للاستهلاك (واط·ساعة/كم، 0 = تلقائي)</string>
     <string name="consumption_learned">المتعلَّم من رحلاتك: %1$.1f واط·ساعة/كم على %2$.1f كم</string>
     <string name="consumption_none">لا رحلات بعد — يُستعمل %1$.0f واط·ساعة/كم حتى تُسجَّل رحلات حقيقية</string>

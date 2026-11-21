@@ -133,6 +133,13 @@ class AppPreferences(context: Context) {
     fun alarmTone(kind: String): String = prefs.getString("alarm_tone_$kind", "") ?: ""
     fun setAlarmTone(kind: String, uri: String?) = prefs.edit().putString("alarm_tone_$kind", uri ?: "").apply()
 
+    /**
+     * Short alarm (rings 5 s then stops by itself) instead of ringing until dismissed.
+     * Default: short for the cell-difference alarm (it can fire while riding), continuous for the others.
+     */
+    fun alarmShort(kind: String): Boolean = prefs.getBoolean("alarm_short_$kind", kind == "delta")
+    fun setAlarmShort(kind: String, short: Boolean) = prefs.edit().putBoolean("alarm_short_$kind", short).apply()
+
     // ── Smart summaries ──────────────────────────────────────────────────────
     var notifySessionSummary: Boolean
         get() = prefs.getBoolean("notify_session_summary", true)

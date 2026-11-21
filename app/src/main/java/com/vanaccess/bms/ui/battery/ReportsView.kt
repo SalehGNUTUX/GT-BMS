@@ -44,13 +44,15 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private var filter: String? = null
     private val LEVELS = "levels"
+    /** Discharge filter = stationary discharges and trips (a trip is a discharge while moving). */
+    private val DISCHARGES = "discharges"
     private val adapter = Adapter()
 
     fun setup() {
         b.rvReports.layoutManager = LinearLayoutManager(ctx)
         b.rvReports.adapter = adapter
-        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, Session.TYPE_TRIP to R.string.rep_trips,
-            LEVELS to R.string.levels_title)
+        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, DISCHARGES to R.string.rep_discharges,
+            Session.TYPE_TRIP to R.string.rep_trips, LEVELS to R.string.levels_title)
             .forEach { (type, label) ->
                 b.chipsReports.addView(Chip(ctx).apply {
                     text = fragment.getString(label)
@@ -70,7 +72,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         b.rvReports.visibility = if (levels) View.GONE else View.VISIBLE
         if (levels) { b.tvReportsEmpty.visibility = View.GONE; loadLevels(); return }
         thread {
-            val list = store.list(f)
+            val list = if (f == DISCHARGES) store.listTypes(listOf(Session.TYPE_DISCHARGE, Session.TYPE_TRIP))
+                else store.list(f)
             fragment.activity?.runOnUiThread {
                 if (fragment.view == null) return@runOnUiThread
                 adapter.submit(list)
@@ -88,18 +91,35 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         return fragment.getString(R.string.dur_hm, m / 60, m % 60)
     }
 
-    private fun summary(s: Session): List<Pair<String, Int>> = when (s.type) {
-        Session.TYPE_CHARGE -> listOf(
-            "${s.i("soc_start")}% → ${s.i("soc_end")}%  •  ${dur((s.endMs - s.startMs) / 1000.0)}" to Color.WHITE,
-            f("+%.2f Ah  •  %.0f Wh  •  ⌀ %.1f A", s.d("ah"), s.d("wh"), s.d("avg_current")) to cGrey,
-        )
-        else -> listOf(
-            (if (s.d("distance_km") > 0) f("%.2f km  •  ", s.d("distance_km")) else "") +
-                dur((s.endMs - s.startMs) / 1000.0) +
-                (if (s.d("max_speed") > 0) f("  •  ⤒ %.0f km/h", s.d("max_speed")) else "") to Color.WHITE,
-            f("%.0f Wh  •  %.2f Ah", s.d("wh"), s.d("ah")) +
-                (if (!s.data.isNull("wh_per_km")) f("  •  %.1f Wh/km", s.d("wh_per_km")) else "") to cGrey,
-        )
+    /** Wraps numbers/units so they keep left-to-right order inside Arabic text. */
+    private fun iso(t: String) = "\u2066$t\u2069"
+    private fun line(vararg parts: String?) = parts.filterNotNull().filter { it.isNotBlank() }.joinToString("  •  ")
+
+    private fun kind(s: Session): Triple<String, Int, Int> = when (s.type) {
+        Session.TYPE_CHARGE -> Triple("🔌", R.string.rep_charge, cGreen)
+        Session.TYPE_DISCHARGE -> Triple("🔋", R.string.rep_discharge, cOrange)
+        else -> Triple("🛵", R.string.rep_trip, cBlue)
+    }
+
+    private fun summary(s: Session): List<Pair<String, Int>> {
+        val socs = iso("${s.i("soc_start")}% – ${s.i("soc_end")}%")
+        val d = dur((s.endMs - s.startMs) / 1000.0)
+        return when (s.type) {
+            Session.TYPE_CHARGE -> listOf(
+                line(socs, d) to Color.WHITE,
+                line(iso(f("+%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh"))), iso(f("⌀ %.1f A", s.d("avg_current")))) to cGrey,
+            )
+            Session.TYPE_DISCHARGE -> listOf(
+                line(socs, d) to Color.WHITE,
+                line(iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh"))), iso(f("⌀ %.0f W", s.d("avg_power")))) to cGrey,
+            )
+            else -> listOf(
+                line(if (s.d("distance_km") > 0) iso(f("%.2f km", s.d("distance_km"))) else null, d,
+                    if (s.d("max_speed") > 0) iso(f("⤒ %.0f km/h", s.d("max_speed"))) else null) to Color.WHITE,
+                line(iso(f("%.0f Wh", s.d("wh"))), iso(f("%.2f Ah", s.d("ah"))),
+                    if (!s.data.isNull("wh_per_km")) iso(f("%.1f Wh/km", s.d("wh_per_km"))) else null) to cGrey,
+            )
+        }
     }
 
     // ── List ─────────────────────────────────────────────────────────────────
@@ -122,13 +142,13 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         override fun onBindViewHolder(h: VH, pos: Int) {
             val s = items[pos]
             h.box.removeAllViews()
-            val charge = s.type == Session.TYPE_CHARGE
+            val (icon, label, color) = kind(s)
             val head = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            head.addView(text((if (charge) "🔌 " else "🛵 ") + fragment.getString(if (charge) R.string.rep_charge else R.string.rep_trip),
-                if (charge) cGreen else cBlue, 15f, true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            head.addView(text("$icon " + fragment.getString(label), color, 15f, true),
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             head.addView(ltr(date(s.startMs), cGrey, 12f))
             h.box.addView(head)
-            summary(s).forEach { (t, c) -> h.box.addView(ltr(t, c, 13f).apply { setPadding(0, (3 * dp).toInt(), 0, 0) }) }
+            summary(s).forEach { (t, c) -> h.box.addView(text(t, c, 13f, false).apply { setPadding(0, (3 * dp).toInt(), 0, 0) }) }
             badges(s).takeIf { it.isNotEmpty() }?.let { h.box.addView(text(it.joinToString("  •  "), cOrange, 12f, false)) }
             h.box.setOnClickListener { showDetail(s) }
             h.box.setOnLongClickListener { confirmDelete(s); true }
@@ -160,7 +180,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         val charge = s.type == Session.TYPE_CHARGE
         val rows = mutableListOf<Pair<Int, String>>()
         rows += R.string.rep_duration to dur((s.endMs - s.startMs) / 1000.0)
-        rows += R.string.rep_soc to "${s.i("soc_start")}% → ${s.i("soc_end")}%"
+        rows += R.string.rep_soc to "${s.i("soc_start")}% – ${s.i("soc_end")}%"
         rows += R.string.rep_energy to f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh"))
         if (charge) {
             rows += R.string.rep_avg_current to f("%.1f A", s.d("avg_current"))
@@ -169,6 +189,10 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             if (s.d("max_cell_v") > 0) rows += R.string.rep_max_cell to fragment.getString(R.string.cell_at, s.d("max_cell_v"), s.i("max_cell_idx"))
             rows += R.string.rep_max_delta to "${s.i("max_delta_mv")} mV"
         } else {
+            if (s.type == Session.TYPE_DISCHARGE) {
+                rows += R.string.rep_avg_current to f("%.1f A", s.d("avg_current"))
+                rows += R.string.rep_avg_power to f("%.0f W", s.d("avg_power"))
+            }
             if (s.d("distance_km") > 0) {
                 rows += R.string.rep_distance to f("%.2f km", s.d("distance_km"))
                 rows += R.string.rep_moving to dur(s.d("moving_s"))
@@ -187,7 +211,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (!s.data.isNull("max_temp")) rows += R.string.rep_max_temp to f("%.0f °C", s.d("max_temp"))
         rows.forEach { (k, v) -> col.addView(row(fragment.getString(k), v)) }
         badges(s).forEach { col.addView(text(it, cOrange, 13f, true).apply { setPadding(0, (4 * dp).toInt(), 0, 0) }) }
-        if (!charge && s.d("distance_km") <= 0) col.addView(text(fragment.getString(R.string.rep_no_gps), cGrey, 12f, false))
+        if (s.type == Session.TYPE_TRIP && s.d("distance_km") <= 0) col.addView(text(fragment.getString(R.string.rep_no_gps), cGrey, 12f, false))
 
         val recBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(0, (8 * dp).toInt(), 0, 0) }
         col.addView(recBox)
@@ -211,8 +235,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
         val scroll = androidx.core.widget.NestedScrollView(ctx).apply { addView(col) }
         AlertDialog.Builder(ctx)
-            .setTitle((if (charge) "🔌 " else "🛵 ") + fragment.getString(if (charge) R.string.rep_charge else R.string.rep_trip) +
-                "  " + date(s.startMs))
+            .setTitle(kind(s).first + " " + fragment.getString(kind(s).second) + "  " + date(s.startMs))
             .setView(scroll)
             .setPositiveButton(android.R.string.ok, null)
             .setNeutralButton(R.string.btn_delete) { _, _ -> confirmDelete(s) }
@@ -363,7 +386,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         orientation = LinearLayout.HORIZONTAL
         setPadding(0, (5 * dp).toInt(), 0, (5 * dp).toInt())
         addView(text(k, cGrey, 13f, false), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        addView(text("⁦$v⁩", Color.WHITE, 13f, true).apply { gravity = Gravity.END },
+        // Force left-to-right only for pure numbers/units; Arabic phrases keep their own direction
+        addView(text(if (v.any { it in '\u0600'..'\u06FF' }) v else "\u2066$v\u2069", Color.WHITE, 13f, true).apply { gravity = Gravity.END },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f))
     }
 }

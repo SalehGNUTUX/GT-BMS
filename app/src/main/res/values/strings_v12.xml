@@ -25,7 +25,7 @@
     <string name="vehicle_emoto">Electric moped</string>
     <string name="vehicle_ecar">Electric car / cart</string>
     <string name="trips_auto">Record trips automatically</string>
-    <string name="trips_auto_desc">A trip starts when the battery discharges while moving and ends after 3 minutes stopped. Uses GPS only during trips; everything stays on the phone.</string>
+    <string name="trips_auto_desc">A trip starts when the battery discharges while moving, and ends after 2 minutes stopped, after 1 minute out of Bluetooth range, or with the \"End trip\" button. Uses GPS only during trips; everything stays on the phone.</string>
     <string name="consumption_default">Your consumption estimate (Wh/km, 0 = automatic)</string>
     <string name="consumption_learned">Learned from your trips: %1$.1f Wh/km over %2$.1f km</string>
     <string name="consumption_none">No trips yet — using %1$.0f Wh/km until real trips are recorded</string>

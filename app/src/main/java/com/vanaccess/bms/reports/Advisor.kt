@@ -141,6 +141,19 @@ object Advisor {
         return out
     }
 
+    /** Advice after a stationary discharge (no trip tracking). */
+    fun afterDischarge(s: Session, lim: BmsLimits): List<Rec> {
+        val out = mutableListOf<Rec>()
+        val hours = (s.endMs - s.startMs) / 3_600_000.0
+        out += Rec(Level.INFO, "discharge_summary", listOf(s.d("ah"), s.d("wh"), s.i("soc_start"), s.i("soc_end"), hours, s.d("avg_power")))
+        lim.dischargeOcA?.takeIf { it > 0 }?.let { oc ->
+            if (s.d("max_current") >= oc * 0.8) out += Rec(Level.WARNING, "trip_peak_current", listOf(s.d("max_current"), oc))
+        }
+        if (s.i("max_delta_mv") >= 100) out += Rec(Level.WARNING, "trip_delta", listOf(s.i("max_delta_mv"), s.d("current_at_max_delta")))
+        if (s.i("soc_end") <= 10) out += Rec(Level.WARNING, "battery_low", listOf(s.i("soc_end")))
+        return out
+    }
+
     /** Weekly summary numbers; [tip] picks chemistry-appropriate storage advice. */
     data class Week(val charges: Int, val trips: Int, val km: Double, val whOut: Double, val cycles: Int?, val sohPct: Int?)
 

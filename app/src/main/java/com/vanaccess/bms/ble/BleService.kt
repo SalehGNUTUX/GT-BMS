@@ -76,6 +76,8 @@ class BleService : LifecycleService() {
         val bmsParams = MutableLiveData<List<com.vanaccess.bms.ble.drivers.ParamItem>?>(null)
         val bmsHistory = MutableLiveData<List<com.vanaccess.bms.ble.drivers.HistoryRecord>?>(null)
         val historyLoading = MutableLiveData(false)
+        /** Bumped when the history cache file was rewritten. */
+        val historyCacheSaved = MutableLiveData(0L)
         val activeFeatures = MutableLiveData<Set<com.vanaccess.bms.ble.drivers.Feature>>(emptySet())
 
         /** How long a protocol candidate may stay silent before the next one is tried. */
@@ -959,12 +961,22 @@ class BleService : LifecycleService() {
             prefs.bmsLimitsJson = com.vanaccess.bms.reports.BmsLimits.fromParams(p).toJson()
         }
         out.history?.let { h -> synchronized(detailsLock) { historyBuf.addAll(h); bmsHistory.postValue(historyBuf.toList()) } }
-        if (out.historyDone) historyLoading.postValue(false)
+        if (out.historyDone) {
+            historyLoading.postValue(false)
+            saveHistoryCache()
+        }
     }
 
     private val detailsLock = Any()
     private val details = mutableMapOf<String, String>()
     private val historyBuf = mutableListOf<com.vanaccess.bms.ble.drivers.HistoryRecord>()
+
+    /** Keep the downloaded history on the phone (per battery) so the tab shows it next time. */
+    private fun saveHistoryCache() {
+        val list = synchronized(detailsLock) { historyBuf.toList() }
+        com.vanaccess.bms.reports.HistoryCache.save(this, bluetoothGatt?.device?.address ?: prefs.selectedDeviceAddress, list)
+        historyCacheSaved.postValue(System.currentTimeMillis())
+    }
 
     /** Start downloading the BMS event history (drivers with Feature.HISTORY). */
     fun requestHistory() {
@@ -974,7 +986,9 @@ class BleService : LifecycleService() {
         bmsHistory.postValue(emptyList())
         historyLoading.postValue(true)
         d.historyCommands()
-        handler.postDelayed({ historyLoading.postValue(false) }, 180_000)
+        handler.postDelayed({
+            if (historyLoading.value == true) { historyLoading.postValue(false); saveHistoryCache() }
+        }, 180_000)
     }
 
     private fun clearDeviceData() {
@@ -1288,6 +1302,9 @@ class BleService : LifecycleService() {
             androidx.core.app.ServiceCompat.startForeground(this, NOTIFICATION_ID, n, base)
         }
     }
+
+    /** Manual "End trip" from the battery screen. */
+    fun endTripNow() = recorder.endTripNow()
 
     /** Called by the UI after the location permission is granted. */
     fun refreshForegroundType() {

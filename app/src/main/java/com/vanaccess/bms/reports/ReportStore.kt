@@ -23,6 +23,7 @@ data class Session(
     companion object {
         const val TYPE_CHARGE = "charge"
         const val TYPE_TRIP = "trip"
+        const val TYPE_DISCHARGE = "discharge"
     }
 }
 
@@ -129,6 +130,11 @@ class ReportStore private constructor(ctx: Context) :
             return out
         }
     }
+
+    /** Sessions of several types, newest first. */
+    @Synchronized
+    fun listTypes(types: List<String>, limit: Int = 200): List<Session> =
+        types.flatMap { list(it, limit) }.sortedByDescending { it.startMs }.take(limit)
 
     @Synchronized
     fun points(sessionId: Long): List<Point> {

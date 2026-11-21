@@ -82,6 +82,7 @@ class SettingsFragment : Fragment() {
         setupShare()
         setupVehicle()
         setupSections()
+        setupInfoIcons()
         observeData()
 
         binding.tvAboutVersion.text = getString(R.string.version_fmt, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
@@ -218,6 +219,24 @@ class SettingsFragment : Fragment() {
         sections.flatMap { it.cards }.forEach { it.visibility = View.GONE }
         sec?.cards?.forEach { it.visibility = View.VISIBLE }
         binding.settingsScroll.scrollTo(0, 0)
+    }
+
+    /** ⓘ on fields whose meaning isn't obvious: tap for an explanation. */
+    private fun setupInfoIcons() {
+        listOf(
+            binding.tilConsumption to (R.string.info_consumption_title to R.string.info_consumption),
+            binding.tilRatedCycles to (R.string.info_cycles_title to R.string.info_cycles),
+            binding.tilDeltaRest to (R.string.info_delta_rest_title to R.string.info_delta_rest),
+            binding.tilDeltaLoad to (R.string.info_delta_load_title to R.string.info_delta_load),
+        ).forEach { (til, txt) ->
+            til.setEndIconOnClickListener {
+                AlertDialog.Builder(requireContext())
+                    .setTitle(txt.first)
+                    .setMessage(txt.second)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
     }
 
     // ── Vehicle & trips ─────────────────────────────────────────────────────
@@ -478,6 +497,13 @@ class SettingsFragment : Fragment() {
             }
             row.addView(play)
             box.addView(row)
+            box.addView(com.google.android.material.switchmaterial.SwitchMaterial(requireContext()).apply {
+                text = getString(R.string.alarm_short)
+                textSize = 12f
+                setTextColor(Color.parseColor("#9BA3B8"))
+                isChecked = prefs.alarmShort(T.toneKey(kind))
+                setOnCheckedChangeListener { _, c -> prefs.setAlarmShort(T.toneKey(kind), c) }
+            })
         }
     }
 
@@ -720,7 +746,11 @@ class SettingsFragment : Fragment() {
             val del = com.google.android.material.button.MaterialButton(requireContext(), null,
                 com.google.android.material.R.attr.borderlessButtonStyle).apply {
                 text = "✕"; minWidth = 0; minimumWidth = 0
-                setOnClickListener { prefs.removeSavedBattery(sb.address); refreshSavedBatteries() }
+                setOnClickListener {
+                    confirmClear(getString(R.string.saved_batteries), sb.name) {
+                        prefs.removeSavedBattery(sb.address); refreshSavedBatteries()
+                    }
+                }
             }
             row.addView(del)
             box.addView(row)

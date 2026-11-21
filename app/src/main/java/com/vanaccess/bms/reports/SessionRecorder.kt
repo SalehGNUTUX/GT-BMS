@@ -32,6 +32,12 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         const val CHG_END_A = 0.1
         const val TRIP_START_A = 1.0
         const val TRIP_IDLE_A = 0.5
+        /** A trip ends after this long with no load and no movement. */
+        const val TRIP_IDLE_END_MS = 120_000L
+        /** …or after this long without any BMS reading (you walked away from the vehicle). */
+        const val TRIP_SILENCE_END_MS = 60_000L
+        const val DIS_START_A = 0.5
+        const val DIS_END_A = 0.2
         const val MOVING_KMH = 2.0
         private const val MAX_DT_S = 10.0
         private const val POINT_EVERY_MS = 2000L
@@ -40,6 +46,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         /** Live state for the UI. */
         val liveSpeedKmh = MutableLiveData<Double?>(null)
         val activeTrip = MutableLiveData<TripLive?>(null)
+        val activeDischarge = MutableLiveData<ChargeLive?>(null)
         val activeCharge = MutableLiveData<ChargeLive?>(null)
         /** Bumped whenever a report is saved, so lists refresh. */
         val savedCount = MutableLiveData(0)
@@ -104,13 +111,42 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val silent = lastSampleMs > 0 && now - lastSampleMs > 10 * 60_000L
             if (silent) {
                 chg?.let { finishCharge(it) }; chg = null
-                trip?.let { finishTrip(it) }; trip = null
+                dis?.let { finishDischarge(it) }; dis = null
+            }
+            // Out of Bluetooth range during a trip = the rider left the vehicle: end it at the
+            // last moment it was moving or under load, not when we noticed.
+            if (trip != null && lastSampleMs > 0 && now - lastSampleMs > TRIP_SILENCE_END_MS) {
+                endTrip(trip!!)
             }
             if (trip == null && tripCandidateSince == 0L && gps.running && now > gpsStopAt) stopGps()
         }
     }
 
     private var lastLevelMs = 0L
+    private var lastTripActiveMs = 0L
+    /** After a manual end, don't start a new trip until the vehicle has been idle a moment. */
+    private var manualHold = false
+    private var holdIdleSince = 0L
+
+    // ── Stationary discharge accumulator (storage profile, or trips switched off) ──
+    private var disCandidateSince = 0L
+    private var dis: Acc? = null
+    private var disQuietSince = 0L
+
+    /** Manual "End trip" from the UI. */
+    fun endTripNow() {
+        main.post {
+            trip?.let { endTrip(it) }
+            manualHold = true; holdIdleSince = 0L
+            tripCandidateSince = 0L
+        }
+    }
+
+    private fun endTrip(t: Acc) {
+        if (lastTripActiveMs > t.startMs) t.endMs = lastTripActiveMs
+        finishTrip(t); trip = null; tripCandidateSince = 0L
+        gpsStopAt = System.currentTimeMillis() + 60_000
+    }
 
     /** Called with every saved report (on the main thread). */
     var onSaved: ((Session) -> Unit)? = null
@@ -154,14 +190,23 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         // ── Trip ──
         val tripsOn = prefs.vehicle.mobile && prefs.tripsEnabled
         if (!tripsOn) {
-            if (trip != null) { finishTrip(trip!!); trip = null }
+            if (trip != null) endTrip(trip!!)
             if (gps.running) stopGps()
+            processDischarge(info, i, dtS, now)
             return
         }
-        if (trip == null) {
+        dis?.let { finishDischarge(it); dis = null }
+        if (manualHold) {
+            val idleNow = i >= -TRIP_IDLE_A && (fix?.speedKmh ?: 0.0) < MOVING_KMH
+            if (idleNow) { if (holdIdleSince == 0L) holdIdleSince = now } else holdIdleSince = 0L
+            if (holdIdleSince != 0L && now - holdIdleSince >= 30_000) manualHold = false
+        }
+        if (trip == null && !manualHold) {
             if (i < -TRIP_START_A) {
                 if (tripCandidateSince == 0L) { tripCandidateSince = now; gpsStopAt = now + 5 * 60_000L; startGps() }
-                if (now - tripCandidateSince >= 10_000) { trip = Acc(tripCandidateSince, info.soc); tripIdleSince = 0L }
+                if (now - tripCandidateSince >= 10_000) {
+                    trip = Acc(tripCandidateSince, info.soc); tripIdleSince = 0L; lastTripActiveMs = now
+                }
             } else if (tripCandidateSince != 0L && now - tripCandidateSince > 60_000) {
                 tripCandidateSince = 0L
                 gpsStopAt = now + 60_000
@@ -172,15 +217,42 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val moving = (fix?.speedKmh ?: 0.0) >= MOVING_KMH
             val loaded = i < -TRIP_IDLE_A
             if (moving) t.movingS += dtS
-            if (moving || loaded) tripIdleSince = 0L else {
+            if (moving || loaded) { tripIdleSince = 0L; lastTripActiveMs = now } else {
                 if (tripIdleSince == 0L) tripIdleSince = now
-                if (now - tripIdleSince >= 180_000) {
-                    finishTrip(t); trip = null; tripCandidateSince = 0L
-                    gpsStopAt = now + 60_000
-                }
+                if (now - tripIdleSince >= TRIP_IDLE_END_MS) endTrip(t)
             }
             if (trip != null) activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed)
         }
+    }
+
+    /** Discharge without trip tracking: starts after 60 s below −0.5 A, ends 2 min after the load stops. */
+    private fun processDischarge(info: BmsBasicInfo, i: Double, dtS: Double, now: Long) {
+        if (dis == null) {
+            if (i < -DIS_START_A) {
+                if (disCandidateSince == 0L) disCandidateSince = now
+                if (now - disCandidateSince >= 60_000) { dis = Acc(disCandidateSince, info.soc); disQuietSince = 0L }
+            } else disCandidateSince = 0L
+        }
+        dis?.let { d ->
+            if (i < -DIS_END_A) { accumulate(d, info, dtS, now, charging = false); disQuietSince = 0L }
+            else {
+                if (disQuietSince == 0L) disQuietSince = now
+                if (now - disQuietSince >= 120_000 || i > CHG_START_A) {
+                    finishDischarge(d); dis = null; disCandidateSince = 0L
+                }
+            }
+            if (dis != null) activeDischarge.value = ChargeLive(d.startMs, d.socStart, d.ah, d.wh)
+        }
+    }
+
+    private fun finishDischarge(d: Acc) {
+        activeDischarge.value = null
+        if (d.activeS < 120 || d.ah < 0.05) return
+        val data = common(d).apply {
+            put("avg_current", if (d.activeS > 0) d.ah * 3600 / d.activeS else 0.0)
+            put("avg_power", if (d.activeS > 0) d.wh * 3600 / d.activeS else 0.0)
+        }
+        save(Session.TYPE_DISCHARGE, d, data)
     }
 
     private fun accumulate(a: Acc, info: BmsBasicInfo, dtS: Double, now: Long, charging: Boolean) {
@@ -306,6 +378,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     fun release() {
         chg?.let { finishCharge(it) }; chg = null
+        dis?.let { finishDischarge(it) }; dis = null
         trip?.let { finishTrip(it) }; trip = null
         stopGps()
     }

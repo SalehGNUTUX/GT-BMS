@@ -58,6 +58,8 @@ object AdviceText {
             }
             val days = lastFull?.let { ((s.endMs - it.endMs) / 86_400_000L).toInt() }
             Advisor.afterCharge(s, lim, days, chargerAdviceV(ctx))
+        } else if (s.type == Session.TYPE_DISCHARGE) {
+            Advisor.afterDischarge(s, lim)
         } else {
             val learned = store.learnedConsumption()?.first
             val whKm = if (!s.data.isNull("wh_per_km")) s.d("wh_per_km") else null
@@ -99,8 +101,12 @@ object AdviceText {
         if (!AppPreferences(ctx).notifySessionSummary) return
         Thread {
             val recs = forSession(ctx, s)
-            val title = ctx.getString(if (s.type == Session.TYPE_CHARGE) R.string.adv_charge_title else R.string.adv_trip_title)
-            notify(ctx, if (s.type == Session.TYPE_CHARGE) 1 else 2, title, recs)
+            val (title, id) = when (s.type) {
+                Session.TYPE_CHARGE -> R.string.adv_charge_title to 1
+                Session.TYPE_DISCHARGE -> R.string.adv_discharge_title to 4
+                else -> R.string.adv_trip_title to 2
+            }
+            notify(ctx, id, ctx.getString(title), recs)
         }.start()
     }
 

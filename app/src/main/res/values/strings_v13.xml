@@ -62,4 +62,58 @@
     <string name="chart_no_data">No data yet — a point is recorded every 10 minutes while the battery is connected.</string>
     <string name="lang_title">App language</string>
     <string name="lang_system">Follow the system language</string>
+    <string name="m_range_i">Estimated range ⓘ</string>
+    <string name="range_info_title">How the range is estimated</string>
+    <string name="range_info_none">Not enough data yet: the battery\'s remaining capacity is needed.</string>
+    <string name="range_basis_user">your own value (Settings → Vehicle &amp; trips)</string>
+    <string name="range_basis_learned_km">average of your trips (%1$.1f km recorded)</string>
+    <string name="range_basis_type">typical value for %1$s (your trips are used after %2$.0f km)</string>
+    <string name="range_info_body">Remaining capacity: %1$.1f Ah
+Reserve kept back: %2$.1f Ah (%3$d %% of full)
+Nominal pack voltage: %4$.1f V
+→ Usable energy = (remaining − reserve) × voltage = %5$.0f Wh
+
+Consumption: %6$.1f Wh/km — %7$s
+
+Range = usable energy ÷ consumption ≈ %8$.0f km
+
+The nominal voltage (not the resting voltage) is used because the pack sags under load. Speed, wind, hills, load and cold change consumption, so treat it as an estimate.</string>
+    <string name="end_trip">End trip</string>
+    <string name="live_discharge">Discharging since %1$s · −%2$.2f Ah</string>
+    <string name="rep_discharges">Discharge</string>
+    <string name="rep_discharge">Discharge</string>
+    <string name="rep_avg_power">Average power</string>
+    <string name="adv_discharge_title">Discharge finished</string>
+    <string name="adv_discharge_summary">Used %1$.2f Ah (%2$.0f Wh) from %3$d %% to %4$d %% over %5$.1f h, average %6$.0f W.</string>
+    <string name="alarm_short">Short alarm (5 s) — off = rings until stopped</string>
+    <string name="info">Explanation</string>
+    <string name="consumption_manual">Manual consumption (Wh/km, 0 = automatic)</string>
+    <string name="info_consumption_title">Manual consumption</string>
+    <string name="info_consumption">How many watt-hours your vehicle uses per kilometre. It is used only for the estimated range.
+
+• Leave 0 (recommended): the app uses the average of your recorded trips once you have at least 5 km, and a typical value for the vehicle type until then.
+• Enter a number only if you know your real consumption, for example from the vehicle display or from many trips: Wh/km = energy used (Wh) ÷ distance (km).
+
+Typical values: electric bicycle 8–15, kick scooter 10–20, electric moped 20–40, small car 100–150 Wh/km.
+
+A value entered here always takes priority over the learned average.</string>
+    <string name="info_cycles_title">Rated cycle life</string>
+    <string name="info_cycles">The number of full charge cycles the manufacturer guarantees before the capacity drops to about 80 %. Look for \"Cycle life\" in the battery datasheet.
+
+• Leave empty to use the typical value: LiFePO₄ 3000, Li-ion 800.
+• It is used only to estimate \"Remaining cycles\" = rated cycles − cycles counted by the BMS.
+
+It does not change how the battery is charged or protected.</string>
+    <string name="info_delta_rest_title">Cell difference at rest</string>
+    <string name="info_delta_rest">The largest voltage difference between the highest and lowest cell, in millivolts, measured with no load (below 1 A for 2 minutes) and only between 20 % and 90 % charge.
+
+Default 30 mV. A healthy balanced pack usually stays below 20 mV at rest. Above the limit you get a quiet notification suggesting a full charge so the BMS can balance.</string>
+    <string name="info_delta_load_title">Cell difference under load</string>
+    <string name="info_delta_load">The largest cell difference, in millivolts, while the battery delivers current (above the load current of the vehicle type).
+
+Default 150 mV. Under load the difference grows naturally; a much larger value points to a weak or unbalanced cell. This alarm can ring while riding — use \"Short alarm (5 s)\" in Alarm tones if you prefer.</string>
+    <string name="history_reload">Reload</string>
+    <string name="history_cached">%1$d records · last downloaded %2$s</string>
+    <string name="end_trip_q">End the trip now?</string>
+    <string name="end_trip_msg">The trip is saved with what was recorded so far. A new trip starts only after the vehicle has been idle for a moment.</string>
 </resources>

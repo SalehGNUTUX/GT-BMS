@@ -1,0 +1,1 @@
+Faster trip end, End trip button, discharge reports, better range with explanation, short alarms, field help.

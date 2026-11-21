@@ -54,6 +54,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         /** Charging is considered "recent" for this long after current was last > 0. */
         private const val CHARGE_MEMORY_MS = 90_000L
         private const val CHARGE_THRESHOLD_A = 0.1
+        const val SHORT_ALARM_MS = 5_000L
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -189,9 +190,21 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     private fun startAlarm(kind: Kind, text: String) {
         Log.i(TAG, "Alarm $kind: $text")
         ringing = kind
-        showNotification(kind, text)
+        val short = prefs.alarmShort(Tones.toneKey(kind))
+        showNotification(kind, text, ongoing = !short)
         playSound(kind)
         if (prefs.alarmVibrate) vibrate()
+        if (short) {
+            // Short mode: ring for 5 s, then stop by itself (counts as stopped for the
+            // cooldown) and leave a normal notification so the alert is not lost.
+            main.postDelayed({
+                if (ringing == kind) {
+                    states.getValue(kind).lastStoppedAt = System.currentTimeMillis()
+                    ringing = null
+                    stopSound()
+                }
+            }, SHORT_ALARM_MS)
+        }
     }
 
     /**
@@ -278,7 +291,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    private fun showNotification(kind: Kind, text: String) {
+    private fun showNotification(kind: Kind, text: String, ongoing: Boolean = true) {
         val stopIntent = Intent(context, BleService::class.java).setAction(BleService.ACTION_STOP_ALARM)
         val stopPi = PendingIntent.getService(
             context, 1, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -300,8 +313,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(true)
-            .setAutoCancel(false)
+            .setOngoing(ongoing)
+            .setAutoCancel(!ongoing)
             .setContentIntent(openPi)
             .setDeleteIntent(stopPi)
             .addAction(R.drawable.ic_battery, context.getString(R.string.alarm_stop), stopPi)

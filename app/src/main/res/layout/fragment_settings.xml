@@ -107,9 +107,13 @@
                         android:layout_marginBottom="10dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_consumption"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_info"
+                        app:endIconContentDescription="@string/info"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/consumption_default"
+                        android:hint="@string/consumption_manual"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -130,6 +134,10 @@
                         android:layout_marginTop="4dp" />
                 </LinearLayout>
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_rated_cycles"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_info"
+                    app:endIconContentDescription="@string/info"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -989,6 +997,10 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_delta_rest"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_info"
+                        app:endIconContentDescription="@string/info"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -1005,6 +1017,10 @@
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_delta_load"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_info"
+                        app:endIconContentDescription="@string/info"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"

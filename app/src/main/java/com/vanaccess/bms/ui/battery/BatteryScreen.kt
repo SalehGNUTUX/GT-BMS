@@ -62,7 +62,8 @@ class BatteryScreen(
     private var lastCells: List<Double> = emptyList()
     private val historyAdapter = HistoryAdapter()
     private val reports = ReportsView(fragment, b)
-    private var learnedWhKm: Double? = null
+    private var learned: Pair<Double, Double>? = null
+    private var lastRange: com.vanaccess.bms.reports.RangeEstimator.Result? = null
 
     fun setup() {
         b.tvDeviceName.text = prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)
@@ -155,9 +156,11 @@ class BatteryScreen(
         BleService.bmsParams.observe(owner) { renderInfo() }
         BleService.bmsHistory.observe(owner) { renderHistory() }
         BleService.historyLoading.observe(owner) { renderHistory() }
+        BleService.historyCacheSaved.observe(owner) { loadHistoryCache() }
         com.vanaccess.bms.reports.SessionRecorder.liveSpeedKmh.observe(owner) { lastInfo?.let { renderVehicleTiles(it) } }
         com.vanaccess.bms.reports.SessionRecorder.activeTrip.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeCharge.observe(owner) { renderBanner() }
+        com.vanaccess.bms.reports.SessionRecorder.activeDischarge.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext() }
         BleService.bmsParams.observe(owner) { refreshAdviceContext() }
     }
@@ -310,39 +313,76 @@ class BatteryScreen(
     private fun renderVehicleTiles(info: BmsBasicInfo) {
         val v = prefs.vehicle
         if (!v.mobile) return
-        val whKm = learnedWhKm ?: prefs.consumptionWhKm.toDouble().takeIf { it > 0 } ?: v.defaultWhPerKm
-        val remWh = if (info.remainCapacity > 0) info.remainCapacity * info.packVoltage
-            else info.soc / 100.0 * info.fullCapacity * info.packVoltage
-        val basis = fragment.getString(if (learnedWhKm != null) R.string.range_basis_learned else R.string.range_basis_default)
-        metric(b.gridMetrics, "r", R.string.m_range,
-            if (whKm > 0 && remWh > 0) fmt("≈ %.0f km", remWh / whKm) else "—", cGreen)
-        metricViews["r"]?.let { it.contentDescription = basis }
+        val cells = prefs.bmsCellCount.takeIf { it > 0 } ?: lastCells.size
+        val remainAh = if (info.remainCapacity > 0) info.remainCapacity else info.soc / 100.0 * info.fullCapacity
+        val r = com.vanaccess.bms.reports.RangeEstimator.estimate(
+            remainAh, info.fullCapacity, info.packVoltage, cells, limits.lfp || limits.cellOvMv == null,
+            prefs.consumptionWhKm.toDouble(), learned, v.defaultWhPerKm)
+        lastRange = r
+        metric(b.gridMetrics, "r", R.string.m_range_i, r?.let { fmt("≈ %.0f km", it.km) } ?: "—", cGreen)
+        // Tap the range tile for how it is calculated, with the live numbers
+        (metricViews["r"]?.parent?.parent as? View)?.setOnClickListener { showRangeInfo() }
         val sp = com.vanaccess.bms.reports.SessionRecorder.liveSpeedKmh.value
         metric(b.gridMetrics, "s", R.string.m_speed, sp?.let { fmt("%.0f km/h", it) } ?: "—")
+    }
+
+    private fun showRangeInfo() {
+        val r = lastRange
+        val msg = if (r == null) fragment.getString(R.string.range_info_none) else {
+            val basis = when (r.basis) {
+                com.vanaccess.bms.reports.RangeEstimator.Basis.USER -> fragment.getString(R.string.range_basis_user)
+                com.vanaccess.bms.reports.RangeEstimator.Basis.LEARNED -> fragment.getString(R.string.range_basis_learned_km, r.learnedKm)
+                com.vanaccess.bms.reports.RangeEstimator.Basis.DEFAULT -> fragment.getString(R.string.range_basis_type,
+                    fragment.getString(prefs.vehicle.labelRes), com.vanaccess.bms.reports.RangeEstimator.MIN_LEARN_KM)
+            }
+            fragment.getString(R.string.range_info_body,
+                r.remainAh, r.reserveAh, com.vanaccess.bms.reports.RangeEstimator.RESERVE_PCT, r.nominalV,
+                r.usableWh, r.whPerKm, basis, r.km)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
+            .setTitle(R.string.range_info_title)
+            .setMessage(msg)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun refreshLearned() {
         val ctx0 = ctx
         kotlin.concurrent.thread {
-            val l = com.vanaccess.bms.reports.ReportStore.get(ctx0).learnedConsumption()?.first
-            fragment.activity?.runOnUiThread { learnedWhKm = l }
+            val l = com.vanaccess.bms.reports.ReportStore.get(ctx0).learnedConsumption()
+            fragment.activity?.runOnUiThread { learned = l }
         }
     }
 
     private fun renderBanner() {
-        val trip = com.vanaccess.bms.reports.SessionRecorder.activeTrip.value
-        val chg = com.vanaccess.bms.reports.SessionRecorder.activeCharge.value
+        val R0 = com.vanaccess.bms.reports.SessionRecorder
+        val trip = R0.activeTrip.value
+        val chg = R0.activeCharge.value
+        val dis = R0.activeDischarge.value
         val time = java.text.SimpleDateFormat("HH:mm", Locale.US)
         val (txt, col) = when {
             trip != null -> fragment.getString(R.string.live_trip,
                 "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) to cBlue
             chg != null -> fragment.getString(R.string.live_charge,
                 time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
+            dis != null -> fragment.getString(R.string.live_discharge,
+                time.format(java.util.Date(dis.startMs)), dis.ah) to cOrange
             else -> null to cGrey
         }
-        b.tvSessionBanner.visibility = if (txt == null) View.GONE else View.VISIBLE
+        b.boxSessionBanner.visibility = if (txt == null) View.GONE else View.VISIBLE
         b.tvSessionBanner.text = txt
-        b.tvSessionBanner.background = GradientDrawable().apply {
+        b.btnEndTrip.visibility = if (trip != null) View.VISIBLE else View.GONE
+        b.btnEndTrip.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(ctx)
+                .setTitle(R.string.end_trip_q)
+                .setMessage(R.string.end_trip_msg)
+                .setPositiveButton(R.string.end_trip) { _, _ ->
+                    (fragment.activity as? MainActivity)?.getBleService()?.endTripNow()
+                }
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show()
+        }
+        b.boxSessionBanner.background = GradientDrawable().apply {
             cornerRadius = 14 * dp
             setColor(Color.argb(0x33, Color.red(col), Color.green(col), Color.blue(col)))
             setStroke((1 * dp).toInt(), col)
@@ -481,15 +521,34 @@ class BatteryScreen(
 
     // ── History ──────────────────────────────────────────────────────────────
 
+    /** Last downloaded history kept on the phone (shown when nothing was downloaded this session). */
+    private var cachedHistory: com.vanaccess.bms.reports.HistoryCache.Cached? = null
+
+    private fun loadHistoryCache() {
+        val ctx0 = ctx
+        val addr = prefs.selectedDeviceAddress
+        kotlin.concurrent.thread {
+            val c = com.vanaccess.bms.reports.HistoryCache.load(ctx0, addr)
+            fragment.activity?.runOnUiThread { cachedHistory = c; if (fragment.view != null) renderHistory() }
+        }
+    }
+
     private fun renderHistory() {
-        val list = BleService.bmsHistory.value
+        val live = BleService.bmsHistory.value?.takeIf { it.isNotEmpty() || BleService.historyLoading.value == true }
         val loading = BleService.historyLoading.value == true
+        val cached = cachedHistory
+        val list = live ?: cached?.records
         b.progressHistory.visibility = if (loading) View.VISIBLE else View.GONE
         b.btnHistory.isEnabled = !loading
+        b.btnHistory.text = fragment.getString(if (cached != null || live != null) R.string.history_reload else R.string.history_load)
+        val savedAt = cached?.let {
+            java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(java.util.Date(it.savedMs))
+        }
         b.tvHistoryStatus.text = when {
-            loading -> fragment.getString(R.string.history_loading, list?.size ?: 0)
+            loading -> fragment.getString(R.string.history_loading, live?.size ?: 0)
             list == null -> fragment.getString(R.string.history_hint)
             list.isEmpty() -> fragment.getString(R.string.history_empty)
+            live == null && savedAt != null -> fragment.getString(R.string.history_cached, list.size, "\u2066$savedAt\u2069")
             else -> fragment.getString(R.string.history_done, list.size)
         }
         // Newest first by the record's own timestamp (the BMS order is not guaranteed);
@@ -624,7 +683,8 @@ class BatteryScreen(
         }
         r.addView(label(k, cGrey, 13f), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         r.addView(label(v, Color.WHITE, 14f, bold = true).apply {
-            textDirection = View.TEXT_DIRECTION_LTR   // numbers/units/serials read left-to-right
+            // numbers/units/serials read left-to-right; Arabic phrases keep their own direction
+            textDirection = if (v.any { it in '\u0600'..'\u06FF' }) View.TEXT_DIRECTION_LOCALE else View.TEXT_DIRECTION_LTR
             gravity = Gravity.END
             setTextIsSelectable(selectable)
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f))
