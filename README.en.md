@@ -46,8 +46,14 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
     top and average speed, energy used, consumption per km, peak current, lowest voltage, largest cell difference
     under load, hard accelerations, and a voltage/current/speed chart.
 - **Range estimate and live speed** for vehicles, from your real consumption.
+- **Recommendations** that interpret readings using your BMS's own protection limits (not generic numbers): live,
+  after each charge and trip, plus a weekly summary with chemistry-appropriate advice.
+- **Levels & battery health**: 14-day state-of-charge chart, charge cycles and estimated remaining cycles, last full
+  charge and last deep discharge, BMS-reported health and a measured capacity from a full cycle.
+- **Recommended voltages** for the charger and the full-charge alarm, computed from the cell protection limit.
+- **App language**: follows the system by default; Arabic or English can be chosen in Settings.
 - **Battery alarms**: full-charge and low-battery alarms with your own SOC/voltage thresholds, played on the
-  alarm stream with a "Stop alarm" notification and anti-spam cooldown, plus a cell-difference alarm (at rest and under load).
+  alarm stream with a "Stop alarm" notification and anti-spam cooldown, plus a cell-difference alarm (at rest and under load), with a distinct tone per alarm.
 - **Saved batteries**, fast reconnect to the last one, automatic reconnection.
 - **In-app updates** from this repository's releases.
 - **Privacy**: reports and tracks stay on the phone. GPS runs only during trips, without Google services.
