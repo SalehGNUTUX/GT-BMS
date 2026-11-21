@@ -43,12 +43,14 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     private val cCard = Color.parseColor("#1E2130")
 
     private var filter: String? = null
+    private val LEVELS = "levels"
     private val adapter = Adapter()
 
     fun setup() {
         b.rvReports.layoutManager = LinearLayoutManager(ctx)
         b.rvReports.adapter = adapter
-        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, Session.TYPE_TRIP to R.string.rep_trips)
+        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, Session.TYPE_TRIP to R.string.rep_trips,
+            LEVELS to R.string.levels_title)
             .forEach { (type, label) ->
                 b.chipsReports.addView(Chip(ctx).apply {
                     text = fragment.getString(label)
@@ -63,6 +65,10 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     fun reload() {
         val store = ReportStore.get(ctx)
         val f = filter
+        val levels = f == LEVELS
+        b.scrollLevels.visibility = if (levels) View.VISIBLE else View.GONE
+        b.rvReports.visibility = if (levels) View.GONE else View.VISIBLE
+        if (levels) { b.tvReportsEmpty.visibility = View.GONE; loadLevels(); return }
         thread {
             val list = store.list(f)
             fragment.activity?.runOnUiThread {
@@ -181,15 +187,20 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (!s.data.isNull("max_temp")) rows += R.string.rep_max_temp to f("%.0f °C", s.d("max_temp"))
         rows.forEach { (k, v) -> col.addView(row(fragment.getString(k), v)) }
         badges(s).forEach { col.addView(text(it, cOrange, 13f, true).apply { setPadding(0, (4 * dp).toInt(), 0, 0) }) }
-        if (charge && s.b("ended_by_protection")) {
-            val prefs = com.vanaccess.bms.data.AppPreferences(ctx)
-            val cells = prefs.bmsCellCount.takeIf { it > 0 } ?: 0
-            com.vanaccess.bms.reports.ChargeAdvice.from(cells, prefs.bmsCellOvMv)?.let { a ->
-                col.addView(text("💡 " + fragment.getString(R.string.advice_report, a.chargerPackV), cBlue, 13f, false)
-                    .apply { setPadding(0, (6 * dp).toInt(), 0, 0) })
+        if (!charge && s.d("distance_km") <= 0) col.addView(text(fragment.getString(R.string.rep_no_gps), cGrey, 12f, false))
+
+        val recBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(0, (8 * dp).toInt(), 0, 0) }
+        col.addView(recBox)
+        thread {
+            val recs = com.vanaccess.bms.ui.AdviceText.forSession(ctx, s)
+            fragment.activity?.runOnUiThread {
+                recs.forEach { r ->
+                    recBox.addView(text(com.vanaccess.bms.ui.AdviceText.icon(r.level) + " " +
+                        com.vanaccess.bms.ui.AdviceText.text(ctx, r), com.vanaccess.bms.ui.AdviceText.color(r.level), 13f, false)
+                        .apply { setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) })
+                }
             }
         }
-        if (!charge && s.d("distance_km") <= 0) col.addView(text(fragment.getString(R.string.rep_no_gps), cGrey, 12f, false))
 
         col.addView(text(fragment.getString(R.string.rep_chart), Color.WHITE, 14f, true).apply {
             setPadding(0, (14 * dp).toInt(), 0, (6 * dp).toInt())
@@ -243,6 +254,97 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 chart.invalidate()
             }
         }
+    }
+
+    // ── Levels ───────────────────────────────────────────────────────────────
+
+    private fun loadLevels() {
+        val box = b.boxLevels
+        thread {
+            val store = ReportStore.get(ctx)
+            val now = System.currentTimeMillis()
+            val levels = store.levels(now - 14 * 86_400_000L)
+            val charges = store.list(Session.TYPE_CHARGE, 300)
+            val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx)
+            val info = com.vanaccess.bms.ble.BleService.basicInfo.value
+            val fullAh = info?.fullCapacity ?: levels.lastOrNull()?.fullAh
+            val health = com.vanaccess.bms.reports.Advisor.health(fullAh, lim, charges)
+            val lastFull = charges.firstOrNull { it.b("reached_full") || it.b("ended_by_protection") }
+            val lowCal = (lim.socLowCalMv ?: 3050) / 1000.0
+            val allLevels = store.levels(0)
+            val lastDeep = allLevels.lastOrNull { it.soc <= 10 || (it.minCell > 0 && it.minCell <= lowCal) }
+            val cycles = info?.cycleCount ?: levels.lastOrNull()?.cycles
+            fragment.activity?.runOnUiThread {
+                if (fragment.view == null) return@runOnUiThread
+                box.removeAllViews()
+                // Health
+                val hCard = card(box, "🩺 " + fragment.getString(R.string.health_title))
+                health.bmsSohPct?.let { hCard.addView(text(fragment.getString(R.string.health_bms, it), Color.WHITE, 14f, true)) }
+                if (health.bmsReportsDesign && lim.designAh != null)
+                    hCard.addView(text(fragment.getString(R.string.health_bms_design, lim.designAh), cGrey, 12f, false))
+                if (health.measuredAh != null && lim.designAh != null) {
+                    hCard.addView(text(fragment.getString(R.string.health_measured, health.measuredAh,
+                        health.measuredSohPct ?: 0, lim.designAh), cGreen, 14f, true))
+                } else {
+                    hCard.addView(text(fragment.getString(R.string.health_how, lowCal), cBlue, 12f, false)
+                        .apply { setPadding(0, (6 * dp).toInt(), 0, 0) })
+                }
+                // Facts
+                val fCard = card(box, "📊 " + fragment.getString(R.string.levels_title))
+                fCard.addView(row(fragment.getString(R.string.levels_cycles), cycles?.toString() ?: "—"))
+                if (cycles != null) com.vanaccess.bms.reports.Advisor.cyclesLeft(cycles,
+                    com.vanaccess.bms.data.AppPreferences(ctx).ratedCycles, lim)?.let { (left, rated) ->
+                    fCard.addView(row(fragment.getString(R.string.cycles_left), fragment.getString(R.string.cycles_left_val, left, rated)))
+                }
+                fCard.addView(row(fragment.getString(R.string.levels_last_full), lastFull?.let { date(it.endMs) }
+                    ?: fragment.getString(R.string.levels_never)))
+                fCard.addView(row(fragment.getString(R.string.levels_last_deep), lastDeep?.let { date(it.tMs) }
+                    ?: fragment.getString(R.string.levels_never)))
+                // SOC chart
+                val cCard = card(box, fragment.getString(R.string.levels_days))
+                val chart = LineChart(ctx)
+                cCard.addView(chart, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (200 * dp).toInt()))
+                styleChart(chart)
+                if (levels.size >= 2) {
+                    val e = levels.map { Entry((it.tMs - now) / 86_400_000f, it.soc.toFloat()) }
+                    chart.data = LineData(LineDataSet(e, "SOC %").apply {
+                        color = cGreen; setDrawCircles(false); setDrawValues(false); lineWidth = 1.8f
+                        setDrawFilled(true); fillColor = cGreen; fillAlpha = 40
+                    })
+                    chart.axisLeft.axisMinimum = 0f; chart.axisLeft.axisMaximum = 100f
+                    chart.axisRight.isEnabled = false
+                    chart.xAxis.valueFormatter = object : ValueFormatter() {
+                        override fun getFormattedValue(value: Float) = "${value.toInt()}d"
+                    }
+                }
+                chart.invalidate()
+            }
+        }
+    }
+
+    private fun styleChart(chart: LineChart) {
+        chart.description.isEnabled = false
+        chart.setNoDataTextColor(cGrey)
+        chart.legend.textColor = cGrey
+        chart.xAxis.textColor = cGrey
+        chart.axisLeft.textColor = cGrey
+        chart.axisRight.textColor = cGrey
+        chart.xAxis.setDrawGridLines(false)
+        chart.axisLeft.gridColor = Color.parseColor("#22FFFFFF")
+        chart.axisRight.setDrawGridLines(false)
+    }
+
+    private fun card(parent: LinearLayout, title: String): LinearLayout {
+        val c = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
+            background = GradientDrawable().apply { cornerRadius = 16 * dp; setColor(cCard) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { bottomMargin = (10 * dp).toInt() }
+        }
+        c.addView(text(title, Color.WHITE, 15f, true).apply { setPadding(0, 0, 0, (6 * dp).toInt()) })
+        parent.addView(c)
+        return c
     }
 
     // ── Views ────────────────────────────────────────────────────────────────

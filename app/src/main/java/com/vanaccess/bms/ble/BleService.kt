@@ -141,6 +141,7 @@ class BleService : LifecycleService() {
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
         if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
+        recorder.onSaved = { com.vanaccess.bms.ui.AdviceText.notifySession(this, it) }
         handler.post(object : Runnable {
             override fun run() { recorder.onTick(); handler.postDelayed(this, 10_000L) }
         })
@@ -148,6 +149,9 @@ class BleService : LifecycleService() {
         handler.post(object : Runnable {
             override fun run() {
                 com.vanaccess.bms.update.UpdateChecker.checkIfDue(this@BleService)
+                basicInfo.value?.let { b ->
+                    com.vanaccess.bms.ui.AdviceText.maybeWeekly(this@BleService, b.fullCapacity, b.cycleCount)
+                }
                 handler.postDelayed(this, 60 * 60 * 1000L)
             }
         })
@@ -159,7 +163,11 @@ class BleService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_STOP_ALARM -> { alarmMonitor.stopAlarm(); return START_STICKY }
-            ACTION_TEST_ALARM -> { alarmMonitor.testAlarm(); return START_STICKY }
+            ACTION_TEST_ALARM -> {
+                val kind = runCatching { BatteryAlarmMonitor.Kind.valueOf(intent.getStringExtra("kind") ?: "HIGH") }
+                    .getOrDefault(BatteryAlarmMonitor.Kind.HIGH)
+                alarmMonitor.testAlarm(kind); return START_STICKY
+            }
         }
         if (bluetoothGatt != null) return START_STICKY  // already running
         // Restore battery type from prefs
@@ -943,6 +951,7 @@ class BleService : LifecycleService() {
                     prefs.bmsCellOvMv = mv
                 }
             p.firstOrNull { it.label == "Cell count" }?.value?.toIntOrNull()?.let { prefs.bmsCellCount = it }
+            prefs.bmsLimitsJson = com.vanaccess.bms.reports.BmsLimits.fromParams(p).toJson()
         }
         out.history?.let { h -> synchronized(detailsLock) { historyBuf.addAll(h); bmsHistory.postValue(historyBuf.toList()) } }
         if (out.historyDone) historyLoading.postValue(false)

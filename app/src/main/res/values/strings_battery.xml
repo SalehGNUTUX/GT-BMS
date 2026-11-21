@@ -19,9 +19,9 @@
     <string name="m_current">Current</string>
     <string name="m_power">Power</string>
     <string name="m_delta">Cell difference</string>
-    <string name="cap_remaining">Remaining</string>
+    <string name="cap_remaining">Remaining capacity</string>
     <string name="cap_full">Full capacity</string>
-    <string name="cap_cycles">Cycles</string>
+    <string name="cap_cycles">Charge cycles</string>
     <string name="cap_soh">Health (SOH)</string>
     <string name="t_cell">Cells %1$d</string>
     <string name="t_mos">MOS %1$d</string>

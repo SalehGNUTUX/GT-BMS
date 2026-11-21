@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adv_title" formatted="false">Recommendations</string>
+    <string name="adv_cell_empty">Cell %1$d is at %2$.3f V (%3$d %%) — the battery is almost empty. Charge now.</string>
+    <string name="adv_battery_low">Battery low (%1$d %%). Charge soon.</string>
+    <string name="adv_cell_near_ov">Cell %1$d is at %2$.3f V, close to the BMS protection (%3$.3f V). The charge will end soon — this is normal.</string>
+    <string name="adv_delta_load">Cells differ by %1$d mV at %2$.0f A (cell %3$d lowest). Reduce the load — a weak or unbalanced cell.</string>
+    <string name="adv_delta_rest">Cells differ by %1$d mV at rest (cell %2$d lowest). Charge to 100 %% once: balancing works near full (above %3$.2f V per cell).</string>
+    <string name="adv_temp_charge">Temperature %1$.0f °C while charging (BMS limit %2$d °C). Charge in a cooler place or slower.</string>
+    <string name="adv_temp_discharge">Temperature %1$.0f °C under load (BMS limit %2$d °C). Reduce speed or load.</string>
+    <string name="adv_cold_charge">Charging at %1$.0f °C (BMS limit %2$d °C). Charging lithium in the cold wears the cells — warm the battery first.</string>
+    <string name="adv_temp_mos">BMS power stage at %1$.0f °C (limit %2$d °C). Reduce the current.</string>
+    <string name="adv_charger_voltage">Your charges end by BMS protection. Setting the charger to %1$.1f V ends them just below it.</string>
+    <string name="adv_all_ok" formatted="false">Everything looks normal.</string>
+    <string name="adv_charge_summary">Charged from %1$d %% to %2$d %% in %3$.1f h, average %4$.1f A (+%5$.2f Ah).</string>
+    <string name="adv_balance_needed">No full charge for %1$d days. Balancing only works near full (above %2$.2f V per cell): charge to 100 %% once this week.</string>
+    <string name="adv_charge_delta">Cells differed by up to %1$d mV during this charge.</string>
+    <string name="adv_charge_hot">Up to %1$.0f °C during this charge (BMS limit %2$d °C).</string>
+    <string name="adv_fast_charge">Fast charge (%1$.2fC). Fine occasionally; slower charging is gentler on the cells.</string>
+    <string name="adv_trip_summary">%1$.1f km at %2$.1f Wh/km (%3$.3f Ah/km), average %4$.0f km/h.</string>
+    <string name="adv_trip_summary_nogps">Used %1$.0f Wh (%2$.2f Ah). No GPS distance for this trip.</string>
+    <string name="adv_trip_above_avg">Consumption %1$.0f %% above your average (%2$.1f Wh/km) — wind, hills, load or speed.</string>
+    <string name="adv_trip_below_avg">Consumption %1$.0f %% below your average (%2$.1f Wh/km). Efficient ride.</string>
+    <string name="adv_trip_range">The remaining charge covers about %1$.0f km at this consumption.</string>
+    <string name="adv_trip_peak_current">Peak current %1$.0f A, close to the BMS over-current point (%2$d A).</string>
+    <string name="adv_trip_delta">Cells differed by %1$d mV at %2$.0f A — watch for a weak cell.</string>
+    <string name="adv_week_summary">This week: %1$d charges, %2$d trips, %3$.1f km, %4$.0f Wh used.</string>
+    <string name="adv_week_cycles">Cycle count reported by the BMS: %1$d.</string>
+    <string name="adv_week_soh">Battery health: %1$d %%.</string>
+    <string name="adv_tip_lfp" formatted="false">LiFePO₄ tip: charging to 100 % is fine and lets the cells balance; avoid leaving it full and unused for weeks, and don\'t leave it empty.</string>
+    <string name="adv_tip_liion" formatted="false">Li-ion tip: for daily use stay between 20 % and 85 %; charge to 100 % only before long trips.</string>
+    <string name="adv_weekly_title" formatted="false">GT-BMS weekly summary</string>
+    <string name="adv_charge_title" formatted="false">Charge finished</string>
+    <string name="adv_trip_title" formatted="false">Trip finished</string>
+    <string name="sum_notify" formatted="false">Summary after each charge and trip</string>
+    <string name="sum_weekly" formatted="false">Weekly summary</string>
+    <string name="levels_title" formatted="false">Levels</string>
+    <string name="levels_days" formatted="false">State of charge — last 14 days</string>
+    <string name="health_title" formatted="false">Battery health</string>
+    <string name="health_bms">BMS-reported: %1$d %%</string>
+    <string name="health_bms_design">The BMS reports its design capacity (%1$.1f Ah); it does not measure wear.</string>
+    <string name="health_measured">Measured capacity: %1$.1f Ah (%2$d %% of %3$.1f Ah)</string>
+    <string name="health_how">To measure real capacity: use the battery down to the low-calibration point (about %1$.2f V per cell), then charge to full without interruption.</string>
+    <string name="levels_cycles" formatted="false">Charge cycles</string>
+    <string name="levels_last_full" formatted="false">Last full charge</string>
+    <string name="levels_last_deep" formatted="false">Last deep discharge</string>
+    <string name="levels_never" formatted="false">—</string>
+    <string name="cycles_left">Remaining cycles (estimate)</string>
+    <string name="cycles_left_val">≈ %1$d of %2$d</string>
+    <string name="cycle_life">Rated cycle life (cycles)</string>
+    <string name="cycle_life_desc">From the battery datasheet. Typical: LiFePO₄ 3000, Li-ion 800. Used only for the remaining-cycles estimate.</string>
+    <string name="vehicle_etrike">Electric tricycle / cargo</string>
+    <string name="vehicle_wheelchair">Electric wheelchair</string>
+    <string name="vehicle_eboat">Electric boat</string>
+    <string name="tones_title">Alarm tones</string>
+    <string name="tones_desc">Each alarm has its own tone so you know which one is ringing. Tap a name to choose; ▶ to try it.</string>
+    <string name="tone_high">Full charge</string>
+    <string name="tone_low">Low battery</string>
+    <string name="tone_delta">Cell difference (under load)</string>
+    <string name="tone_pick">Choose alarm tone</string>
+    <string name="tone_none">(default)</string>
+</resources>

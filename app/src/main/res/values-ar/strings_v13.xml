@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adv_title" formatted="false">التوصيات</string>
+    <string name="adv_cell_empty">الخلية %1$d عند %2$.3f فولت (%3$d٪) — البطارية شبه فارغة. اشحنها الآن.</string>
+    <string name="adv_battery_low">البطارية منخفضة (%1$d٪). اشحنها قريباً.</string>
+    <string name="adv_cell_near_ov">الخلية %1$d عند %2$.3f فولت، قريبة من حد حماية النظام (%3$.3f فولت). سينتهي الشحن قريباً — وهذا طبيعي.</string>
+    <string name="adv_delta_load">فرق الخلايا %1$d مللي فولت عند %2$.0f أمبير (الخلية %3$d الأدنى). خفّف الحمل — خلية ضعيفة أو غير متوازنة.</string>
+    <string name="adv_delta_rest">فرق الخلايا %1$d مللي فولت في الراحة (الخلية %2$d الأدنى). اشحن حتى 100%% مرة: الموازنة تعمل قرب الامتلاء (فوق %3$.2f فولت للخلية).</string>
+    <string name="adv_temp_charge">الحرارة %1$.0f°م أثناء الشحن (حد النظام %2$d°م). اشحن في مكان أبرد أو بتيار أقل.</string>
+    <string name="adv_temp_discharge">الحرارة %1$.0f°م تحت الحمل (حد النظام %2$d°م). خفّف السرعة أو الحمل.</string>
+    <string name="adv_cold_charge">الشحن عند %1$.0f°م (حد النظام %2$d°م). شحن الليثيوم في البرد يُتلف الخلايا — دفّئ البطارية أولاً.</string>
+    <string name="adv_temp_mos">دارة القدرة في النظام عند %1$.0f°م (الحد %2$d°م). خفّف التيار.</string>
+    <string name="adv_charger_voltage">شحناتك تنتهي بحماية النظام. ضبط الشاحن على %1$.1f فولت يُنهيها قبلها بقليل.</string>
+    <string name="adv_all_ok" formatted="false">كل شيء طبيعي.</string>
+    <string name="adv_charge_summary">شحنت من %1$d٪ إلى %2$d٪ في %3$.1f ساعة، بمتوسط %4$.1f أمبير (+%5$.2f أمبير·ساعة).</string>
+    <string name="adv_balance_needed">لم تشحن حتى الامتلاء منذ %1$d يوماً. الموازنة تعمل قرب الامتلاء فقط (فوق %2$.2f فولت للخلية): اشحن حتى 100%% مرة هذا الأسبوع.</string>
+    <string name="adv_charge_delta">بلغ فرق الخلايا %1$d مللي فولت أثناء هذه الشحنة.</string>
+    <string name="adv_charge_hot">بلغت الحرارة %1$.0f°م أثناء هذه الشحنة (حد النظام %2$d°م).</string>
+    <string name="adv_fast_charge">شحن سريع (%1$.2fC). لا بأس به أحياناً، والشحن الأبطأ أرفق بالخلايا.</string>
+    <string name="adv_trip_summary">%1$.1f كم باستهلاك %2$.1f واط·ساعة/كم (%3$.3f أمبير·ساعة/كم)، ومتوسط سرعة %4$.0f كم/س.</string>
+    <string name="adv_trip_summary_nogps">استُهلك %1$.0f واط·ساعة (%2$.2f أمبير·ساعة). لا مسافة من GPS لهذه الرحلة.</string>
+    <string name="adv_trip_above_avg">الاستهلاك أعلى من متوسطك بـ %1$.0f٪ (%2$.1f واط·ساعة/كم) — الريح أو المرتفعات أو الحمولة أو السرعة.</string>
+    <string name="adv_trip_below_avg">الاستهلاك أقل من متوسطك بـ %1$.0f٪ (%2$.1f واط·ساعة/كم). قيادة اقتصادية.</string>
+    <string name="adv_trip_range">الشحن المتبقي يكفي نحو %1$.0f كم بهذا الاستهلاك.</string>
+    <string name="adv_trip_peak_current">أعلى تيار %1$.0f أمبير، قريب من حد التيار الزائد في النظام (%2$d أمبير).</string>
+    <string name="adv_trip_delta">بلغ فرق الخلايا %1$d مللي فولت عند %2$.0f أمبير — راقب احتمال خلية ضعيفة.</string>
+    <string name="adv_week_summary">هذا الأسبوع: %1$d شحنات، %2$d رحلات، %3$.1f كم، واستُهلك %4$.0f واط·ساعة.</string>
+    <string name="adv_week_cycles">عدد الدورات حسب النظام: %1$d.</string>
+    <string name="adv_week_soh">صحة البطارية: %1$d٪.</string>
+    <string name="adv_tip_lfp" formatted="false">نصيحة الليثيوم فوسفات: الشحن حتى 100% لا يضر ويسمح بموازنة الخلايا؛ تجنّب تركها ممتلئة دون استعمال لأسابيع، ولا تتركها فارغة.</string>
+    <string name="adv_tip_liion" formatted="false">نصيحة الليثيوم أيون: للاستعمال اليومي حافظ بين 20% و85%، واشحن حتى 100% قبل الرحلات الطويلة فقط.</string>
+    <string name="adv_weekly_title" formatted="false">ملخص GT-BMS الأسبوعي</string>
+    <string name="adv_charge_title" formatted="false">انتهى الشحن</string>
+    <string name="adv_trip_title" formatted="false">انتهت الرحلة</string>
+    <string name="sum_notify" formatted="false">ملخص بعد كل شحنة ورحلة</string>
+    <string name="sum_weekly" formatted="false">ملخص أسبوعي</string>
+    <string name="levels_title" formatted="false">المستويات</string>
+    <string name="levels_days" formatted="false">نسبة الشحن — آخر 14 يوماً</string>
+    <string name="health_title" formatted="false">صحة البطارية</string>
+    <string name="health_bms">حسب نظام الإدارة: %1$d٪</string>
+    <string name="health_bms_design">النظام يعرض السعة التصميمية (%1$.1f أمبير·ساعة)، ولا يقيس التآكل.</string>
+    <string name="health_measured">السعة المقاسة: %1$.1f أمبير·ساعة (%2$d٪ من %3$.1f)</string>
+    <string name="health_how">لقياس السعة الحقيقية: استعمل البطارية حتى نقطة المعايرة المنخفضة (نحو %1$.2f فولت للخلية)، ثم اشحنها حتى الامتلاء دون انقطاع.</string>
+    <string name="levels_cycles" formatted="false">دورات الشحن</string>
+    <string name="levels_last_full" formatted="false">آخر شحنة كاملة</string>
+    <string name="levels_last_deep" formatted="false">آخر تفريغ عميق</string>
+    <string name="levels_never" formatted="false">—</string>
+    <string name="cycles_left">دورات الشحن المتبقية (تقديرياً)</string>
+    <string name="cycles_left_val">≈ %1$d من %2$d</string>
+    <string name="cycle_life">العمر الافتراضي (عدد الدورات)</string>
+    <string name="cycle_life_desc">من ورقة مواصفات البطارية. المعتاد: ليثيوم فوسفات 3000، ليثيوم أيون 800. يُستعمل فقط لتقدير الدورات المتبقية.</string>
+    <string name="vehicle_etrike">دراجة ثلاثية كهربائية / بضائع</string>
+    <string name="vehicle_wheelchair">كرسي متحرك كهربائي</string>
+    <string name="vehicle_eboat">قارب كهربائي</string>
+    <string name="tones_title">نغمات المنبهات</string>
+    <string name="tones_desc">لكل منبّه نغمته لتعرف أيّها يرنّ. اضغط الاسم للاختيار، و▶ للتجربة.</string>
+    <string name="tone_high">اكتمال الشحن</string>
+    <string name="tone_low">انخفاض البطارية</string>
+    <string name="tone_delta">فرق الخلايا (تحت الحمل)</string>
+    <string name="tone_pick">اختر نغمة المنبّه</string>
+    <string name="tone_none">(افتراضية)</string>
+</resources>

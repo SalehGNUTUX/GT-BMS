@@ -42,7 +42,7 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
 - **Reports** tab:
   - **Charges**, automatically: duration, SOC from/to, Ah and Wh, average and peak current, highest pack and
     cell voltage, largest cell difference, highest temperature, balancing seen, and whether BMS protection ended it.
-  - **Trips** with GPS when a vehicle type is chosen (e-bike, scooter, motorcycle, car): distance, moving time,
+  - **Trips** with GPS when a vehicle type is chosen (electric bicycle, kick scooter, electric moped, car): distance, moving time,
     top and average speed, energy used, consumption per km, peak current, lowest voltage, largest cell difference
     under load, hard accelerations, and a voltage/current/speed chart.
 - **Range estimate and live speed** for vehicles, from your real consumption.

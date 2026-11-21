@@ -158,7 +158,8 @@ class BatteryScreen(
         com.vanaccess.bms.reports.SessionRecorder.liveSpeedKmh.observe(owner) { lastInfo?.let { renderVehicleTiles(it) } }
         com.vanaccess.bms.reports.SessionRecorder.activeTrip.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeCharge.observe(owner) { renderBanner() }
-        com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned() }
+        com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext() }
+        BleService.bmsParams.observe(owner) { refreshAdviceContext() }
     }
 
     private fun updateHeader() {
@@ -229,6 +230,9 @@ class BatteryScreen(
             row(b.rowsCapacity, fragment.getString(R.string.cap_full), fmt("%.1f Ah", info.fullCapacity))
         }
         row(b.rowsCapacity, fragment.getString(R.string.cap_cycles), "${info.cycleCount}")
+        com.vanaccess.bms.reports.Advisor.cyclesLeft(info.cycleCount, prefs.ratedCycles, limits)?.let { (left, rated) ->
+            row(b.rowsCapacity, fragment.getString(R.string.cycles_left), fragment.getString(R.string.cycles_left_val, left, rated))
+        }
         info.sohReported?.let { row(b.rowsCapacity, fragment.getString(R.string.cap_soh), "$it%") }
 
         // Temperatures: cell probes then MOS probes
@@ -249,6 +253,8 @@ class BatteryScreen(
         statusTile(R.string.s_balancing, balancing.isNotEmpty())
         info.heating?.let { statusTile(R.string.s_heating, it) }
 
+        renderRecs(info)
+
         // Alerts
         b.boxAlerts.removeAllViews()
         val alerts = info.protectionFlags.map { L10n.t(ctx, it.name) }
@@ -256,6 +262,47 @@ class BatteryScreen(
             b.boxAlerts.addView(label(fragment.getString(R.string.no_alerts), cGreen, 14f, bold = true))
         } else alerts.forEach { a ->
             b.boxAlerts.addView(label("⚠ $a", cRed, 14f, bold = true).apply { setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) })
+        }
+    }
+
+    private var restSince = 0L
+    private var limits = com.vanaccess.bms.reports.BmsLimits()
+    private var lastChargeByProtection = false
+
+    /** Live recommendations from the Advisor, using this battery's own BMS limits. */
+    private fun renderRecs(info: BmsBasicInfo) {
+        val now = System.currentTimeMillis()
+        if (abs(info.current) < 1.0) { if (restSince == 0L) restSince = now } else restSince = 0L
+        val x = com.vanaccess.bms.reports.Advisor.Live(
+            soc = info.soc, current = info.current, cells = lastCells,
+            cellTemps = info.temperatures, mosTemps = info.mosTemperatures,
+            restSeconds = if (restSince == 0L) 0.0 else (now - restSince) / 1000.0,
+            loadCurrentA = prefs.vehicle.loadCurrentA,
+            restDeltaMv = prefs.alarmDeltaRestMv, loadDeltaMv = prefs.alarmDeltaLoadMv,
+            lastChargeEndedByProtection = lastChargeByProtection,
+            chargerAdviceV = com.vanaccess.bms.ui.AdviceText.chargerAdviceV(ctx),
+        )
+        val recs = com.vanaccess.bms.reports.Advisor.live(x, limits)
+        b.boxRecs.removeAllViews()
+        recs.forEach { r ->
+            b.boxRecs.addView(label(com.vanaccess.bms.ui.AdviceText.icon(r.level) + " " +
+                com.vanaccess.bms.ui.AdviceText.text(ctx, r), com.vanaccess.bms.ui.AdviceText.color(r.level), 14f,
+                bold = r.level == com.vanaccess.bms.reports.Advisor.Level.CRITICAL).apply {
+                setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt())
+            })
+        }
+    }
+
+    private fun refreshAdviceContext() {
+        val ctx0 = ctx
+        kotlin.concurrent.thread {
+            val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx0)
+            val last = com.vanaccess.bms.reports.ReportStore.get(ctx0)
+                .list(com.vanaccess.bms.reports.Session.TYPE_CHARGE, 1).firstOrNull()
+            fragment.activity?.runOnUiThread {
+                limits = lim
+                lastChargeByProtection = last?.b("ended_by_protection") == true
+            }
         }
     }
 

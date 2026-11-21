@@ -19,9 +19,9 @@
     <string name="m_current">التيار</string>
     <string name="m_power">القدرة</string>
     <string name="m_delta">فرق الخلايا</string>
-    <string name="cap_remaining">المتبقي</string>
+    <string name="cap_remaining">السعة المتبقية</string>
     <string name="cap_full">السعة الكاملة</string>
-    <string name="cap_cycles">الدورات</string>
+    <string name="cap_cycles">دورات الشحن</string>
     <string name="cap_soh">صحة البطارية (SOH)</string>
     <string name="t_cell">الخلايا %1$d</string>
     <string name="t_mos">المفاتيح %1$d</string>

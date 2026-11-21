@@ -41,6 +41,19 @@ class SettingsFragment : Fragment() {
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> if (uri != null) writeExport(uri) }
 
+    /** Which alarm kind the system tone picker is choosing for. */
+    private var pickingTone: com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind? = null
+
+    private val toneLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+        val kind = pickingTone ?: return@registerForActivityResult
+        pickingTone = null
+        if (res.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+        @Suppress("DEPRECATION")
+        val uri = res.data?.getParcelableExtra<Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        prefs.setAlarmTone(com.vanaccess.bms.alarm.BatteryAlarmMonitor.Tones.toneKey(kind), uri?.toString())
+        renderTones()
+    }
+
     private val importLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) readImport(uri) }
@@ -233,12 +246,16 @@ class SettingsFragment : Fragment() {
         }
         binding.etConsumption.setText(if (prefs.consumptionWhKm > 0) fmtV(prefs.consumptionWhKm) else "0")
         binding.etConsumption.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
+        binding.etRatedCycles.setText(prefs.ratedCycles.takeIf { it > 0 }?.toString() ?: "")
+        binding.etRatedCycles.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
         refreshVehicleBox()
     }
 
     private fun saveConsumption() {
         if (_binding == null) return
         parseNum(binding.etConsumption.text)?.let { prefs.consumptionWhKm = it.toFloat().coerceIn(0f, 1000f) }
+        val rc = binding.etRatedCycles.text?.toString()?.trim().orEmpty()
+        prefs.ratedCycles = if (rc.isEmpty()) 0 else (parseNum(rc)?.toInt()?.coerceIn(0, 20000) ?: prefs.ratedCycles)
     }
 
     private fun refreshVehicleBox() {
@@ -373,6 +390,10 @@ class SettingsFragment : Fragment() {
         binding.etAlarmLowSoc.setText(prefs.alarmLowSoc.toString())
         binding.etAlarmLowV.setText(fmtV(prefs.alarmLowVoltage))
         binding.etAlarmCooldown.setText(prefs.alarmCooldownMinutes.toString())
+        binding.switchSumNotify.isChecked = prefs.notifySessionSummary
+        binding.switchSumNotify.setOnCheckedChangeListener { _, c -> prefs.notifySessionSummary = c }
+        binding.switchSumWeekly.isChecked = prefs.notifyWeekly
+        binding.switchSumWeekly.setOnCheckedChangeListener { _, c -> prefs.notifyWeekly = c }
         binding.switchAlarmDelta.isChecked = prefs.alarmDeltaEnabled
         binding.switchAlarmDelta.setOnCheckedChangeListener { _, c -> prefs.alarmDeltaEnabled = c }
         binding.etAlarmDeltaRest.setText(prefs.alarmDeltaRestMv.toString())
@@ -402,9 +423,62 @@ class SettingsFragment : Fragment() {
             sendServiceAction(BleService.ACTION_TEST_ALARM)
         }
         binding.btnAlarmStop.setOnClickListener { sendServiceAction(BleService.ACTION_STOP_ALARM) }
+        renderTones()
         BleService.bmsParams.observe(viewLifecycleOwner) { renderAdvice() }
         BleService.cellVoltages.observe(viewLifecycleOwner) { renderAdvice() }
         renderAdvice()
+    }
+
+    /** One row per alarm kind: tone name (tap → system picker) and ▶ to test that alarm. */
+    private fun renderTones() {
+        if (_binding == null) return
+        val T = com.vanaccess.bms.alarm.BatteryAlarmMonitor.Tones
+        val box = binding.boxTones
+        box.removeAllViews()
+        listOf(
+            com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.HIGH to R.string.tone_high,
+            com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.LOW to R.string.tone_low,
+            com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.DELTA_LOAD to R.string.tone_delta,
+        ).forEach { (kind, label) ->
+            val saved = prefs.alarmTone(T.toneKey(kind))
+            val uri = if (saved.isNotBlank()) Uri.parse(saved) else T.defaultTone(requireContext(), kind)
+            val name = try {
+                android.media.RingtoneManager.getRingtone(requireContext(), uri)?.getTitle(requireContext())
+            } catch (_: Exception) { null } ?: "—"
+            val row = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            val btn = com.google.android.material.button.MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                text = getString(label) + ": " + name + if (saved.isBlank()) " " + getString(R.string.tone_none) else ""
+                textSize = 12f
+                isAllCaps = false
+                setOnClickListener {
+                    pickingTone = kind
+                    val i = android.content.Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALL)
+                        putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, getString(R.string.tone_pick) + " — " + getString(label))
+                        putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                        putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, false)
+                        putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, uri)
+                    }
+                    try { toneLauncher.launch(i) } catch (_: Exception) { pickingTone = null }
+                }
+            }
+            row.addView(btn, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            val play = com.google.android.material.button.MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.borderlessButtonStyle).apply {
+                text = "▶"; minWidth = 0; minimumWidth = 0
+                setOnClickListener {
+                    val ctx = requireContext()
+                    ctx.startService(android.content.Intent(ctx, BleService::class.java)
+                        .setAction(BleService.ACTION_TEST_ALARM).putExtra("kind", kind.name))
+                }
+            }
+            row.addView(play)
+            box.addView(row)
+        }
     }
 
     /** Charger + alarm voltage advice from the BMS protection limit (see ChargeAdvice). */

@@ -71,7 +71,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private var gpsStopAt = 0L
 
     /** Running totals shared by both kinds of session. */
-    private class Acc(val startMs: Long, val socStart: Int) {
+    private class Acc(val startMs: Long, val socStart: Int, val startMinCell: Double = 0.0) {
         var endMs = startMs
         var socEnd = socStart
         var ah = 0.0; var wh = 0.0
@@ -110,8 +110,21 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         }
     }
 
+    private var lastLevelMs = 0L
+
+    /** Called with every saved report (on the main thread). */
+    var onSaved: ((Session) -> Unit)? = null
+
     private fun process(info: BmsBasicInfo) {
         val now = System.currentTimeMillis()
+        if (now - lastLevelMs >= 10 * 60_000L) {
+            lastLevelMs = now
+            val cells = lastCells
+            val lvl = ReportStore.Level(now, info.soc, info.packVoltage, info.remainCapacity, info.fullCapacity,
+                info.cycleCount, cells.minOrNull() ?: 0.0, cells.maxOrNull() ?: 0.0)
+            val bat = battery
+            Thread { try { store.addLevel(bat, lvl) } catch (_: Exception) {} }.start()
+        }
         val dtS = if (lastSampleMs == 0L) 0.0 else min((now - lastSampleMs) / 1000.0, MAX_DT_S)
         lastSampleMs = now
         lastInfo = info
@@ -123,7 +136,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         if (chg == null) {
             if (i > CHG_START_A) {
                 if (chgCandidateSince == 0L) chgCandidateSince = now
-                if (now - chgCandidateSince >= 20_000) { chg = Acc(chgCandidateSince, info.soc); chgQuietSince = 0L }
+                if (now - chgCandidateSince >= 20_000) {
+                    chg = Acc(chgCandidateSince, info.soc, lastCells.minOrNull() ?: 0.0); chgQuietSince = 0L
+                }
             } else chgCandidateSince = 0L
         }
         chg?.let { c ->
@@ -244,6 +259,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         put("max_delta_mv", a.maxDeltaMv); put("current_at_max_delta", a.currentAtMaxDelta)
         put("max_temp", if (a.maxTemp < -50) JSONObject.NULL else a.maxTemp)
         put("max_current", a.maxCurrent)
+        put("start_min_cell", a.startMinCell)
     }
 
     private fun finishCharge(c: Acc) {
@@ -280,8 +296,11 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         val pts = a.points.toList()
         val bat = battery
         Thread {
-            try { store.insert(type, a.startMs, a.endMs, bat, data, pts) } catch (_: Exception) {}
-            main.post { savedCount.value = (savedCount.value ?: 0) + 1 }
+            val id = try { store.insert(type, a.startMs, a.endMs, bat, data, pts) } catch (_: Exception) { -1L }
+            main.post {
+                savedCount.value = (savedCount.value ?: 0) + 1
+                if (id > 0) onSaved?.invoke(Session(id, type, a.startMs, a.endMs, bat, data))
+            }
         }.start()
     }
 

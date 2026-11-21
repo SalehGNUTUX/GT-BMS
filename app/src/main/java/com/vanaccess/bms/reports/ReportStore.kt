@@ -37,7 +37,7 @@ data class Point(
  * Report fields are kept as JSON so new fields don't need schema migrations.
  */
 class ReportStore private constructor(ctx: Context) :
-    SQLiteOpenHelper(ctx.applicationContext, "gt_bms_reports.db", null, 1) {
+    SQLiteOpenHelper(ctx.applicationContext, "gt_bms_reports.db", null, 2) {
 
     companion object {
         @Volatile private var instance: ReportStore? = null
@@ -54,9 +54,45 @@ class ReportStore private constructor(ctx: Context) :
             speed REAL, lat REAL, lon REAL)""")
         db.execSQL("CREATE INDEX idx_points_session ON points(session_id)")
         db.execSQL("CREATE INDEX idx_sessions_start ON sessions(start_ms)")
+        createLevels(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+    /** v2: battery level samples for the levels report (one row every ~10 min). */
+    private fun createLevels(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS levels(
+            t_ms INTEGER NOT NULL, battery TEXT, soc INTEGER, v REAL, remain_ah REAL, full_ah REAL,
+            cycles INTEGER, min_cell REAL, max_cell REAL)""")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_levels_t ON levels(t_ms)")
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createLevels(db)
+    }
+
+    data class Level(val tMs: Long, val soc: Int, val v: Double, val remainAh: Double, val fullAh: Double,
+                     val cycles: Int, val minCell: Double, val maxCell: Double)
+
+    @Synchronized
+    fun addLevel(battery: String, l: Level) {
+        writableDatabase.insert("levels", null, ContentValues().apply {
+            put("t_ms", l.tMs); put("battery", battery); put("soc", l.soc); put("v", l.v)
+            put("remain_ah", l.remainAh); put("full_ah", l.fullAh); put("cycles", l.cycles)
+            put("min_cell", l.minCell); put("max_cell", l.maxCell)
+        })
+    }
+
+    @Synchronized
+    fun levels(sinceMs: Long): List<Level> {
+        readableDatabase.rawQuery(
+            "SELECT t_ms, soc, v, remain_ah, full_ah, cycles, min_cell, max_cell FROM levels WHERE t_ms >= ? ORDER BY t_ms",
+            arrayOf(sinceMs.toString())
+        ).use { c ->
+            val out = mutableListOf<Level>()
+            while (c.moveToNext()) out += Level(c.getLong(0), c.getInt(1), c.getDouble(2), c.getDouble(3),
+                c.getDouble(4), c.getInt(5), c.getDouble(6), c.getDouble(7))
+            return out
+        }
+    }
 
     @Synchronized
     fun insert(type: String, startMs: Long, endMs: Long, battery: String, data: JSONObject, points: List<Point>): Long {

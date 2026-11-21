@@ -230,6 +230,17 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Recommendations (Advisor) -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/GtCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView style="@style/GtCardTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/adv_title" />
+                        <LinearLayout android:id="@+id/box_recs" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Alerts -->
                 <com.google.android.material.card.MaterialCardView
                     style="@style/GtCard"
@@ -318,6 +329,19 @@
                 android:padding="24dp"
                 android:text="@string/rep_empty"
                 android:visibility="gone" />
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/scroll_levels"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/box_levels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="12dp" />
+            </androidx.core.widget.NestedScrollView>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_reports"

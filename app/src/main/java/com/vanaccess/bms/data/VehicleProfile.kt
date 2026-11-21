@@ -25,6 +25,9 @@ data class VehicleProfile(
             VehicleProfile("escooter", R.string.vehicle_escooter, "🛴", true, 15.0, 5.0),
             VehicleProfile("emoto", R.string.vehicle_emoto, "🏍️", true, 35.0, 10.0),
             VehicleProfile("ecar", R.string.vehicle_ecar, "🚗", true, 120.0, 20.0),
+            VehicleProfile("etrike", R.string.vehicle_etrike, "🛺", true, 25.0, 8.0),
+            VehicleProfile("wheelchair", R.string.vehicle_wheelchair, "🦽", true, 8.0, 3.0),
+            VehicleProfile("eboat", R.string.vehicle_eboat, "🚤", true, 60.0, 10.0),
         )
         fun byId(id: String?) = all.firstOrNull { it.id == id } ?: all.first()
     }

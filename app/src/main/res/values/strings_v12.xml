@@ -21,8 +21,8 @@
     <string name="vehicle_type_desc">Vehicles enable GPS trip reports, speed and range estimates.</string>
     <string name="vehicle_storage">Storage (home / solar / van)</string>
     <string name="vehicle_ebike">Electric bicycle</string>
-    <string name="vehicle_escooter">Electric scooter</string>
-    <string name="vehicle_emoto">Electric motorcycle</string>
+    <string name="vehicle_escooter">Kick scooter</string>
+    <string name="vehicle_emoto">Electric moped</string>
     <string name="vehicle_ecar">Electric car / cart</string>
     <string name="trips_auto">Record trips automatically</string>
     <string name="trips_auto_desc">A trip starts when the battery discharges while moving and ends after 3 minutes stopped. Uses GPS only during trips; everything stays on the phone.</string>

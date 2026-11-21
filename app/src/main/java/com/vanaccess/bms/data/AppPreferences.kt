@@ -119,6 +119,33 @@ class AppPreferences(context: Context) {
         get() = prefs.getInt("bms_cell_count", 0)
         set(value) = prefs.edit().putInt("bms_cell_count", value).apply()
 
+    /** Full BMS limits (JSON of reports.BmsLimits), for recommendations while offline. */
+    var bmsLimitsJson: String?
+        get() = prefs.getString("bms_limits", null)
+        set(value) = prefs.edit().putString("bms_limits", value).apply()
+
+    /** Rated cycle life from the datasheet; 0 = default by chemistry (LFP 3000, Li-ion 800). */
+    var ratedCycles: Int
+        get() = prefs.getInt("rated_cycles", 0)
+        set(value) = prefs.edit().putInt("rated_cycles", value).apply()
+
+    /** Per-alarm tone URI ("" = default for that alarm). Keys: high, low, delta. */
+    fun alarmTone(kind: String): String = prefs.getString("alarm_tone_$kind", "") ?: ""
+    fun setAlarmTone(kind: String, uri: String?) = prefs.edit().putString("alarm_tone_$kind", uri ?: "").apply()
+
+    // ── Smart summaries ──────────────────────────────────────────────────────
+    var notifySessionSummary: Boolean
+        get() = prefs.getBoolean("notify_session_summary", true)
+        set(value) = prefs.edit().putBoolean("notify_session_summary", value).apply()
+
+    var notifyWeekly: Boolean
+        get() = prefs.getBoolean("notify_weekly", true)
+        set(value) = prefs.edit().putBoolean("notify_weekly", value).apply()
+
+    var lastWeeklyMs: Long
+        get() = prefs.getLong("last_weekly_ms", 0L)
+        set(value) = prefs.edit().putLong("last_weekly_ms", value).apply()
+
     // ── Cell difference alarm ────────────────────────────────────────────────
     var alarmDeltaEnabled: Boolean
         get() = prefs.getBoolean("alarm_delta_enabled", true)

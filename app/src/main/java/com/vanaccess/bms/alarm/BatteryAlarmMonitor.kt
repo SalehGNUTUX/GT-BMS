@@ -160,9 +160,11 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     /** Ring a short demo alarm from the settings screen. */
-    fun testAlarm() {
+    fun testAlarm(kind: Kind = Kind.HIGH) {
         main.post {
-            if (ringing == null) startAlarm(Kind.HIGH, context.getString(R.string.alarm_test_text))
+            if (ringing != null) stopSound()
+            ringing = null
+            startAlarm(kind, context.getString(R.string.alarm_test_text))
         }
     }
 
@@ -188,19 +190,38 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         Log.i(TAG, "Alarm $kind: $text")
         ringing = kind
         showNotification(kind, text)
-        playSound()
+        playSound(kind)
         if (prefs.alarmVibrate) vibrate()
     }
 
-    private fun alarmUri(): Uri? =
-        RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    /**
+     * Tone for each alarm kind: the user's choice, else a different system sound per kind
+     * so the three alarms are told apart even before choosing (full = notification tone,
+     * low = alarm tone, cell difference = ringtone).
+     */
+    private fun alarmUri(kind: Kind): Uri? {
+        prefs.alarmTone(Tones.toneKey(kind)).takeIf { it.isNotBlank() }?.let { return Uri.parse(it) }
+        return Tones.defaultTone(context, kind)
+    }
 
-    private fun playSound() {
+    object Tones {
+        fun toneKey(kind: Kind) = when (kind) { Kind.HIGH -> "high"; Kind.LOW -> "low"; Kind.DELTA_LOAD -> "delta" }
+
+        fun defaultTone(context: Context, kind: Kind): Uri? {
+            val type = when (kind) {
+                Kind.HIGH -> RingtoneManager.TYPE_NOTIFICATION
+                Kind.LOW -> RingtoneManager.TYPE_ALARM
+                Kind.DELTA_LOAD -> RingtoneManager.TYPE_RINGTONE
+            }
+            return RingtoneManager.getActualDefaultRingtoneUri(context, type)
+                ?: RingtoneManager.getDefaultUri(type)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        }
+    }
+
+    private fun playSound(kind: Kind) {
         stopSound()
-        val uri = alarmUri() ?: return
+        val uri = alarmUri(kind) ?: return
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)

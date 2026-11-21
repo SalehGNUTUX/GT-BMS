@@ -20,9 +20,9 @@
     <string name="vehicle_type">ما الذي تشغّله هذه البطارية؟</string>
     <string name="vehicle_type_desc">المركبات تفعّل تقارير الرحلات بالـGPS والسرعة وتقدير المدى.</string>
     <string name="vehicle_storage">تخزين (منزلي / شمسي / عربة سكن)</string>
-    <string name="vehicle_ebike">دراجة كهربائية</string>
-    <string name="vehicle_escooter">سكوتر كهربائي</string>
-    <string name="vehicle_emoto">دراجة نارية كهربائية</string>
+    <string name="vehicle_ebike">دراجة هوائية كهربائية</string>
+    <string name="vehicle_escooter">دراجة تروتينيت</string>
+    <string name="vehicle_emoto">دراجة كهربائية</string>
     <string name="vehicle_ecar">سيارة / عربة كهربائية</string>
     <string name="trips_auto">تسجيل الرحلات تلقائياً</string>
     <string name="trips_auto_desc">تبدأ الرحلة حين تُفرَّغ البطارية أثناء الحركة، وتنتهي بعد 3 دقائق من التوقف. يُستعمل GPS أثناء الرحلات فقط، وكل البيانات تبقى على الهاتف.</string>
