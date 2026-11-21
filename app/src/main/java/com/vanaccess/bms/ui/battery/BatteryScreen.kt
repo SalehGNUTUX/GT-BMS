@@ -56,11 +56,13 @@ class BatteryScreen(
     private val cGrey = Color.parseColor("#9BA3B8")
     private val cTile = Color.parseColor("#262A3B")
 
-    private enum class Page { LIVE, CELLS, INFO, HISTORY }
+    private enum class Page { LIVE, CELLS, REPORTS, INFO, HISTORY }
     private var pages = listOf<Page>()
     private var lastInfo: BmsBasicInfo? = null
     private var lastCells: List<Double> = emptyList()
     private val historyAdapter = HistoryAdapter()
+    private val reports = ReportsView(fragment, b)
+    private var learnedWhKm: Double? = null
 
     fun setup() {
         b.tvDeviceName.text = prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)
@@ -71,19 +73,35 @@ class BatteryScreen(
         })
         rebuildTabs(BleService.activeFeatures.value ?: emptySet())
         setupChart()
+        reports.setup()
         b.rvHistory.layoutManager = LinearLayoutManager(ctx)
         b.rvHistory.adapter = historyAdapter
         b.btnHistory.setOnClickListener {
             (fragment.activity as? MainActivity)?.getBleService()?.requestHistory()
         }
         observe()
+
+        // Back on any other tab returns to Live before leaving the screen
+        fragment.requireActivity().onBackPressedDispatcher.addCallback(fragment.viewLifecycleOwner,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    val current = b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page
+                    if (current != null && current != Page.LIVE) {
+                        b.tabs.getTabAt(0)?.select()
+                    } else {
+                        isEnabled = false
+                        fragment.requireActivity().onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            })
     }
 
     // ── Tabs ─────────────────────────────────────────────────────────────────
 
     private fun rebuildTabs(features: Set<Feature>) {
         val wanted = buildList {
-            add(Page.LIVE); add(Page.CELLS); add(Page.INFO)
+            add(Page.LIVE); add(Page.CELLS); add(Page.REPORTS); add(Page.INFO)
             if (Feature.HISTORY in features) add(Page.HISTORY)
         }
         if (wanted == pages) return
@@ -93,6 +111,7 @@ class BatteryScreen(
         wanted.forEach { p ->
             val title = when (p) {
                 Page.LIVE -> R.string.tab_live; Page.CELLS -> R.string.tab_cells
+                Page.REPORTS -> R.string.tab_reports
                 Page.INFO -> R.string.tab_info; Page.HISTORY -> R.string.tab_history
             }
             b.tabs.addTab(b.tabs.newTab().setText(title).setTag(p), p == current)
@@ -106,6 +125,8 @@ class BatteryScreen(
         b.pageCells.visibility = if (p == Page.CELLS) View.VISIBLE else View.GONE
         b.pageInfo.visibility = if (p == Page.INFO) View.VISIBLE else View.GONE
         b.pageHistory.visibility = if (p == Page.HISTORY) View.VISIBLE else View.GONE
+        b.pageReports.visibility = if (p == Page.REPORTS) View.VISIBLE else View.GONE
+        if (p == Page.REPORTS) reports.reload()
     }
 
     // ── Observers ────────────────────────────────────────────────────────────
@@ -134,6 +155,10 @@ class BatteryScreen(
         BleService.bmsParams.observe(owner) { renderInfo() }
         BleService.bmsHistory.observe(owner) { renderHistory() }
         BleService.historyLoading.observe(owner) { renderHistory() }
+        com.vanaccess.bms.reports.SessionRecorder.liveSpeedKmh.observe(owner) { lastInfo?.let { renderVehicleTiles(it) } }
+        com.vanaccess.bms.reports.SessionRecorder.activeTrip.observe(owner) { renderBanner() }
+        com.vanaccess.bms.reports.SessionRecorder.activeCharge.observe(owner) { renderBanner() }
+        com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned() }
     }
 
     private fun updateHeader() {
@@ -193,6 +218,7 @@ class BatteryScreen(
         metric(b.gridMetrics, "p", R.string.m_power, fmt("%.0f W", abs(info.powerWatts)))
         metric(b.gridMetrics, "d", R.string.m_delta, delta?.let { "$it mV" } ?: "—",
             delta?.let { if (it >= 50) cRed else if (it >= 25) cOrange else cGreen })
+        renderVehicleTiles(info)
 
         // Capacity
         b.progressCapacity.setIndicatorColor(b.gauge.colorFor(info.soc))
@@ -230,6 +256,49 @@ class BatteryScreen(
             b.boxAlerts.addView(label(fragment.getString(R.string.no_alerts), cGreen, 14f, bold = true))
         } else alerts.forEach { a ->
             b.boxAlerts.addView(label("⚠ $a", cRed, 14f, bold = true).apply { setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) })
+        }
+    }
+
+    /** Range and speed tiles for vehicle profiles. */
+    private fun renderVehicleTiles(info: BmsBasicInfo) {
+        val v = prefs.vehicle
+        if (!v.mobile) return
+        val whKm = learnedWhKm ?: prefs.consumptionWhKm.toDouble().takeIf { it > 0 } ?: v.defaultWhPerKm
+        val remWh = if (info.remainCapacity > 0) info.remainCapacity * info.packVoltage
+            else info.soc / 100.0 * info.fullCapacity * info.packVoltage
+        val basis = fragment.getString(if (learnedWhKm != null) R.string.range_basis_learned else R.string.range_basis_default)
+        metric(b.gridMetrics, "r", R.string.m_range,
+            if (whKm > 0 && remWh > 0) fmt("≈ %.0f km", remWh / whKm) else "—", cGreen)
+        metricViews["r"]?.let { it.contentDescription = basis }
+        val sp = com.vanaccess.bms.reports.SessionRecorder.liveSpeedKmh.value
+        metric(b.gridMetrics, "s", R.string.m_speed, sp?.let { fmt("%.0f km/h", it) } ?: "—")
+    }
+
+    private fun refreshLearned() {
+        val ctx0 = ctx
+        kotlin.concurrent.thread {
+            val l = com.vanaccess.bms.reports.ReportStore.get(ctx0).learnedConsumption()?.first
+            fragment.activity?.runOnUiThread { learnedWhKm = l }
+        }
+    }
+
+    private fun renderBanner() {
+        val trip = com.vanaccess.bms.reports.SessionRecorder.activeTrip.value
+        val chg = com.vanaccess.bms.reports.SessionRecorder.activeCharge.value
+        val time = java.text.SimpleDateFormat("HH:mm", Locale.US)
+        val (txt, col) = when {
+            trip != null -> fragment.getString(R.string.live_trip,
+                "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) to cBlue
+            chg != null -> fragment.getString(R.string.live_charge,
+                time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
+            else -> null to cGrey
+        }
+        b.tvSessionBanner.visibility = if (txt == null) View.GONE else View.VISIBLE
+        b.tvSessionBanner.text = txt
+        b.tvSessionBanner.background = GradientDrawable().apply {
+            cornerRadius = 14 * dp
+            setColor(Color.argb(0x33, Color.red(col), Color.green(col), Color.blue(col)))
+            setStroke((1 * dp).toInt(), col)
         }
     }
 
@@ -375,7 +444,9 @@ class BatteryScreen(
             list.isEmpty() -> fragment.getString(R.string.history_empty)
             else -> fragment.getString(R.string.history_done, list.size)
         }
-        historyAdapter.submit(list?.asReversed()?.toList() ?: emptyList())
+        // Newest first by the record's own timestamp (the BMS order is not guaranteed);
+        // "yyyy-MM-dd HH:mm:ss" sorts correctly as text, and 2000-01-01 records sink to the bottom.
+        historyAdapter.submit(list?.sortedByDescending { it.time } ?: emptyList())
     }
 
     private inner class HistoryAdapter : RecyclerView.Adapter<HistoryAdapter.VH>() {

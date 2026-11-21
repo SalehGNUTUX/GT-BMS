@@ -1,0 +1,132 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vanaccess.bms.reports
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import org.json.JSONObject
+
+/** One saved charge or trip; [data] holds the report fields (see [SessionRecorder]). */
+data class Session(
+    val id: Long,
+    val type: String,          // TYPE_CHARGE | TYPE_TRIP
+    val startMs: Long,
+    val endMs: Long,
+    val battery: String,
+    val data: JSONObject,
+) {
+    fun d(key: String, def: Double = 0.0) = data.optDouble(key, def)
+    fun i(key: String, def: Int = 0) = data.optInt(key, def)
+    fun b(key: String) = data.optBoolean(key, false)
+
+    companion object {
+        const val TYPE_CHARGE = "charge"
+        const val TYPE_TRIP = "trip"
+    }
+}
+
+/** One chart sample of a session (every ~2 s). */
+data class Point(
+    val tMs: Long, val v: Double, val i: Double, val soc: Int,
+    val speedKmh: Double?, val lat: Double?, val lon: Double?,
+)
+
+/**
+ * Local SQLite store for charge and trip reports. Nothing leaves the phone.
+ * Report fields are kept as JSON so new fields don't need schema migrations.
+ */
+class ReportStore private constructor(ctx: Context) :
+    SQLiteOpenHelper(ctx.applicationContext, "gt_bms_reports.db", null, 1) {
+
+    companion object {
+        @Volatile private var instance: ReportStore? = null
+        fun get(ctx: Context): ReportStore =
+            instance ?: synchronized(this) { instance ?: ReportStore(ctx).also { instance = it } }
+    }
+
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE sessions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, start_ms INTEGER NOT NULL,
+            end_ms INTEGER NOT NULL, battery TEXT, data TEXT NOT NULL)""")
+        db.execSQL("""CREATE TABLE points(
+            session_id INTEGER NOT NULL, t_ms INTEGER NOT NULL, v REAL, i REAL, soc INTEGER,
+            speed REAL, lat REAL, lon REAL)""")
+        db.execSQL("CREATE INDEX idx_points_session ON points(session_id)")
+        db.execSQL("CREATE INDEX idx_sessions_start ON sessions(start_ms)")
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+
+    @Synchronized
+    fun insert(type: String, startMs: Long, endMs: Long, battery: String, data: JSONObject, points: List<Point>): Long {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val id = db.insert("sessions", null, ContentValues().apply {
+                put("type", type); put("start_ms", startMs); put("end_ms", endMs)
+                put("battery", battery); put("data", data.toString())
+            })
+            points.forEach { p ->
+                db.insert("points", null, ContentValues().apply {
+                    put("session_id", id); put("t_ms", p.tMs); put("v", p.v); put("i", p.i); put("soc", p.soc)
+                    p.speedKmh?.let { put("speed", it) }; p.lat?.let { put("lat", it) }; p.lon?.let { put("lon", it) }
+                })
+            }
+            db.setTransactionSuccessful()
+            return id
+        } finally { db.endTransaction() }
+    }
+
+    @Synchronized
+    fun list(type: String? = null, limit: Int = 200): List<Session> {
+        val where = if (type != null) "WHERE type = ?" else ""
+        val args = if (type != null) arrayOf(type) else null
+        readableDatabase.rawQuery(
+            "SELECT id, type, start_ms, end_ms, battery, data FROM sessions $where ORDER BY start_ms DESC LIMIT $limit", args
+        ).use { c ->
+            val out = mutableListOf<Session>()
+            while (c.moveToNext()) {
+                out += Session(c.getLong(0), c.getString(1), c.getLong(2), c.getLong(3), c.getString(4) ?: "",
+                    try { JSONObject(c.getString(5)) } catch (_: Exception) { JSONObject() })
+            }
+            return out
+        }
+    }
+
+    @Synchronized
+    fun points(sessionId: Long): List<Point> {
+        readableDatabase.rawQuery(
+            "SELECT t_ms, v, i, soc, speed, lat, lon FROM points WHERE session_id = ? ORDER BY t_ms",
+            arrayOf(sessionId.toString())
+        ).use { c ->
+            val out = mutableListOf<Point>()
+            while (c.moveToNext()) {
+                out += Point(c.getLong(0), c.getDouble(1), c.getDouble(2), c.getInt(3),
+                    if (c.isNull(4)) null else c.getDouble(4),
+                    if (c.isNull(5)) null else c.getDouble(5),
+                    if (c.isNull(6)) null else c.getDouble(6))
+            }
+            return out
+        }
+    }
+
+    @Synchronized
+    fun delete(id: Long) {
+        writableDatabase.apply {
+            delete("points", "session_id = ?", arrayOf(id.toString()))
+            delete("sessions", "id = ?", arrayOf(id.toString()))
+        }
+    }
+
+    /**
+     * Consumption learned from recent trips with GPS distance: (Wh/km, km covered).
+     * Null until at least 2 km have been recorded.
+     */
+    fun learnedConsumption(maxTrips: Int = 20): Pair<Double, Double>? {
+        val trips = list(Session.TYPE_TRIP, maxTrips).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 }
+        val km = trips.sumOf { it.d("distance_km") }
+        if (km < 2.0) return null
+        return trips.sumOf { it.d("wh") } / km to km
+    }
+}

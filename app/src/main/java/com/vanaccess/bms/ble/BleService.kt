@@ -92,6 +92,7 @@ class BleService : LifecycleService() {
     private var reconnectRunnable: Runnable? = null
     private lateinit var prefs: AppPreferences
     private lateinit var alarmMonitor: BatteryAlarmMonitor
+    private lateinit var recorder: com.vanaccess.bms.reports.SessionRecorder
 
     // Pluggable BMS protocol state
     private var activeDriver: BmsDriver? = null
@@ -138,6 +139,11 @@ class BleService : LifecycleService() {
         super.onCreate()
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
+        recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
+        if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
+        handler.post(object : Runnable {
+            override fun run() { recorder.onTick(); handler.postDelayed(this, 10_000L) }
+        })
         // Periodic background update check while the service runs (UpdateChecker throttles to 12 h)
         handler.post(object : Runnable {
             override fun run() {
@@ -146,7 +152,7 @@ class BleService : LifecycleService() {
             }
         })
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.app_name), getString(R.string.notif_initializing)))
+        startForegroundTyped(buildNotification(getString(R.string.app_name), getString(R.string.notif_initializing)))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -913,16 +919,31 @@ class BleService : LifecycleService() {
             activeDriverName.postValue(driver.displayName)
             activeFeatures.postValue(driver.features)
             prefs.upsertSavedBattery(bluetoothGatt?.device?.address, bluetoothGatt?.device?.name ?: prefs.selectedDeviceName, driver.id)
+            recorder.onBattery(bluetoothGatt?.device?.address)
             android.util.Log.i("BleService", "Protocol locked: ${driver.id}")
         }
         out.basic?.let {
             basicInfo.postValue(it)
             alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
+            recorder.onReading(it)
         }
-        out.cells?.let { cellVoltages.postValue(it) }
+        out.cells?.let {
+            cellVoltages.postValue(it)
+            recorder.onCells(it)
+            basicInfo.value?.let { b -> alarmMonitor.onCells(it, b.current, b.soc) }
+        }
         out.hardware?.let { hardwareInfo.postValue(it) }
         out.details?.let { d -> synchronized(detailsLock) { details.putAll(d); deviceDetails.postValue(details.toMap()) } }
-        out.params?.let { bmsParams.postValue(it) }
+        out.params?.let { p ->
+            bmsParams.postValue(p)
+            // Cell over-voltage protection limit drives charge reports ("ended by protection")
+            p.firstOrNull { it.label == "Cell overvoltage protection (level 1)" }?.value
+                ?.substringBefore(' ')?.toIntOrNull()?.let { mv ->
+                    recorder.cellOvLimitV = mv / 1000.0
+                    prefs.bmsCellOvMv = mv
+                }
+            p.firstOrNull { it.label == "Cell count" }?.value?.toIntOrNull()?.let { prefs.bmsCellCount = it }
+        }
         out.history?.let { h -> synchronized(detailsLock) { historyBuf.addAll(h); bmsHistory.postValue(historyBuf.toList()) } }
         if (out.historyDone) historyLoading.postValue(false)
     }
@@ -1237,7 +1258,31 @@ class BleService : LifecycleService() {
         nm.notify(NOTIFICATION_ID, buildNotification(title, text))
     }
 
+    /**
+     * Foreground with "connectedDevice", plus "location" when the permission is granted,
+     * so trip GPS keeps working with the screen off. Android may refuse the location type
+     * when started from the background; then BLE monitoring alone continues.
+     */
+    private fun startForegroundTyped(n: android.app.Notification) {
+        val hasLoc = androidx.core.content.ContextCompat.checkSelfPermission(this,
+            android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val base = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        try {
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIFICATION_ID, n,
+                if (hasLoc) base or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else base)
+        } catch (e: Exception) {
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIFICATION_ID, n, base)
+        }
+    }
+
+    /** Called by the UI after the location permission is granted. */
+    fun refreshForegroundType() {
+        startForegroundTyped(buildNotification(getString(R.string.app_name),
+            BleService.activeDriverName.value ?: getString(R.string.notif_initializing)))
+    }
+
     override fun onDestroy() {
+        recorder.release()
         alarmMonitor.release()
         stopScan()
         stopVictronScan()

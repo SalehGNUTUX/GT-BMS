@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
 
         binding.bottomNavigation.setupWithNavController(navController)
+        setupBackHandling(navController)
         prefs = AppPreferences(this)
         updateNavTabs()
         prefs.registerListener(prefsListener)
@@ -144,6 +145,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var prefs: AppPreferences
+    private var lastBackPress = 0L
+
+    /**
+     * Root back behaviour (screens register their own callbacks first: a settings
+     * section returns to the section grid, a battery tab returns to Live):
+     *  - on another bottom tab → go to the Battery tab;
+     *  - on the Battery tab → press twice within 2 s to leave. Monitoring and alarms
+     *    keep running in the background service.
+     */
+    private fun setupBackHandling(nav: androidx.navigation.NavController) {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (nav.currentDestination?.id != R.id.dashboardFragment) {
+                    binding.bottomNavigation.selectedItemId = R.id.dashboardFragment
+                    return
+                }
+                val now = System.currentTimeMillis()
+                if (now - lastBackPress < 2000) {
+                    finish()
+                } else {
+                    lastBackPress = now
+                    Toast.makeText(this@MainActivity, R.string.back_again_to_exit, Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -189,6 +216,25 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) Toast.makeText(this, R.string.notif_permission_needed, Toast.LENGTH_LONG).show()
+    }
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            // Let the running service add the "location" foreground type for trips
+            bleService?.refreshForegroundType()
+        } else {
+            Toast.makeText(this, R.string.location_needed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Trips need precise location (GPS speed and distance). */
+    fun ensureLocationPermission() {
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            locationPermissionLauncher.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
     }
 
     /** Android 13+: alarms need the POST_NOTIFICATIONS runtime permission. */

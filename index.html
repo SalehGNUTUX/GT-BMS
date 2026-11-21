@@ -157,7 +157,7 @@ section,#top{scroll-margin-top:6.5rem}
     <nav class="nav">
       <a href="#features"><span data-lang="ar">المزايا</span><span data-lang="en">Features</span></a>
       <a href="#bms"><span data-lang="ar">الأنظمة المدعومة</span><span data-lang="en">Supported BMS</span></a>
-      <a href="#release"><span data-lang="ar">الإصدار 1.1.0</span><span data-lang="en">Release 1.1.0</span></a>
+      <a href="#release"><span data-lang="ar">الإصدار 1.2.0</span><span data-lang="en">Release 1.2.0</span></a>
       <a href="#install"><span data-lang="ar">التثبيت</span><span data-lang="en">Install</span></a>
     </nav>
     <button class="lang" id="lang" type="button">English</button>
@@ -167,18 +167,18 @@ section,#top{scroll-margin-top:6.5rem}
 <main class="wrap" id="top">
   <div class="hero">
     <div>
-      <span class="tag">● <span data-lang="ar">الإصدار 1.1.0</span><span data-lang="en">Release 1.1.0</span></span>
+      <span class="tag">● <span data-lang="ar">الإصدار 1.2.0</span><span data-lang="en">Release 1.2.0</span></span>
       <h1 data-lang="ar">بطاريتك الذكية،<br><b>واضحة على هاتفك</b></h1>
       <h1 data-lang="en">Your smart battery,<br><b>clear on your phone</b></h1>
       <p class="lead" data-lang="ar">GT-BMS تطبيق أندرويد حرّ يتصل بنظام إدارة بطارية الليثيوم (BMS) عبر البلوتوث، فيتعرّف على بروتوكوله تلقائياً ويعرض نسبة الشحن وجهد كل خلية والحرارة والتنبيهات، ويوقظك بمنبّه عند اكتمال الشحن أو انخفاض البطارية.</p>
       <p class="lead" data-lang="en">GT-BMS is a free Android app that talks to your lithium battery's management system over Bluetooth, detects its protocol automatically and shows state of charge, every cell, temperatures and alerts — and rings an alarm when charging completes or the battery runs low.</p>
       <div class="cta">
-        <a class="btn primary" id="dl" href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.1.0/GT-BMS-v1.1.0-release.apk">
+        <a class="btn primary" id="dl" href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.2.0/GT-BMS-v1.2.0-release.apk">
           <svg><use href="#i-dl"/></svg><span data-lang="ar">تنزيل لأندرويد</span><span data-lang="en">Download for Android</span></a>
         <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS"><svg><use href="#i-gh"/></svg><span data-lang="ar">المستودع</span><span data-lang="en">Repository</span></a>
         <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS/releases"><svg><use href="#i-tag"/></svg><span data-lang="ar">الإصدارات</span><span data-lang="en">Releases</span></a>
       </div>
-      <p class="meta"><span id="dl-meta" class="mono">GT-BMS-v1.1.0-release.apk</span> ·
+      <p class="meta"><span id="dl-meta" class="mono">GT-BMS-v1.2.0-release.apk</span> ·
         <span data-lang="ar">أندرويد 8 فأحدث · رخصة GPL v3</span><span data-lang="en">Android 8+ · GPL v3</span></p>
     </div>
     <div class="hero-icon"><img src="site-assets/gt-bms-icon.png" alt="GT-BMS"></div>
@@ -213,6 +213,9 @@ section,#top{scroll-margin-top:6.5rem}
         <div class="feat"><div class="ic">🌡️</div><b data-lang="ar">الحرارة والحماية</b><b data-lang="en">Temperatures & protection</b>
           <span data-lang="ar">كل حساسات الخلايا والمفاتيح، وحالة الشحن والتفريغ والموازنة، والتنبيهات بالعربية.</span>
           <span data-lang="en">Every cell and MOS probe, charge/discharge/balance state, and readable alerts.</span></div>
+        <div class="feat"><div class="ic">📈</div><b data-lang="ar">تقارير الشحن والرحلات</b><b data-lang="en">Charge & trip reports</b>
+          <span data-lang="ar">كل شحنة ورحلة تُسجَّل تلقائياً، مع المسافة والاستهلاك والمدى المتوقع بالـGPS للمركبات.</span>
+          <span data-lang="en">Every charge and trip is recorded automatically, with GPS distance, consumption and range for vehicles.</span></div>
         <div class="feat"><div class="ic">📜</div><b data-lang="ar">المعلومات والسجل</b><b data-lang="en">Info & history</b>
           <span data-lang="ar">الطراز والإصدارات والأرقام التسلسلية ومعاملات الحماية وسجل الأحداث المخزّن في النظام.</span>
           <span data-lang="en">Model, versions, serials, protection parameters and the event log stored in the BMS.</span></div>
@@ -239,26 +242,30 @@ section,#top{scroll-margin-top:6.5rem}
   </section>
 
   <section id="release">
-    <h2 data-lang="ar">الإصدار 1.1.0</h2><h2 data-lang="en">Release 1.1.0</h2>
+    <h2 data-lang="ar">الإصدار 1.2.0</h2><h2 data-lang="en">Release 1.2.0</h2>
     <p class="sub"><span data-lang="ar">21 نوفمبر 2026 · يصل تلقائياً عبر التحديث من داخل التطبيق</span><span data-lang="en">21 November 2026 · delivered by the in-app updater</span></p>
     <div class="release">
       <ul data-lang="ar">
-        <li><b>سجل الأحداث أدق:</b> «Core over Voltage» صار يُعرض كما هو فعلاً — <b>حماية جهد الخلية المرتفع</b> التي يوقف بها النظام الشحن — بلون تحذيري، والسجل الفارغ بعده «عودة إلى الوضع الطبيعي (زالت الحماية)».</li>
-        <li>«يشحن» و«يفرّغ» تُعرض حالةً لحظة الحدث، وتُنبَّه السجلات المكتوبة قبل ضبط ساعة النظام.</li>
-        <li><b>مشاركة التطبيق:</b> زر لمشاركة نبذة بالروابط والوسوم، وزر لمشاركة ملف التثبيت نفسه لمن لا إنترنت عنده.</li>
-        <li>إصلاح ترتيب «الجهد • النسبة» في الواجهة العربية.</li>
+        <li><b>تقارير الشحن</b> تلقائياً: المدة، والنسبة، والطاقة، والتيار، وأعلى جهد للخلية، وأكبر فرق، والحرارة، وهل أنهت الحماية الشحن.</li>
+        <li><b>تقارير الرحلات بالـGPS</b> للدراجات والسكوترات والدراجات النارية والسيارات: المسافة، والسرعة، والاستهلاك لكل كيلومتر، وأكبر فرق خلايا تحت الحمل، ورسم بياني.</li>
+        <li><b>المدى المتوقع والسرعة</b> من استهلاكك الحقيقي.</li>
+        <li><b>الجهد المقترح</b> للشاحن ولتنبيه اكتمال الشحن، محسوباً من حدود حماية بطاريتك نفسها، مع زر تطبيق.</li>
+        <li><b>تنبيه فرق الخلايا</b> في الراحة وتحت الحمل.</li>
+        <li><b>إعدادات في أقسام</b>، وزر رجوع يتنقل خطوة خطوة، والسجل من الأحدث إلى الأقدم.</li>
       </ul>
       <ul data-lang="en">
-        <li><b>More accurate event history:</b> "Core over Voltage" is now shown as what it is — the <b>cell over-voltage protection</b> ending the charge — in a warning colour, and the empty record after it as "back to normal (protection released)".</li>
-        <li>Charging/Discharging are shown as the state at that moment; records written before the BMS clock was set are flagged.</li>
-        <li><b>Share the app:</b> one button shares a description with links and hashtags, another shares the install file itself for people without internet.</li>
-        <li>Fixed the order of "voltage • SOC" in the Arabic UI.</li>
+        <li><b>Charge reports</b>, automatically: duration, SOC, energy, current, highest cell, largest difference, temperature, and whether BMS protection ended the charge.</li>
+        <li><b>GPS trip reports</b> for e-bikes, scooters, motorcycles and cars: distance, speed, consumption per km, largest cell difference under load, and a chart.</li>
+        <li><b>Range estimate and live speed</b> from your real consumption.</li>
+        <li><b>Recommended voltages</b> for the charger and the full-charge alarm, computed from your BMS's own protection limits, with one-tap apply.</li>
+        <li><b>Cell-difference alarm</b> at rest and under load.</li>
+        <li><b>Settings as sections</b>, step-by-step back navigation, history newest first.</li>
       </ul>
-      <p class="sub" style="margin:.8rem 0 0"><span data-lang="ar">الإصدار 1.0.0 (20 نوفمبر): الإصدار الأول — دعم Bestway BWBM، وتعرّف تلقائي على عدة أنظمة، وشاشة بطارية بتبويبات، ومنبّهات، وتحديث من داخل التطبيق.</span><span data-lang="en">1.0.0 (20 November): first release — Bestway BWBM support, multi-BMS auto-detection, tabbed battery screen, alarms, in-app updates.</span></p>
+      <p class="sub" style="margin:.8rem 0 0"><span data-lang="ar">1.1.0: تصحيح معنى أحداث السجل ومشاركة التطبيق · 1.0.0: الإصدار الأول.</span><span data-lang="en">1.1.0: accurate history events and app sharing · 1.0.0: first release.</span></p>
       <div class="files">
-        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.1.0/GT-BMS-v1.1.0-release.apk">⬇ GT-BMS-v1.1.0-release.apk</a><span class="mono" id="sha">SHA-256: ca0038aebe963764eca05b93cbe409513dcbf54cadd24c594c28882133fc56fb</span></div>
-        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.1.0/SHA256SUMS.txt">SHA256SUMS.txt</a>
-          <a href="https://github.com/SalehGNUTUX/GT-BMS/releases/tag/v1.1.0"><span data-lang="ar">صفحة الإصدار ←</span><span data-lang="en">Release page →</span></a></div>
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.2.0/GT-BMS-v1.2.0-release.apk">⬇ GT-BMS-v1.2.0-release.apk</a><span class="mono" id="sha">SHA-256: 2757ff3cf06bf87b457dcafd82a34b7f3cac24d48cef79848437f43376985f6c</span></div>
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.2.0/SHA256SUMS.txt">SHA256SUMS.txt</a>
+          <a href="https://github.com/SalehGNUTUX/GT-BMS/releases/tag/v1.2.0"><span data-lang="ar">صفحة الإصدار ←</span><span data-lang="en">Release page →</span></a></div>
       </div>
     </div>
   </section>
@@ -300,7 +307,7 @@ section,#top{scroll-margin-top:6.5rem}
   btn.addEventListener('click', function () { set(html.lang === 'ar' ? 'en' : 'ar'); });
 
   // Point the main button at the newest release's APK when the API answers;
-  // the static v1.1.0 link stays as the fallback.
+  // the static v1.2.0 link stays as the fallback.
   fetch('https://api.github.com/repos/SalehGNUTUX/GT-BMS/releases/latest')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (rel) {

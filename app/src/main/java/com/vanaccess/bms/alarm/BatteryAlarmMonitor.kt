@@ -38,7 +38,7 @@ import com.vanaccess.bms.ui.MainActivity
  */
 class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPreferences) {
 
-    enum class Kind { HIGH, LOW }
+    enum class Kind { HIGH, LOW, DELTA_LOAD }
 
     private class State {
         var armed = true
@@ -57,7 +57,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State())
+    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State(), Kind.DELTA_LOAD to State())
     private var ringing: Kind? = null
     private var player: MediaPlayer? = null
     private var ringtone: Ringtone? = null
@@ -108,6 +108,55 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             st.armed = false
             startAlarm(kind, text())
         }
+    }
+
+    private var restSince = 0L
+    private var lastRestNoticeAt = 0L
+
+    /**
+     * Cell difference. Under load (≥ the profile's load current) a large difference rings
+     * the alarm. At rest it only posts a notification, and only between 20 % and 90 % SOC:
+     * near full or empty LiFePO4 cells naturally spread apart, so a difference there means
+     * little. Rest = |I| < 1 A for at least 2 minutes.
+     */
+    fun onCells(cells: List<Double>, current: Double, soc: Int) {
+        if (cells.size < 2) return
+        main.post {
+            if (!prefs.alarmDeltaEnabled) return@post
+            val now = System.currentTimeMillis()
+            val mx = cells.max(); val mn = cells.min()
+            val delta = ((mx - mn) * 1000).toInt()
+            val lowest = cells.indexOf(mn) + 1
+            val iAbs = kotlin.math.abs(current)
+            val loadA = prefs.vehicle.loadCurrentA
+            val limit = prefs.alarmDeltaLoadMv
+            check(Kind.DELTA_LOAD, iAbs >= loadA && delta >= limit, delta < limit - 20, now) {
+                context.getString(R.string.alarm_delta_load_text, delta, iAbs, lowest)
+            }
+            if (iAbs < 1.0) { if (restSince == 0L) restSince = now } else restSince = 0L
+            val atRest = restSince != 0L && now - restSince >= 120_000
+            if (atRest && soc in 20..90 && delta >= prefs.alarmDeltaRestMv &&
+                now - lastRestNoticeAt >= 6 * 3600_000L) {
+                lastRestNoticeAt = now
+                notifyRest(context.getString(R.string.alarm_delta_rest_text, delta, lowest))
+            }
+        }
+    }
+
+    /** Quiet notification (no alarm sound) for a cell difference at rest. */
+    private fun notifyRest(text: String) {
+        val openPi = PendingIntent.getActivity(context, 3, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_battery)
+            .setContentTitle(context.getString(R.string.alarm_delta_rest_title))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(openPi)
+            .setAutoCancel(true)
+            .build()
+        try { context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID + 1, n) }
+        catch (_: SecurityException) {}
     }
 
     /** Ring a short demo alarm from the settings screen. */
@@ -217,9 +266,11 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             context, 2, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val title = context.getString(
-            if (kind == Kind.HIGH) R.string.alarm_high_title else R.string.alarm_low_title
-        )
+        val title = context.getString(when (kind) {
+            Kind.HIGH -> R.string.alarm_high_title
+            Kind.LOW -> R.string.alarm_low_title
+            Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
+        })
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_battery)
             .setContentTitle(title)

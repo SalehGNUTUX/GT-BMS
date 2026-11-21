@@ -1,0 +1,1 @@
+Vehicle profiles, charge and GPS trip reports, range estimate, cell difference alarm, settings sections.

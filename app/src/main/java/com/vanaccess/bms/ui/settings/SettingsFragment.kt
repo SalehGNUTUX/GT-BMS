@@ -67,6 +67,8 @@ class SettingsFragment : Fragment() {
         setupAlarms()
         setupUpdates()
         setupShare()
+        setupVehicle()
+        setupSections()
         observeData()
 
         binding.tvAboutVersion.text = getString(R.string.version_fmt, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
@@ -127,6 +129,128 @@ class SettingsFragment : Fragment() {
         binding.btnBmsProtocol.text = getString(R.string.protocol_value, label)
     }
 
+    // ── Section tiles ───────────────────────────────────────────────────────
+
+    private data class Section(val key: String, val icon: String, val title: Int, val sub: Int, val cards: List<View>)
+
+    private var openSection: String? = null
+    private lateinit var sections: List<Section>
+
+    /** Settings start as a grid of tiles; a tile opens one section with a back arrow. */
+    private fun setupSections() {
+        sections = listOf(
+            Section("devices", "🔋", R.string.sec_devices, R.string.sec_devices_sub, listOf(binding.cardDevices, binding.cardScan)),
+            Section("vehicle", prefs.vehicle.icon, R.string.sec_vehicle, R.string.sec_vehicle_sub, listOf(binding.cardVehicle)),
+            Section("alarms", "⏰", R.string.sec_alarms, R.string.sec_alarms_sub, listOf(binding.cardAlarms)),
+            Section("prefs", "⚙️", R.string.sec_prefs, R.string.sec_prefs_sub, listOf(binding.cardPrefs)),
+            Section("updates", "⬆️", R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)),
+            Section("share", "📤", R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
+            Section("backup", "💾", R.string.sec_backup, R.string.sec_backup_sub, listOf(binding.cardBackup)),
+            Section("about", "ℹ️", R.string.sec_about, R.string.sec_about_sub, listOf(binding.cardAbout, binding.cardDev)),
+        )
+        val dp = resources.displayMetrics.density
+        binding.gridSections.removeAllViews()
+        sections.forEach { sec ->
+            val tile = com.google.android.material.card.MaterialCardView(requireContext()).apply {
+                setCardBackgroundColor(Color.parseColor("#1E2130"))
+                radius = 18 * dp
+                cardElevation = 0f
+                strokeWidth = 0
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { showSection(sec.key) }
+            }
+            val col = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
+                minimumHeight = (104 * dp).toInt()
+            }
+            col.addView(android.widget.TextView(requireContext()).apply { text = sec.icon; textSize = 26f })
+            col.addView(android.widget.TextView(requireContext()).apply {
+                text = getString(sec.title); textSize = 15f; setTextColor(Color.WHITE)
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(0, (6 * dp).toInt(), 0, 0)
+            })
+            col.addView(android.widget.TextView(requireContext()).apply {
+                text = getString(sec.sub); textSize = 12f; setTextColor(Color.parseColor("#9BA3B8"))
+            })
+            tile.addView(col)
+            binding.gridSections.addView(tile, android.widget.GridLayout.LayoutParams(
+                android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f),
+                android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+            ).apply { width = 0; val m = (5 * dp).toInt(); setMargins(m, m, m, m) })
+        }
+        binding.btnSectionBack.setOnClickListener { showSection(null) }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (openSection != null) showSection(null) else {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            })
+        val main = activity as? MainActivity
+        showSection(if (main?.scrollToUpdates == true) "updates".also { main.scrollToUpdates = false } else openSection)
+    }
+
+    private fun showSection(key: String?) {
+        if (_binding == null) return
+        openSection = key
+        val sec = sections.firstOrNull { it.key == key }
+        binding.gridSections.visibility = if (sec == null) View.VISIBLE else View.GONE
+        binding.btnSectionBack.visibility = if (sec == null) View.GONE else View.VISIBLE
+        binding.tvSettingsTitle.text = getString(sec?.title ?: R.string.lbl_settings)
+        sections.flatMap { it.cards }.forEach { it.visibility = View.GONE }
+        sec?.cards?.forEach { it.visibility = View.VISIBLE }
+        binding.settingsScroll.scrollTo(0, 0)
+    }
+
+    // ── Vehicle & trips ─────────────────────────────────────────────────────
+
+    private fun setupVehicle() {
+        val group = binding.radioVehicle
+        group.removeAllViews()
+        com.vanaccess.bms.data.VehicleProfile.all.forEachIndexed { i, v ->
+            group.addView(android.widget.RadioButton(requireContext()).apply {
+                id = 1000 + i
+                text = "${v.icon}  ${getString(v.labelRes)}"
+                setTextColor(Color.WHITE)
+                isChecked = v.id == prefs.vehicleType
+            })
+        }
+        group.setOnCheckedChangeListener { _, checkedId ->
+            val v = com.vanaccess.bms.data.VehicleProfile.all.getOrNull(checkedId - 1000) ?: return@setOnCheckedChangeListener
+            prefs.vehicleType = v.id
+            refreshVehicleBox()
+            if (v.mobile) (activity as? MainActivity)?.ensureLocationPermission()
+        }
+        binding.switchTrips.isChecked = prefs.tripsEnabled
+        binding.switchTrips.setOnCheckedChangeListener { _, c ->
+            prefs.tripsEnabled = c
+            if (c) (activity as? MainActivity)?.ensureLocationPermission()
+        }
+        binding.etConsumption.setText(if (prefs.consumptionWhKm > 0) fmtV(prefs.consumptionWhKm) else "0")
+        binding.etConsumption.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
+        refreshVehicleBox()
+    }
+
+    private fun saveConsumption() {
+        if (_binding == null) return
+        parseNum(binding.etConsumption.text)?.let { prefs.consumptionWhKm = it.toFloat().coerceIn(0f, 1000f) }
+    }
+
+    private fun refreshVehicleBox() {
+        if (_binding == null) return
+        val v = prefs.vehicle
+        binding.boxTripSettings.visibility = if (v.mobile) View.VISIBLE else View.GONE
+        val learned = com.vanaccess.bms.reports.ReportStore.get(requireContext()).learnedConsumption()
+        binding.tvConsumptionLearned.text = if (learned != null)
+            getString(R.string.consumption_learned, learned.first, learned.second)
+        else getString(R.string.consumption_none, v.defaultWhPerKm)
+    }
+
     // ── Share the app ───────────────────────────────────────────────────────
 
     private fun setupShare() {
@@ -158,11 +282,6 @@ class SettingsFragment : Fragment() {
         UpdateService.state.observe(viewLifecycleOwner) { renderUpdate() }
         renderUpdate()
 
-        val main = activity as? MainActivity
-        if (main?.scrollToUpdates == true) {
-            main.scrollToUpdates = false
-            binding.settingsScroll.post { binding.settingsScroll.smoothScrollTo(0, binding.cardUpdates.top) }
-        }
     }
 
     private fun renderUpdate() {
@@ -254,6 +373,13 @@ class SettingsFragment : Fragment() {
         binding.etAlarmLowSoc.setText(prefs.alarmLowSoc.toString())
         binding.etAlarmLowV.setText(fmtV(prefs.alarmLowVoltage))
         binding.etAlarmCooldown.setText(prefs.alarmCooldownMinutes.toString())
+        binding.switchAlarmDelta.isChecked = prefs.alarmDeltaEnabled
+        binding.switchAlarmDelta.setOnCheckedChangeListener { _, c -> prefs.alarmDeltaEnabled = c }
+        binding.etAlarmDeltaRest.setText(prefs.alarmDeltaRestMv.toString())
+        binding.etAlarmDeltaLoad.setText(prefs.alarmDeltaLoadMv.toString())
+        listOf(binding.etAlarmDeltaRest, binding.etAlarmDeltaLoad).forEach { et ->
+            et.setOnFocusChangeListener { _, f -> if (!f) saveAlarmFields(false) }
+        }
 
         binding.switchAlarmHigh.setOnCheckedChangeListener { _, c ->
             prefs.alarmHighEnabled = c
@@ -276,6 +402,39 @@ class SettingsFragment : Fragment() {
             sendServiceAction(BleService.ACTION_TEST_ALARM)
         }
         binding.btnAlarmStop.setOnClickListener { sendServiceAction(BleService.ACTION_STOP_ALARM) }
+        BleService.bmsParams.observe(viewLifecycleOwner) { renderAdvice() }
+        BleService.cellVoltages.observe(viewLifecycleOwner) { renderAdvice() }
+        renderAdvice()
+    }
+
+    /** Charger + alarm voltage advice from the BMS protection limit (see ChargeAdvice). */
+    private fun renderAdvice() {
+        if (_binding == null) return
+        val cells = prefs.bmsCellCount.takeIf { it > 0 } ?: BleService.cellVoltages.value?.size ?: 0
+        val advice = com.vanaccess.bms.reports.ChargeAdvice.from(cells, prefs.bmsCellOvMv)
+        if (advice == null) {
+            binding.tvAdvice.text = getString(R.string.advice_unknown)
+            binding.tvAdviceWarning.visibility = View.GONE
+            binding.btnAdviceApply.visibility = View.GONE
+            return
+        }
+        binding.tvAdvice.text = getString(R.string.advice_body,
+            advice.cellOvV, advice.cells, advice.protectionPackV,
+            advice.chargerPackV, advice.chargeCellV,
+            advice.alarmPackV, advice.alarmCellV)
+        val current = prefs.alarmHighVoltage.toDouble()
+        val unreachable = current > 0 && current >= advice.protectionPackV - 0.05
+        binding.tvAdviceWarning.visibility = if (unreachable) View.VISIBLE else View.GONE
+        binding.tvAdviceWarning.text = getString(R.string.advice_current_unreachable, current)
+        val already = kotlin.math.abs(current - advice.alarmPackV) < 0.05
+        binding.btnAdviceApply.visibility = if (already) View.GONE else View.VISIBLE
+        binding.btnAdviceApply.text = getString(R.string.advice_apply, advice.alarmPackV)
+        binding.btnAdviceApply.setOnClickListener {
+            prefs.alarmHighVoltage = advice.alarmPackV.toFloat()
+            binding.etAlarmHighV.setText(fmtV(prefs.alarmHighVoltage))
+            Toast.makeText(requireContext(), getString(R.string.advice_applied, advice.alarmPackV), Toast.LENGTH_SHORT).show()
+            renderAdvice()
+        }
     }
 
     private fun fmtV(v: Float): String = if (v == 0f) "0" else String.format(java.util.Locale.US, "%.1f", v)
@@ -289,9 +448,12 @@ class SettingsFragment : Fragment() {
         if (_binding == null) return
         parseNum(binding.etAlarmHighSoc.text)?.let { prefs.alarmHighSoc = it.toInt().coerceIn(0, 100) }
         parseNum(binding.etAlarmHighV.text)?.let { prefs.alarmHighVoltage = it.toFloat().coerceIn(0f, 1000f) }
+        renderAdvice()
         parseNum(binding.etAlarmLowSoc.text)?.let { prefs.alarmLowSoc = it.toInt().coerceIn(0, 100) }
         parseNum(binding.etAlarmLowV.text)?.let { prefs.alarmLowVoltage = it.toFloat().coerceIn(0f, 1000f) }
         parseNum(binding.etAlarmCooldown.text)?.let { prefs.alarmCooldownMinutes = it.toInt().coerceIn(1, 1440) }
+        parseNum(binding.etAlarmDeltaRest.text)?.let { prefs.alarmDeltaRestMv = it.toInt().coerceIn(5, 1000) }
+        parseNum(binding.etAlarmDeltaLoad.text)?.let { prefs.alarmDeltaLoadMv = it.toInt().coerceIn(10, 2000) }
         if (showToast) Toast.makeText(requireContext(), R.string.alarm_saved, Toast.LENGTH_SHORT).show()
     }
 
@@ -714,20 +876,23 @@ class SettingsFragment : Fragment() {
     // ── Role assignment dialog ──────────────────────────────────────────────
 
     private fun showRoleDialog(device: ScannedDevice) {
-        val options = arrayOf(
-            getString(R.string.role_battery),
-            getString(R.string.role_orion),
-            getString(R.string.role_solar),
-            getString(R.string.role_switch)
-        )
+        // One battery entry per vehicle type, then the non-battery roles
+        val vehicles = com.vanaccess.bms.data.VehicleProfile.all
+        val options = vehicles.map { "${it.icon}  " + getString(R.string.role_battery_for, getString(it.labelRes)) } +
+            listOf(getString(R.string.role_orion), getString(R.string.role_solar), getString(R.string.role_switch))
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.role_assign, device.name))
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> selectBattery(device)
-                    1 -> selectOrion(device)
-                    2 -> selectSmartSolar(device)
-                    3 -> selectSwitchPanel(device)
+            .setItems(options.toTypedArray()) { _, which ->
+                when {
+                    which < vehicles.size -> {
+                        prefs.vehicleType = vehicles[which].id
+                        if (vehicles[which].mobile) (activity as? MainActivity)?.ensureLocationPermission()
+                        selectBattery(device)
+                        setupVehicle()
+                    }
+                    which == vehicles.size -> selectOrion(device)
+                    which == vehicles.size + 1 -> selectSmartSolar(device)
+                    else -> selectSwitchPanel(device)
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
@@ -892,6 +1057,7 @@ class SettingsFragment : Fragment() {
         saveSolarKey()
         saveBmsPin()
         saveAlarmFields(false)
+        saveConsumption()
         super.onDestroyView()
         _binding = null
     }

@@ -73,4 +73,5 @@
     <string name="alarm_low_text">Battery dropped to %1$d%% (%2$.2f V). Recharge soon.</string>
     <string name="alarm_test_text">This is a test of the battery alarm.</string>
     <string name="notif_permission_needed">Allow notifications so alarms can be shown</string>
+    <string name="back_again_to_exit">Press back again to exit — monitoring continues in the background</string>
 </resources>

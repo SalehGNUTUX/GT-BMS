@@ -68,4 +68,5 @@
     <string name="alarm_low_text">انخفضت البطارية إلى %1$d%% (%2$.2f فولت). اشحنها قريباً.</string>
     <string name="alarm_test_text">هذه تجربة لمنبه البطارية.</string>
     <string name="notif_permission_needed">اسمح بالإشعارات لعرض المنبهات</string>
+    <string name="back_again_to_exit">اضغط رجوع مرة أخرى للخروج — تستمر المراقبة في الخلفية</string>
 </resources>

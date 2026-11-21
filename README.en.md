@@ -39,10 +39,18 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
   - **Cells**: per-cell mV grid with highest/lowest highlighted, plus a deviation-from-average chart.
   - **Info**: model, versions, serial numbers, BMS clock and protection parameters (read-only).
   - **History**: events stored inside the BMS.
+- **Reports** tab:
+  - **Charges**, automatically: duration, SOC from/to, Ah and Wh, average and peak current, highest pack and
+    cell voltage, largest cell difference, highest temperature, balancing seen, and whether BMS protection ended it.
+  - **Trips** with GPS when a vehicle type is chosen (e-bike, scooter, motorcycle, car): distance, moving time,
+    top and average speed, energy used, consumption per km, peak current, lowest voltage, largest cell difference
+    under load, hard accelerations, and a voltage/current/speed chart.
+- **Range estimate and live speed** for vehicles, from your real consumption.
 - **Battery alarms**: full-charge and low-battery alarms with your own SOC/voltage thresholds, played on the
-  alarm stream with a "Stop alarm" notification and anti-spam cooldown.
+  alarm stream with a "Stop alarm" notification and anti-spam cooldown, plus a cell-difference alarm (at rest and under load).
 - **Saved batteries**, fast reconnect to the last one, automatic reconnection.
 - **In-app updates** from this repository's releases.
+- **Privacy**: reports and tracks stay on the phone. GPS runs only during trips, without Google services.
 - **Read-only**: the app never changes BMS settings and sends no control commands.
 
 ## Install

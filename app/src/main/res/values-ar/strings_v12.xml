@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">رجوع إلى الإعدادات</string>
+    <string name="sec_devices">البطارية والأجهزة</string>
+    <string name="sec_devices_sub">البحث، الاتصال، البروتوكول</string>
+    <string name="sec_vehicle">المركبة والرحلات</string>
+    <string name="sec_vehicle_sub">نوع الاستخدام، GPS، الاستهلاك</string>
+    <string name="sec_alarms">المنبهات</string>
+    <string name="sec_alarms_sub">الامتلاء، الانخفاض، فرق الخلايا</string>
+    <string name="sec_prefs">التفضيلات</string>
+    <string name="sec_prefs_sub">إعادة الاتصال، وحدة الحرارة</string>
+    <string name="sec_updates">التحديثات</string>
+    <string name="sec_updates_sub">التحقق والتثبيت</string>
+    <string name="sec_share">المشاركة</string>
+    <string name="sec_share_sub">الرابط أو ملف التثبيت</string>
+    <string name="sec_backup">النسخ الاحتياطي</string>
+    <string name="sec_backup_sub">تصدير واستيراد الإعدادات</string>
+    <string name="sec_about">حول</string>
+    <string name="sec_about_sub">الإصدار، أدوات المطوّر</string>
+    <string name="vehicle_type">ما الذي تشغّله هذه البطارية؟</string>
+    <string name="vehicle_type_desc">المركبات تفعّل تقارير الرحلات بالـGPS والسرعة وتقدير المدى.</string>
+    <string name="vehicle_storage">تخزين (منزلي / شمسي / عربة سكن)</string>
+    <string name="vehicle_ebike">دراجة كهربائية</string>
+    <string name="vehicle_escooter">سكوتر كهربائي</string>
+    <string name="vehicle_emoto">دراجة نارية كهربائية</string>
+    <string name="vehicle_ecar">سيارة / عربة كهربائية</string>
+    <string name="trips_auto">تسجيل الرحلات تلقائياً</string>
+    <string name="trips_auto_desc">تبدأ الرحلة حين تُفرَّغ البطارية أثناء الحركة، وتنتهي بعد 3 دقائق من التوقف. يُستعمل GPS أثناء الرحلات فقط، وكل البيانات تبقى على الهاتف.</string>
+    <string name="consumption_default">تقديرك للاستهلاك (واط·ساعة/كم، 0 = تلقائي)</string>
+    <string name="consumption_learned">المتعلَّم من رحلاتك: %1$.1f واط·ساعة/كم على %2$.1f كم</string>
+    <string name="consumption_none">لا رحلات بعد — يُستعمل %1$.0f واط·ساعة/كم حتى تُسجَّل رحلات حقيقية</string>
+    <string name="role_battery_for">بطارية · %1$s</string>
+    <string name="location_needed">اسمح بالموقع لتقيس الرحلات السرعة والمسافة</string>
+    <string name="alarm_delta_label">تنبيه فرق الخلايا</string>
+    <string name="alarm_delta_desc">في الراحة (20–90٪): إشعار · تحت الحمل: صوت منبّه</string>
+    <string name="alarm_delta_rest_hint">في الراحة (مللي فولت)</string>
+    <string name="alarm_delta_load_hint">تحت الحمل (مللي فولت)</string>
+    <string name="alarm_delta_rest_title">عدم توازن الخلايا في الراحة</string>
+    <string name="alarm_delta_rest_text">فرق الخلايا %1$d مللي فولت في الراحة (الخلية %2$d هي الأدنى). قد تحتاج البطارية موازنة — اشحنها حتى 100%% مرة.</string>
+    <string name="alarm_delta_load_title">⚠️ عدم توازن الخلايا تحت الحمل</string>
+    <string name="alarm_delta_load_text">فرق الخلايا %1$d مللي فولت عند %2$.0f أمبير (الخلية %3$d هي الأدنى). خفّف الحمل.</string>
+    <string name="tab_reports">التقارير</string>
+    <string name="rep_all">الكل</string>
+    <string name="rep_charges">الشحن</string>
+    <string name="rep_trips">الرحلات</string>
+    <string name="rep_empty">لا توجد تقارير بعد. الشحن يُسجَّل تلقائياً، والرحلات كذلك عند اختيار نوع مركبة في الإعدادات.</string>
+    <string name="rep_charge">شحن</string>
+    <string name="rep_trip">رحلة</string>
+    <string name="rep_delete_q">حذف هذا التقرير؟</string>
+    <string name="btn_delete">حذف</string>
+    <string name="rep_by_protection">أنهته حماية النظام</string>
+    <string name="rep_full">بلغ 100٪</string>
+    <string name="rep_balanced">حدثت موازنة</string>
+    <string name="rep_duration">المدة</string>
+    <string name="rep_soc">نسبة الشحن</string>
+    <string name="rep_energy">الطاقة</string>
+    <string name="rep_avg_current">متوسط التيار</string>
+    <string name="rep_max_v">أعلى جهد للبطارية</string>
+    <string name="rep_min_v">أدنى جهد للبطارية</string>
+    <string name="rep_max_cell">أعلى خلية</string>
+    <string name="rep_min_cell">أدنى خلية</string>
+    <string name="rep_max_delta">أكبر فرق بين الخلايا</string>
+    <string name="rep_max_delta_load">أكبر فرق تحت الحمل</string>
+    <string name="rep_max_temp">أعلى حرارة</string>
+    <string name="rep_distance">المسافة</string>
+    <string name="rep_moving">زمن الحركة</string>
+    <string name="rep_max_speed">أقصى سرعة</string>
+    <string name="rep_avg_speed">متوسط سرعة الحركة</string>
+    <string name="rep_consumption">الاستهلاك</string>
+    <string name="rep_max_current">أعلى تيار تفريغ</string>
+    <string name="rep_hard_accel">مرات التسارع القوي</string>
+    <string name="rep_charging_cur">أعلى تيار شحن</string>
+    <string name="rep_no_gps">لا مسافة من GPS (الموقع مطفأ أو لا إشارة)</string>
+    <string name="rep_chart">عبر الزمن</string>
+    <string name="chart_v">الجهد (فولت)</string>
+    <string name="chart_i">التيار (أمبير)</string>
+    <string name="chart_speed">السرعة (كم/س)</string>
+    <string name="m_range">المدى المتوقع</string>
+    <string name="m_speed">السرعة</string>
+    <string name="range_basis_learned">من رحلاتك</string>
+    <string name="range_basis_default">تقديري</string>
+    <string name="live_trip">رحلة جارية · %1$s · %2$.0f واط·ساعة</string>
+    <string name="live_charge">يشحن منذ %1$s · +%2$.2f أمبير·ساعة</string>
+    <string name="cell_at">%1$.3f فولت (الخلية %2$d)</string>
+    <string name="delta_at">%1$d مللي فولت عند %2$.0f أمبير</string>
+    <string name="advice_title">💡 الجهد المقترح لبطاريتك</string>
+    <string name="advice_body">حماية النظام: %1$.3f فولت للخلية × %2$d = %3$.2f فولت. عندها يقطع النظام الشحن.
+
+• الشاحن: اضبطه على %4$.1f فولت (%5$.2f فولت للخلية)، فينتهي الشحن قبل حد الحماية بقليل ولا يضطر النظام لإيقافه.
+• تنبيه اكتمال الشحن: %6$.1f فولت (%7$.2f فولت للخلية) — قابل للبلوغ، ويرنّ قبل انتهاء الشحن بقليل.</string>
+    <string name="advice_current_unreachable">جهد التنبيه الحالي (%1$.1f فولت) أعلى من حد حماية النظام، فلن يرنّ أبداً.</string>
+    <string name="advice_apply">استعمل %1$.1f فولت للتنبيه</string>
+    <string name="advice_applied">ضُبط تنبيه اكتمال الشحن على %1$.1f فولت</string>
+    <string name="advice_unknown">صِل البطارية مرة ليقرأ التطبيق حدود حمايتها ويقترح الجهد المناسب.</string>
+    <string name="advice_report">أنهت حماية النظام هذه الشحنة. ضبط الشاحن على %1$.1f فولت يجعل الشحنات القادمة تنتهي قبل حد الحماية بقليل.</string>
+</resources>

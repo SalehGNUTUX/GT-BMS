@@ -92,6 +92,48 @@ class AppPreferences(context: Context) {
         get() = prefs.getString("last_notified_version", null)
         set(value) = prefs.edit().putString("last_notified_version", value).apply()
 
+    // ── Vehicle & trips ──────────────────────────────────────────────────────
+    /** One of [VehicleProfile.ids]. */
+    var vehicleType: String
+        get() = prefs.getString("vehicle_type", VehicleProfile.STORAGE) ?: VehicleProfile.STORAGE
+        set(value) = prefs.edit().putString("vehicle_type", value).apply()
+
+    val vehicle: VehicleProfile get() = VehicleProfile.byId(vehicleType)
+
+    /** Record trips automatically (needs a mobile vehicle profile and location permission). */
+    var tripsEnabled: Boolean
+        get() = prefs.getBoolean("trips_enabled", true)
+        set(value) = prefs.edit().putBoolean("trips_enabled", value).apply()
+
+    /** User's own consumption estimate in Wh/km; 0 = use the profile default. */
+    var consumptionWhKm: Float
+        get() = prefs.getFloat("consumption_wh_km", 0f)
+        set(value) = prefs.edit().putFloat("consumption_wh_km", value).apply()
+
+    /** Last known BMS cell over-voltage protection (mV) and cell count, for charge advice. */
+    var bmsCellOvMv: Int
+        get() = prefs.getInt("bms_cell_ov_mv", 0)
+        set(value) = prefs.edit().putInt("bms_cell_ov_mv", value).apply()
+
+    var bmsCellCount: Int
+        get() = prefs.getInt("bms_cell_count", 0)
+        set(value) = prefs.edit().putInt("bms_cell_count", value).apply()
+
+    // ── Cell difference alarm ────────────────────────────────────────────────
+    var alarmDeltaEnabled: Boolean
+        get() = prefs.getBoolean("alarm_delta_enabled", true)
+        set(value) = prefs.edit().putBoolean("alarm_delta_enabled", value).apply()
+
+    /** Max cell difference at rest (mV), judged only between 20 % and 90 % SOC. */
+    var alarmDeltaRestMv: Int
+        get() = prefs.getInt("alarm_delta_rest_mv", 30)
+        set(value) = prefs.edit().putInt("alarm_delta_rest_mv", value).apply()
+
+    /** Max cell difference under load (mV). */
+    var alarmDeltaLoadMv: Int
+        get() = prefs.getInt("alarm_delta_load_mv", 150)
+        set(value) = prefs.edit().putInt("alarm_delta_load_mv", value).apply()
+
     // ── Battery alarms ───────────────────────────────────────────────────────
     var alarmHighEnabled: Boolean
         get() = prefs.getBoolean("alarm_high_enabled", false)

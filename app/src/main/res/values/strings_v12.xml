@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">Back to settings</string>
+    <string name="sec_devices">Battery &amp; devices</string>
+    <string name="sec_devices_sub">Scan, connect, protocol</string>
+    <string name="sec_vehicle">Vehicle &amp; trips</string>
+    <string name="sec_vehicle_sub">Use type, GPS, consumption</string>
+    <string name="sec_alarms">Alarms</string>
+    <string name="sec_alarms_sub">Full, low, cell difference</string>
+    <string name="sec_prefs">Preferences</string>
+    <string name="sec_prefs_sub">Reconnect, temperature unit</string>
+    <string name="sec_updates">Updates</string>
+    <string name="sec_updates_sub">Check and install</string>
+    <string name="sec_share">Share</string>
+    <string name="sec_share_sub">Link or install file</string>
+    <string name="sec_backup">Backup</string>
+    <string name="sec_backup_sub">Export / import settings</string>
+    <string name="sec_about">About</string>
+    <string name="sec_about_sub">Version, developer tools</string>
+    <string name="vehicle_type">What does this battery power?</string>
+    <string name="vehicle_type_desc">Vehicles enable GPS trip reports, speed and range estimates.</string>
+    <string name="vehicle_storage">Storage (home / solar / van)</string>
+    <string name="vehicle_ebike">Electric bicycle</string>
+    <string name="vehicle_escooter">Electric scooter</string>
+    <string name="vehicle_emoto">Electric motorcycle</string>
+    <string name="vehicle_ecar">Electric car / cart</string>
+    <string name="trips_auto">Record trips automatically</string>
+    <string name="trips_auto_desc">A trip starts when the battery discharges while moving and ends after 3 minutes stopped. Uses GPS only during trips; everything stays on the phone.</string>
+    <string name="consumption_default">Your consumption estimate (Wh/km, 0 = automatic)</string>
+    <string name="consumption_learned">Learned from your trips: %1$.1f Wh/km over %2$.1f km</string>
+    <string name="consumption_none">No trips yet — using %1$.0f Wh/km until real trips are recorded</string>
+    <string name="role_battery_for">Battery · %1$s</string>
+    <string name="location_needed">Allow location so trips can measure speed and distance</string>
+    <string name="alarm_delta_label">Cell difference alarm</string>
+    <string name="alarm_delta_desc">At rest (20–90 %): notification · under load: alarm sound</string>
+    <string name="alarm_delta_rest_hint">At rest (mV)</string>
+    <string name="alarm_delta_load_hint">Under load (mV)</string>
+    <string name="alarm_delta_rest_title">Cell imbalance at rest</string>
+    <string name="alarm_delta_rest_text">Cells differ by %1$d mV at rest (cell %2$d is lowest). The pack may need balancing — charge to 100 %% once.</string>
+    <string name="alarm_delta_load_title">⚠️ Cell imbalance under load</string>
+    <string name="alarm_delta_load_text">Cells differ by %1$d mV at %2$.0f A (cell %3$d is lowest). Reduce the load.</string>
+    <string name="tab_reports">Reports</string>
+    <string name="rep_all">All</string>
+    <string name="rep_charges">Charges</string>
+    <string name="rep_trips">Trips</string>
+    <string name="rep_empty">No reports yet. Charges are recorded automatically; trips too when a vehicle type is selected in Settings.</string>
+    <string name="rep_charge">Charge</string>
+    <string name="rep_trip">Trip</string>
+    <string name="rep_delete_q">Delete this report?</string>
+    <string name="btn_delete">Delete</string>
+    <string name="rep_by_protection">Ended by BMS protection</string>
+    <string name="rep_full">Reached 100 %</string>
+    <string name="rep_balanced">Balancing seen</string>
+    <string name="rep_duration">Duration</string>
+    <string name="rep_soc">State of charge</string>
+    <string name="rep_energy">Energy</string>
+    <string name="rep_avg_current">Average current</string>
+    <string name="rep_max_v">Highest pack voltage</string>
+    <string name="rep_min_v">Lowest pack voltage</string>
+    <string name="rep_max_cell">Highest cell</string>
+    <string name="rep_min_cell">Lowest cell</string>
+    <string name="rep_max_delta">Largest cell difference</string>
+    <string name="rep_max_delta_load">Largest difference under load</string>
+    <string name="rep_max_temp">Highest temperature</string>
+    <string name="rep_distance">Distance</string>
+    <string name="rep_moving">Moving time</string>
+    <string name="rep_max_speed">Top speed</string>
+    <string name="rep_avg_speed">Average moving speed</string>
+    <string name="rep_consumption">Consumption</string>
+    <string name="rep_max_current">Highest discharge current</string>
+    <string name="rep_hard_accel">Hard accelerations</string>
+    <string name="rep_charging_cur">Highest charge current</string>
+    <string name="rep_no_gps">No GPS distance (location off or no fix)</string>
+    <string name="rep_chart">Over time</string>
+    <string name="chart_v">Voltage (V)</string>
+    <string name="chart_i">Current (A)</string>
+    <string name="chart_speed">Speed (km/h)</string>
+    <string name="m_range">Estimated range</string>
+    <string name="m_speed">Speed</string>
+    <string name="range_basis_learned">from your trips</string>
+    <string name="range_basis_default">estimate</string>
+    <string name="live_trip">Trip in progress · %1$s · %2$.0f Wh</string>
+    <string name="live_charge">Charging since %1$s · +%2$.2f Ah</string>
+    <string name="cell_at">%1$.3f V (cell %2$d)</string>
+    <string name="delta_at">%1$d mV at %2$.0f A</string>
+    <string name="advice_title">💡 Recommended voltages for your battery</string>
+    <string name="advice_body">BMS protection: %1$.3f V per cell × %2$d = %3$.2f V. The BMS cuts charging there.
+
+• Charger: set it to %4$.1f V (%5$.2f V per cell) so the charge ends just below the protection and the BMS does not have to stop it.
+• Full-charge alarm: %6$.1f V (%7$.2f V per cell) — reachable, and rings just before the charge ends.</string>
+    <string name="advice_current_unreachable">Your current alarm voltage (%1$.1f V) is above the BMS protection, so it can never ring.</string>
+    <string name="advice_apply">Use %1$.1f V for the alarm</string>
+    <string name="advice_applied">Full-charge alarm set to %1$.1f V</string>
+    <string name="advice_unknown">Connect the battery once so the app can read its protection limits and suggest voltages.</string>
+    <string name="advice_report">BMS protection ended this charge. Setting the charger to %1$.1f V ends future charges just below the protection.</string>
+</resources>
