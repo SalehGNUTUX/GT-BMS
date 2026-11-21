@@ -116,4 +116,5 @@
     <string name="history_cached">%1$d سجل · آخر تحميل %2$s</string>
     <string name="end_trip_q">إنهاء الرحلة الآن؟</string>
     <string name="end_trip_msg">تُحفظ الرحلة بما سُجّل حتى الآن. ولا تبدأ رحلة جديدة إلا بعد توقف المركبة قليلاً.</string>
+    <string name="vehicle_motor">محرك ثابت / مضخة</string>
 </resources>

@@ -21,6 +21,7 @@ data class VehicleProfile(
         const val STORAGE = "storage"
         val all = listOf(
             VehicleProfile(STORAGE, R.string.vehicle_storage, "🏠", false, 0.0, 5.0),
+            VehicleProfile("motor", R.string.vehicle_motor, "⚙️", false, 0.0, 10.0),
             VehicleProfile("ebike", R.string.vehicle_ebike, "🚲", true, 12.0, 5.0),
             VehicleProfile("escooter", R.string.vehicle_escooter, "🛴", true, 15.0, 5.0),
             VehicleProfile("emoto", R.string.vehicle_emoto, "🏍️", true, 35.0, 10.0),

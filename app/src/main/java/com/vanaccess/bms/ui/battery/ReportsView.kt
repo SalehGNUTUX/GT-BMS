@@ -51,8 +51,11 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     fun setup() {
         b.rvReports.layoutManager = LinearLayoutManager(ctx)
         b.rvReports.adapter = adapter
-        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, DISCHARGES to R.string.rep_discharges,
-            Session.TYPE_TRIP to R.string.rep_trips, LEVELS to R.string.levels_title)
+        // One filter for energy taken out of the battery: called "Trips" for vehicles and
+        // "Discharge" for home/storage or stationary use — it lists both kinds of session.
+        val outLabel = if (com.vanaccess.bms.data.AppPreferences(ctx).vehicle.mobile) R.string.rep_trips else R.string.rep_discharges
+        listOf(null to R.string.rep_all, Session.TYPE_CHARGE to R.string.rep_charges, DISCHARGES to outLabel,
+            LEVELS to R.string.levels_title)
             .forEach { (type, label) ->
                 b.chipsReports.addView(Chip(ctx).apply {
                     text = fragment.getString(label)

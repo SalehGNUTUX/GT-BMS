@@ -45,7 +45,10 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
   - **Trips** with GPS when a vehicle type is chosen (electric bicycle, kick scooter, electric moped, car): distance, moving time,
     top and average speed, energy used, consumption per km, peak current, lowest voltage, largest cell difference
     under load, hard accelerations, and a voltage/current/speed chart.
-- **Range estimate and live speed** for vehicles, from your real consumption.
+  - **Discharge** for stationary use (home/solar storage, stationary motor/pump): duration, SOC, energy, average current and power.
+    One filter lists trips and discharges; its name follows the battery's use.
+  - A trip ends after 2 minutes stopped, 1 minute out of Bluetooth range, or with the "End trip" button.
+- **Range estimate and live speed** for vehicles, using nominal voltage, a 10 % reserve and your real consumption, with the calculation explained (ⓘ).
 - **Recommendations** that interpret readings using your BMS's own protection limits (not generic numbers): live,
   after each charge and trip, plus a weekly summary with chemistry-appropriate advice.
 - **Levels & battery health**: 14-day state-of-charge chart, charge cycles and estimated remaining cycles, last full
@@ -53,9 +56,10 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
 - **Recommended voltages** for the charger and the full-charge alarm, computed from the cell protection limit.
 - **App language**: follows the system by default; Arabic or English can be chosen in Settings.
 - **Battery alarms**: full-charge and low-battery alarms with your own SOC/voltage thresholds, played on the
-  alarm stream with a "Stop alarm" notification and anti-spam cooldown, plus a cell-difference alarm (at rest and under load), with a distinct tone per alarm.
+  alarm stream with a "Stop alarm" notification and anti-spam cooldown, plus a cell-difference alarm (at rest and under load), with a distinct tone per alarm, short (5 s) or continuous.
 - **Saved batteries**, fast reconnect to the last one, automatic reconnection.
-- **In-app updates** from this repository's releases.
+- **In-app updates** from this repository's releases, resilient to GitHub's request limit.
+- **BMS history kept on the phone** with the last download date.
 - **Privacy**: reports and tracks stay on the phone. GPS runs only during trips, without Google services.
 - **Read-only**: the app never changes BMS settings and sends no control commands.
 

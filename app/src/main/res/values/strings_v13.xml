@@ -116,4 +116,5 @@ Default 150 mV. Under load the difference grows naturally; a much larger value p
     <string name="history_cached">%1$d records · last downloaded %2$s</string>
     <string name="end_trip_q">End the trip now?</string>
     <string name="end_trip_msg">The trip is saved with what was recorded so far. A new trip starts only after the vehicle has been idle for a moment.</string>
+    <string name="vehicle_motor">Stationary motor / pump</string>
 </resources>
