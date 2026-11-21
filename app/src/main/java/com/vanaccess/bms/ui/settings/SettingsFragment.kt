@@ -358,7 +358,8 @@ class SettingsFragment : Fragment() {
         if (dl !is UpdateDownload.Failed) binding.tvUpdateStatus.text = when (phase) {
             UpdatePhase.Checking -> getString(R.string.update_checking)
             UpdatePhase.UpToDate -> getString(R.string.update_up_to_date, current)
-            is UpdatePhase.Error -> getString(R.string.update_error, phase.message)
+            is UpdatePhase.Error -> getString(R.string.update_error,
+                if (phase.message == "rate-limited") getString(R.string.update_rate_limited) else phase.message)
             is UpdatePhase.Available -> getString(R.string.update_available_status, phase.info.version, current)
             else -> getString(R.string.update_current, current)
         }

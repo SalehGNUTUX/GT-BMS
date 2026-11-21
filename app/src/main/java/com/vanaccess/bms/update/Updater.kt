@@ -97,7 +97,9 @@ object Updater {
     fun check(context: Context, allowPrerelease: Boolean): Check {
         val current = currentVersion(context)
         val body = try { httpGet(API, current) } catch (e: Exception) {
-            return Check(ok = false, error = e.message, current = current)
+            // The anonymous API allows 60 requests/hour per internet address (shared by every
+            // device on the same Wi-Fi). Fall back to the releases feed, which has no such limit.
+            return checkFromFeed(current, allowPrerelease) ?: Check(ok = false, error = e.message, current = current)
         }
         return try {
             val releases = JSONArray(body)
@@ -134,6 +136,65 @@ object Updater {
         } catch (e: Exception) {
             Check(ok = false, error = e.message, current = current)
         }
+    }
+
+    private const val FEED = "https://github.com/$REPO/releases.atom"
+
+    /**
+     * Fallback when the API is unavailable: read the public releases feed. Pre-releases are
+     * recognised by the version suffix (-beta.N), the APK follows the release naming
+     * (GT-BMS-<tag>-release.apk) and its size comes from a HEAD request.
+     */
+    private fun checkFromFeed(current: String, allowPrerelease: Boolean): Check? = try {
+        val xml = httpGet(FEED, current, accept = "application/atom+xml")
+        val entries = xml.split("<entry>").drop(1)
+        val best = entries.mapNotNull { e ->
+            val tag = Regex("""/releases/tag/([^"]+)"""").find(e)?.groupValues?.get(1) ?: return@mapNotNull null
+            val v = parse(tag) ?: return@mapNotNull null
+            if (!allowPrerelease && v.pre.isNotEmpty()) return@mapNotNull null
+            Triple(tag, v, e)
+        }.maxByOrNull { it.second }
+        if (best == null) Check(ok = true, current = current) else {
+            val (tag, v, entry) = best
+            val url = "https://github.com/$REPO/releases/download/$tag/GT-BMS-$tag-release.apk"
+            val size = contentLength(url, current)
+            val notes = Regex("""<content type="html">([\s\S]*?)</content>""").find(entry)?.groupValues?.get(1)
+                ?.let { htmlToText(it) }.orEmpty()
+            Check(
+                ok = true,
+                updateAvailable = isNewer(tag, current),
+                current = current,
+                version = v.display(),
+                tag = tag,
+                prerelease = v.pre.isNotEmpty(),
+                notes = notes.take(4000),
+                releaseUrl = "https://github.com/$REPO/releases/tag/$tag",
+                asset = if (size > 0) Asset("GT-BMS-$tag-release.apk", size, url) else null,
+            )
+        }
+    } catch (_: Exception) { null }
+
+    private fun htmlToText(escaped: String): String = escaped
+        .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'")
+        .replace(Regex("<li>"), "• ").replace(Regex("</(p|li|h\\d)>"), "\n").replace(Regex("<[^>]+>"), "")
+        .replace("&amp;", "&").replace(Regex("\n{3,}"), "\n\n").trim()
+
+    /** Size of a download after redirects (HEAD), or 0 if unknown. */
+    private fun contentLength(spec: String, version: String): Long {
+        var url = URL(spec)
+        repeat(5) {
+            val c = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "HEAD"; instanceFollowRedirects = false
+                connectTimeout = 15_000; readTimeout = 15_000
+                setRequestProperty("User-Agent", "GT-BMS/$version")
+            }
+            try {
+                val code = c.responseCode
+                if (code in 300..399) { url = URL(c.getHeaderField("Location") ?: return 0); return@repeat }
+                return if (code == 200) c.getHeaderFieldLong("Content-Length", 0) else 0
+            } finally { c.disconnect() }
+        }
+        return 0
     }
 
     fun cacheDir(context: Context): File = File(context.cacheDir, "updates").apply { mkdirs() }
@@ -222,11 +283,11 @@ object Updater {
             ?.removeSuffix("-debug").orEmpty()
     } catch (_: Exception) { "" }
 
-    private fun httpGet(spec: String, version: String): String {
+    private fun httpGet(spec: String, version: String, accept: String = "application/vnd.github+json"): String {
         val connection = (URL(spec).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20_000
             readTimeout = 20_000
-            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("Accept", accept)
             setRequestProperty("User-Agent", "GT-BMS/$version")
         }
         try {
