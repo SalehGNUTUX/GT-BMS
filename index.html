@@ -39,14 +39,14 @@ html[lang="en"] [data-lang="ar"]{display:none!important}
 /* Top bar */
 .bar{position:sticky;top:0;z-index:40;margin:0 -1rem;padding:.6rem 1rem;background:rgba(15,17,23,.9);
   backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.bar .wrap{display:flex;align-items:center;gap:.9rem}
+.bar .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
 .brand{display:flex;align-items:center;gap:.55rem;font-weight:700;text-decoration:none;white-space:nowrap}
 .brand img{width:32px;height:32px;border-radius:8px}
 .nav{display:flex;gap:1rem;overflow-x:auto;flex:1;scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
 .nav a{color:var(--muted);text-decoration:none;font-size:.92rem;white-space:nowrap}
 .nav a:hover{color:var(--text)}
-.lang{background:var(--tile);border:1px solid var(--line);color:var(--text);border-radius:999px;
+.lang{margin-inline-start:auto;flex:none;background:var(--tile);border:1px solid var(--line);color:var(--text);border-radius:999px;
   padding:.25rem .8rem;font:inherit;font-size:.85rem;cursor:pointer}
 
 /* Hero */
@@ -111,12 +111,36 @@ ol.steps li{margin:.35rem 0}
 ol.steps b{color:var(--text)}
 footer{color:var(--muted);font-size:.88rem;padding-top:2rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;justify-content:space-between}
 footer a{color:var(--blue-soft)}
+/* Anchors land below the sticky bar instead of under it */
+section,#top{scroll-margin-top:6.5rem}
+
 @media (max-width:760px){
+  /* Bar: logo + name + language on row 1, the section menu on its own full row below.
+     The menu never shares a row with the button, so nothing hides behind it. */
+  .bar{padding:.5rem 1rem .45rem}
+  .brand{order:1}
+  .lang{order:2}
+  .nav{order:3;flex:1 0 100%;gap:.45rem;padding:.15rem 0 .1rem;
+    -webkit-mask-image:linear-gradient(to var(--fade-dir,left),#000 88%,transparent);
+            mask-image:linear-gradient(to var(--fade-dir,left),#000 88%,transparent)}
+  html[dir="ltr"] .nav{--fade-dir:right}
+  .nav a{background:var(--tile);border:1px solid var(--line);border-radius:999px;padding:.2rem .8rem;font-size:.86rem}
+  .nav a:last-child{margin-inline-end:1.5rem}
+  .cta{gap:.55rem}
+  .cta .btn{flex:1 1 calc(50% - .3rem);justify-content:center;padding:.8rem 1rem}
+  .cta .btn.primary{flex-basis:100%}
   .hero{grid-template-columns:1fr;padding-top:2rem;gap:1.5rem}
   .hero-icon{grid-row:1;width:150px}
   .showcase{grid-template-columns:1fr}
   .mock{margin:0 auto}
   th,td{padding:.6rem .7rem}
+  h2{font-size:1.35rem}
+  section{padding:2rem 0}
+  .file{flex-direction:column}
+}
+@media (max-width:380px){
+  .cta .btn{flex-basis:100%}
+  .brand{font-size:.95rem}
 }
 </style>
 </head>
