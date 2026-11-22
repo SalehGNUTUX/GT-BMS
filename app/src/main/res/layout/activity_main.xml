@@ -33,4 +33,18 @@
         app:itemTextColor="@color/nav_item_color"
         app:menu="@menu/bottom_nav_menu" />
 
+    <!-- Central Live button (raised over the bar's empty middle slot) -->
+    <ImageButton
+        android:id="@+id/btn_live"
+        android:layout_width="66dp"
+        android:layout_height="66dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="36dp"
+        android:background="@drawable/live_fab_bg"
+        android:contentDescription="@string/tab_live"
+        android:elevation="12dp"
+        android:scaleType="center"
+        android:src="@drawable/ic_bolt"
+        app:tint="#2196F3" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

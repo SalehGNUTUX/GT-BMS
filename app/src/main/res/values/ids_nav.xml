@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Empty bottom-bar slot under the central Live button -->
+    <item name="nav_live_slot" type="id" />
+</resources>

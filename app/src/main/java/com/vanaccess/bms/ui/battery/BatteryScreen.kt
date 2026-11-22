@@ -80,6 +80,7 @@ class BatteryScreen(
         b.btnHistory.setOnClickListener {
             (fragment.activity as? MainActivity)?.getBleService()?.requestHistory()
         }
+        applyDesign()
         observe()
 
         // Back on any other tab returns to Live before leaving the screen
@@ -135,6 +136,19 @@ class BatteryScreen(
     private fun observe() {
         val owner = fragment.viewLifecycleOwner
         BleService.connectionState.observe(owner) { updateHeader() }
+        // Central Live button in the bottom bar
+        var lastLiveReq = MainActivity.openLive.value ?: 0L
+        MainActivity.openLive.observe(owner) { t ->
+            if (t != null && t != lastLiveReq) {
+                lastLiveReq = t
+                b.tabs.getTabAt(0)?.select()
+                b.pageLive.smoothScrollTo(0, 0)
+            }
+        }
+        b.root.post(ticker)
+        owner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onDestroy(o: androidx.lifecycle.LifecycleOwner) { b.root.removeCallbacks(ticker) }
+        })
         BleService.activeDriverName.observe(owner) { updateHeader(); renderInfo() }
         BleService.activeFeatures.observe(owner) { rebuildTabs(it) }
         BleService.basicInfo.observe(owner) { info ->
@@ -174,9 +188,32 @@ class BatteryScreen(
             BleService.ConnectionState.SCANNING -> R.string.st_scanning to cBlue
             BleService.ConnectionState.DISCONNECTED -> R.string.st_disconnected to cRed
         }
-        val driver = BleService.activeDriverName.value?.takeIf { state == BleService.ConnectionState.CONNECTED }
-        b.tvConnLine.text = "● " + fragment.getString(txt) + (driver?.let { "  •  $it" } ?: "")
+        val connected = state == BleService.ConnectionState.CONNECTED
+        val driver = BleService.activeDriverName.value?.takeIf { connected }
+        // While the battery is out of reach, say how old the shown data is
+        val age = BleService.lastDataMs.takeIf { !connected && it > 0 }?.let { lastUpdateText(it) }
+        b.tvConnLine.text = "● " + fragment.getString(txt) + (driver?.let { "  •  $it" } ?: "") +
+            (age?.let { "  •  $it" } ?: "")
         b.tvConnLine.setTextColor(col)
+        // Stale data is dimmed until live readings resume
+        b.liveContent.alpha = if (connected || BleService.lastDataMs == 0L) 1f else 0.55f
+        b.tvBmsClock.alpha = if (connected) 1f else 0.4f
+    }
+
+    /** "Last update: 6 min ago" (minutes / hours / days). */
+    private fun lastUpdateText(ms: Long): String {
+        val min = ((System.currentTimeMillis() - ms) / 60_000L).coerceAtLeast(0)
+        val ago = when {
+            min < 1 -> fragment.getString(R.string.ago_now)
+            min < 60 -> fragment.getString(R.string.ago_min, min.toInt())
+            min < 48 * 60 -> fragment.getString(R.string.ago_hours, (min / 60).toInt())
+            else -> fragment.getString(R.string.ago_days, (min / 1440).toInt())
+        }
+        return fragment.getString(R.string.last_update, ago)
+    }
+
+    private val ticker = object : Runnable {
+        override fun run() { updateHeader(); b.root.postDelayed(this, 30_000L) }
     }
 
     // ── Live ─────────────────────────────────────────────────────────────────
@@ -191,6 +228,8 @@ class BatteryScreen(
         val discharging = info.current < -0.1
         b.gauge.level = info.soc
         b.gauge.charging = charging
+        b.ring.level = info.soc
+        b.ring.charging = charging
         b.tvSoc.text = "${info.soc}%"
         b.tvSoc.setTextColor(b.gauge.colorFor(info.soc))
 
@@ -619,6 +658,30 @@ class BatteryScreen(
 
     private val metricViews = mutableMapOf<String, TextView>()
 
+    // ── Live designs ─────────────────────────────────────────────────────────
+
+    private val design: String get() = prefs.liveDesign
+    private fun metricSize() = when (design) { "compact" -> 17f; "ride" -> 34f; else -> 22f }
+
+    /**
+     * Switch the Live tab look. classic = battery drawing (default); ring = circular gauge;
+     * compact = dense, three columns, no drawing; ride = very large numbers, detail cards hidden.
+     */
+    private fun applyDesign() {
+        val d = design
+        b.gauge.visibility = if (d == "classic") View.VISIBLE else View.GONE
+        b.ring.visibility = if (d == "ring") View.VISIBLE else View.GONE
+        b.tvSoc.visibility = if (d == "ring") View.GONE else View.VISIBLE
+        b.tvSocLabel.visibility = if (d == "ring") View.GONE else View.VISIBLE
+        b.tvSoc.textSize = when (d) { "compact" -> 38f; "ride" -> 84f; else -> 52f }
+        b.gridMetrics.columnCount = if (d == "compact") 3 else 2
+        val details = d != "ride"
+        listOf(b.boxCapacity.parent, b.gridTemps.parent?.parent, b.gridStatus.parent?.parent).forEach {
+            (it as? View)?.visibility = if (details) View.VISIBLE else View.GONE
+        }
+        metricViews.values.forEach { it.textSize = metricSize() }
+    }
+
     /** Large metric tile kept across updates (no re-inflation every second). */
     private fun metric(grid: GridLayout, key: String, labelRes: Int, value: String, color: Int? = null) {
         val tv = metricViews[key] ?: run {
@@ -633,7 +696,7 @@ class BatteryScreen(
                 setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
             }
             col.addView(label(fragment.getString(labelRes), cGrey, 12f))
-            val v = label(value, Color.WHITE, 22f, bold = true)
+            val v = label(value, Color.WHITE, metricSize(), bold = true)
             col.addView(v)
             card.addView(col)
             grid.addView(card, gridParams())

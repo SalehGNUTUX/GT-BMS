@@ -70,6 +70,11 @@ object AdviceText {
         }
     }
 
+    /** Charger analysis of one saved charge (background thread). */
+    fun chargerFor(ctx: Context, s: Session): com.vanaccess.bms.reports.ChargerAnalyzer.Result? =
+        com.vanaccess.bms.reports.ChargerAnalyzer.analyze(
+            ReportStore.get(ctx).points(s.id), limits(ctx), s.b("ended_by_protection"), s.i("soc_end"))
+
     // ── Notifications ────────────────────────────────────────────────────────
 
     private const val CHANNEL = "gt_bms_summary"

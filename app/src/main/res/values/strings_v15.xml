@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="last_update">last update: %1$s</string>
+    <string name="ago_now">just now</string>
+    <string name="ago_min">%1$d min ago</string>
+    <string name="ago_hours">%1$d h ago</string>
+    <string name="ago_days">%1$d days ago</string>
+    <string name="adv_charger_seen">Charger: about %1$.1f A, holds the voltage at %2$.1f V (constant-voltage stage seen).</string>
+    <string name="adv_charger_seen_nocv">Charger: about %1$.1f A; the voltage rose to %2$.1f V without a constant-voltage stage.</string>
+    <string name="adv_charger_wrong_type">⚠ This looks like a Li-ion charger (%1$.2f V per cell) on a LiFePO₄ battery. Do not use it.</string>
+    <string name="adv_charger_above_protection">The charger\'s voltage is at or above the BMS protection (%1$.2f V), so the BMS has to cut every charge. A charger set to %2$.1f V suits this battery.</string>
+    <string name="adv_charger_too_low">Charger voltage %1$.1f V (%2$.2f V per cell) is low: the battery will not fully charge or balance.</string>
+    <string name="adv_charger_voltage_ok">Charger voltage %1$.1f V (%2$.2f V per cell) suits this battery.</string>
+    <string name="adv_charger_current_limit">Charge current %1$.1f A is at the BMS over-current limit (%2$d A). Use a smaller charger.</string>
+    <string name="adv_charger_current_high">Charge current %1$.1f A (%2$.2fC) is high for this battery; it heats and ages the cells.</string>
+    <string name="adv_charger_current_fast">Charge current %1$.1f A (%2$.2fC): a fast charge. Fine occasionally.</string>
+    <string name="adv_charger_current_slow">Charge current %1$.1f A (%2$.2fC): a very slow charger.</string>
+    <string name="adv_charger_current_ok">Charge current %1$.1f A (%2$.2fC) is gentle on the cells.</string>
+    <string name="adv_charger_interrupted">This charge was interrupted while still charging.</string>
+    <string name="charger_title">Charger</string>
+    <string name="charger_section">Charger &amp; charging</string>
+    <string name="charger_section_sub">Your charger, charging tips</string>
+    <string name="charger_detected">Detected from your last %1$d charges</string>
+    <string name="charger_none">No charge recorded yet. Plug in the charger: the app will learn its current and voltage.</string>
+    <string name="tips_title">Charging tips</string>
+    <string-array name="charging_tips">
+        <item>Charge in a dry, ventilated place away from sun and heat, on a non-flammable surface.</item>
+        <item>Don\'t charge below about 0 °C or above 45 °C; let the battery reach room temperature after riding or the cold.</item>
+        <item>Use a charger made for your battery\'s chemistry and cell count: a Li-ion or lead-acid charger is not suitable for LiFePO₄.</item>
+        <item>Ideally the charger ends the charge (constant-voltage stage), not the BMS protection — see \"Recommended voltages\" in Alarms.</item>
+        <item>A charge current up to half the capacity (0.5C) is gentle on the cells; higher is faster but warmer.</item>
+        <item>Charge to 100 % at least once a week so balancing can work; cells only balance near full.</item>
+        <item>Don\'t leave the battery empty; recharge soon after a deep discharge.</item>
+        <item>For long storage leave it at 40–60 % and check it monthly.</item>
+        <item>Unplug the charger from the wall first, then from the battery; keep cables and connectors in good condition.</item>
+        <item>If the battery or charger gets unusually hot or smells, unplug immediately.</item>
+    </string-array>
+    <string name="design_title">Live screen design</string>
+    <string name="design_desc">How the Live tab shows your battery.</string>
+    <string name="design_classic">Classic — battery drawing (default)</string>
+    <string name="design_ring">Ring — circular gauge</string>
+    <string name="design_compact">Compact — more values, smaller</string>
+    <string name="design_ride">Riding — very large numbers</string>
+</resources>

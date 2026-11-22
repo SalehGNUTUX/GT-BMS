@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="last_update">آخر تحديث: %1$s</string>
+    <string name="ago_now">الآن</string>
+    <string name="ago_min">قبل %1$d دقيقة</string>
+    <string name="ago_hours">قبل %1$d ساعة</string>
+    <string name="ago_days">قبل %1$d يوم</string>
+    <string name="adv_charger_seen">الشاحن: نحو %1$.1f أمبير، ويثبّت الجهد عند %2$.1f فولت (رُصدت مرحلة الجهد الثابت).</string>
+    <string name="adv_charger_seen_nocv">الشاحن: نحو %1$.1f أمبير، وارتفع الجهد حتى %2$.1f فولت دون مرحلة جهد ثابت.</string>
+    <string name="adv_charger_wrong_type">⚠ يبدو أنه شاحن ليثيوم أيون (%1$.2f فولت للخلية) على بطارية ليثيوم فوسفات. لا تستعمله.</string>
+    <string name="adv_charger_above_protection">جهد الشاحن عند حد حماية النظام أو فوقه (%1$.2f فولت)، فيضطر النظام لقطع كل شحنة. الشاحن المناسب لهذه البطارية: %2$.1f فولت.</string>
+    <string name="adv_charger_too_low">جهد الشاحن %1$.1f فولت (%2$.2f فولت للخلية) منخفض: لن تمتلئ البطارية ولن تتوازن خلاياها.</string>
+    <string name="adv_charger_voltage_ok">جهد الشاحن %1$.1f فولت (%2$.2f فولت للخلية) مناسب لهذه البطارية.</string>
+    <string name="adv_charger_current_limit">تيار الشحن %1$.1f أمبير عند حد التيار الزائد في النظام (%2$d أمبير). استعمل شاحناً أصغر.</string>
+    <string name="adv_charger_current_high">تيار الشحن %1$.1f أمبير (%2$.2fC) مرتفع لهذه البطارية؛ يسخّن الخلايا ويقصّر عمرها.</string>
+    <string name="adv_charger_current_fast">تيار الشحن %1$.1f أمبير (%2$.2fC): شحن سريع. لا بأس به أحياناً.</string>
+    <string name="adv_charger_current_slow">تيار الشحن %1$.1f أمبير (%2$.2fC): شاحن بطيء جداً.</string>
+    <string name="adv_charger_current_ok">تيار الشحن %1$.1f أمبير (%2$.2fC) رفيق بالخلايا.</string>
+    <string name="adv_charger_interrupted">انقطعت هذه الشحنة وهي ما تزال تشحن.</string>
+    <string name="charger_title">الشاحن</string>
+    <string name="charger_section">الشاحن والشحن</string>
+    <string name="charger_section_sub">شاحنك ونصائح الشحن</string>
+    <string name="charger_detected">مستخلص من آخر %1$d شحنات</string>
+    <string name="charger_none">لم تُسجَّل شحنة بعد. صِل الشاحن: سيتعرّف التطبيق على تياره وجهده.</string>
+    <string name="tips_title">نصائح الشحن</string>
+    <string-array name="charging_tips">
+        <item>اشحن في مكان جاف ومهوّى، بعيداً عن الشمس وعن مصادر الحرارة، وعلى سطح غير قابل للاشتعال.</item>
+        <item>لا تشحن تحت 0°م ولا فوق 45°م تقريباً؛ دع البطارية تعود لحرارة الغرفة بعد القيادة أو البرد.</item>
+        <item>استعمل شاحناً مخصّصاً لكيمياء بطاريتك وعدد خلاياها: شاحن الليثيوم أيون أو الرصاص لا يصلح لليثيوم فوسفات.</item>
+        <item>الأفضل أن ينتهي الشحن بالشاحن نفسه (مرحلة الجهد الثابت) لا بحماية النظام؛ انظر «الجهد المقترح» في المنبهات.</item>
+        <item>تيار شحن حتى نصف السعة (0.5C) رفيق بالخلايا؛ الأعلى منه يسرّع الشحن ويرفع الحرارة.</item>
+        <item>اشحن حتى 100٪ مرة في الأسبوع على الأقل لتعمل الموازنة؛ الخلايا تتوازن قرب الامتلاء فقط.</item>
+        <item>لا تترك البطارية فارغة؛ اشحنها قريباً بعد التفريغ العميق.</item>
+        <item>للتخزين الطويل اتركها بين 40٪ و60٪، وافحصها كل شهر.</item>
+        <item>افصل الشاحن من الحائط أولاً ثم من البطارية، وتأكد من سلامة الكابلات والموصلات.</item>
+        <item>إن سخنت البطارية أو الشاحن بشكل غير طبيعي أو ظهرت رائحة، افصل الشاحن فوراً.</item>
+    </string-array>
+    <string name="design_title">تصميم شاشة «مباشر»</string>
+    <string name="design_desc">طريقة عرض بطاريتك في تبويب «مباشر».</string>
+    <string name="design_classic">كلاسيكي — رسم البطارية (الافتراضي)</string>
+    <string name="design_ring">حلقة — مقياس دائري</string>
+    <string name="design_compact">مدمج — قيم أكثر وأصغر</string>
+    <string name="design_ride">القيادة — أرقام كبيرة جداً</string>
+</resources>

@@ -219,7 +219,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         val recBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(0, (8 * dp).toInt(), 0, 0) }
         col.addView(recBox)
         thread {
-            val recs = com.vanaccess.bms.ui.AdviceText.forSession(ctx, s)
+            val recs = com.vanaccess.bms.ui.AdviceText.forSession(ctx, s) +
+                (if (charge) com.vanaccess.bms.ui.AdviceText.chargerFor(ctx, s)?.recs.orEmpty() else emptyList())
             fragment.activity?.runOnUiThread {
                 recs.forEach { r ->
                     recBox.addView(text(com.vanaccess.bms.ui.AdviceText.icon(r.level) + " " +

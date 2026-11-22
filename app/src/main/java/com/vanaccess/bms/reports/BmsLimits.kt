@@ -23,6 +23,7 @@ data class BmsLimits(
     val dischargeOcA: Int? = null,
     val designAh: Double? = null,
     val cells: Int? = null,
+    val chargeOcA: Int? = null,         // charge over-current activation
 ) {
     val lfp: Boolean get() = (cellOvMv ?: 0) in 1..3800
 
@@ -30,7 +31,7 @@ data class BmsLimits(
         fun p(k: String, v: Any?) { if (v != null) put(k, v) }
         p("ov", cellOvMv); p("uv", cellUvMv); p("uvr", cellUvReleaseMv); p("socl", socLowCalMv)
         p("bs", balanceStartMv); p("bd", balanceDiffMv); p("cot", chargeOtC); p("dot", dischargeOtC)
-        p("clt", chargeLowC); p("mot", mosOtC); p("doc", dischargeOcA); p("des", designAh); p("n", cells)
+        p("clt", chargeLowC); p("mot", mosOtC); p("doc", dischargeOcA); p("des", designAh); p("n", cells); p("coc", chargeOcA)
     }.toString()
 
     companion object {
@@ -40,7 +41,7 @@ data class BmsLimits(
                 val o = JSONObject(s)
                 fun i(k: String) = if (o.has(k)) o.getInt(k) else null
                 BmsLimits(i("ov"), i("uv"), i("uvr"), i("socl"), i("bs"), i("bd"), i("cot"), i("dot"),
-                    i("clt"), i("mot"), i("doc"), if (o.has("des")) o.getDouble("des") else null, i("n"))
+                    i("clt"), i("mot"), i("doc"), if (o.has("des")) o.getDouble("des") else null, i("n"), i("coc"))
             } catch (_: Exception) { BmsLimits() }
         }
 
@@ -63,6 +64,7 @@ data class BmsLimits(
                 dischargeOcA = int("Discharge overcurrent activation"),
                 designAh = num("Design capacity"),
                 cells = int("Cell count"),
+                chargeOcA = int("Charge overcurrent activation"),
             )
         }
     }

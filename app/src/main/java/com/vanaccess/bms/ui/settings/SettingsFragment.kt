@@ -156,6 +156,7 @@ class SettingsFragment : Fragment() {
             Section("devices", "🔋", R.string.sec_devices, R.string.sec_devices_sub, listOf(binding.cardDevices, binding.cardScan)),
             Section("vehicle", prefs.vehicle.icon, R.string.sec_vehicle, R.string.sec_vehicle_sub, listOf(binding.cardVehicle)),
             Section("alarms", "⏰", R.string.sec_alarms, R.string.sec_alarms_sub, listOf(binding.cardAlarms)),
+            Section("charger", "🔌", R.string.charger_section, R.string.charger_section_sub, listOf(binding.cardCharger)),
             Section("prefs", "⚙️", R.string.sec_prefs, R.string.sec_prefs_sub, listOf(binding.cardPrefs)),
             Section("updates", "⬆️", R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)),
             Section("share", "📤", R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
@@ -211,6 +212,7 @@ class SettingsFragment : Fragment() {
 
     private fun showSection(key: String?) {
         if (_binding == null) return
+        if (key == "charger") renderCharger()
         openSection = key
         val sec = sections.firstOrNull { it.key == key }
         binding.gridSections.visibility = if (sec == null) View.VISIBLE else View.GONE
@@ -235,6 +237,47 @@ class SettingsFragment : Fragment() {
                     .setMessage(txt.second)
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
+            }
+        }
+    }
+
+    // ── Charger & charging ──────────────────────────────────────────────────
+
+    /** Detected charger (from the last charges' curves) and charging tips. */
+    private fun renderCharger() {
+        val ctx = requireContext()
+        val dp = resources.displayMetrics.density
+        fun line(t: String, color: Int, bold: Boolean = false) = android.widget.TextView(ctx).apply {
+            text = t; textSize = 13f; setTextColor(color)
+            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt())
+        }
+        binding.boxTips.removeAllViews()
+        resources.getStringArray(R.array.charging_tips).forEach { binding.boxTips.addView(line("• $it", Color.parseColor("#C9CFDD"))) }
+        binding.boxCharger.removeAllViews()
+        kotlin.concurrent.thread {
+            val store = com.vanaccess.bms.reports.ReportStore.get(ctx)
+            val charges = store.list(com.vanaccess.bms.reports.Session.TYPE_CHARGE, 5)
+            val results = charges.mapNotNull { com.vanaccess.bms.ui.AdviceText.chargerFor(ctx, it) }
+            val profile = com.vanaccess.bms.reports.ChargerAnalyzer.profile(results)
+            activity?.runOnUiThread {
+                if (_binding == null) return@runOnUiThread
+                if (results.isEmpty()) {
+                    binding.boxCharger.addView(line(getString(R.string.charger_none), Color.parseColor("#9BA3B8")))
+                    return@runOnUiThread
+                }
+                binding.boxCharger.addView(line(getString(R.string.charger_detected, results.size), Color.parseColor("#9BA3B8")))
+                // Verdicts of the most recent charge, with the typical current/voltage across charges
+                val latest = results.first()
+                val recs = latest.recs.map { r ->
+                    if ((r.code == "charger_seen" || r.code == "charger_seen_nocv") && profile != null)
+                        r.copy(args = listOf(profile.first, profile.second ?: latest.maxVoltage)) else r
+                }
+                recs.forEach { r ->
+                    binding.boxCharger.addView(line(com.vanaccess.bms.ui.AdviceText.icon(r.level) + " " +
+                        com.vanaccess.bms.ui.AdviceText.text(ctx, r), com.vanaccess.bms.ui.AdviceText.color(r.level),
+                        r.level == com.vanaccess.bms.reports.Advisor.Level.CRITICAL))
+                }
             }
         }
     }
@@ -843,6 +886,22 @@ class SettingsFragment : Fragment() {
             if (prefs.temperatureUnit == "C") binding.radioCelsius.id
             else binding.radioFahrenheit.id
         )
+        // Live tab design
+        val designs = listOf("classic" to R.string.design_classic, "ring" to R.string.design_ring,
+            "compact" to R.string.design_compact, "ride" to R.string.design_ride)
+        binding.radioLiveDesign.removeAllViews()
+        designs.forEachIndexed { i, (id, label) ->
+            binding.radioLiveDesign.addView(android.widget.RadioButton(requireContext()).apply {
+                this.id = 2000 + i
+                text = getString(label)
+                setTextColor(Color.WHITE)
+                isChecked = prefs.liveDesign == id
+            })
+        }
+        binding.radioLiveDesign.setOnCheckedChangeListener { _, checked ->
+            designs.getOrNull(checked - 2000)?.let { prefs.liveDesign = it.first }
+        }
+
         binding.radioGroupTemp.setOnCheckedChangeListener { _, checkedId ->
             prefs.temperatureUnit = if (checkedId == binding.radioCelsius.id) "C" else "F"
         }

@@ -140,6 +140,16 @@ class AppPreferences(context: Context) {
     fun alarmShort(kind: String): Boolean = prefs.getBoolean("alarm_short_$kind", kind == "delta")
     fun setAlarmShort(kind: String, short: Boolean) = prefs.edit().putBoolean("alarm_short_$kind", short).apply()
 
+    /** Time of the last BMS reading, persisted for "last update: N min ago". */
+    var lastDataMs: Long
+        get() = prefs.getLong("last_data_ms", 0L)
+        set(value) = prefs.edit().putLong("last_data_ms", value).apply()
+
+    /** Live tab design: classic (default), ring, compact, ride. */
+    var liveDesign: String
+        get() = prefs.getString("live_design", "classic") ?: "classic"
+        set(value) = prefs.edit().putString("live_design", value).apply()
+
     // ── Smart summaries ──────────────────────────────────────────────────────
     var notifySessionSummary: Boolean
         get() = prefs.getBoolean("notify_session_summary", true)

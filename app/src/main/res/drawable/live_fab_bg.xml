@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Central Live button: dark disc that cuts into the bar, hollow accent ring, faint outer halo.
+     Selected (on the Live tab) the ring gets a soft fill. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <layer-list>
+            <item><shape android:shape="oval"><solid android:color="#0F1117" /><stroke android:width="1dp" android:color="#442196F3" /></shape></item>
+            <item android:top="5dp" android:left="5dp" android:right="5dp" android:bottom="5dp">
+                <shape android:shape="oval"><solid android:color="#332196F3" /><stroke android:width="2.5dp" android:color="#2196F3" /></shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item><shape android:shape="oval"><solid android:color="#0F1117" /><stroke android:width="1dp" android:color="#332196F3" /></shape></item>
+            <item android:top="5dp" android:left="5dp" android:right="5dp" android:bottom="5dp">
+                <shape android:shape="oval"><solid android:color="#00000000" /><stroke android:width="2.5dp" android:color="#2196F3" /></shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>

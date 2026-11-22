@@ -27,6 +27,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private val NAV_KEYS = setOf("solar_address", "orion_address", "switchpanel_address")
+        /** Bumped when the Live button is pressed; the battery screen jumps to its Live tab. */
+        val openLive = androidx.lifecycle.MutableLiveData<Long>()
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -81,6 +83,19 @@ class MainActivity : AppCompatActivity() {
 
         binding.bottomNavigation.setupWithNavController(navController)
         setupBackHandling(navController)
+        this.navController = navController
+        binding.btnLive.setOnClickListener {
+            if (navController.currentDestination?.id != R.id.dashboardFragment)
+                binding.bottomNavigation.selectedItemId = R.id.dashboardFragment
+            openLive.value = System.currentTimeMillis()
+        }
+        navController.addOnDestinationChangedListener { _, d, _ ->
+            binding.btnLive.isSelected = d.id == R.id.dashboardFragment
+        }
+        // Tapping the current tab again returns to that tab's root (e.g. from the debug console)
+        binding.bottomNavigation.setOnItemReselectedListener { item ->
+            if (navController.currentDestination?.id != item.itemId) navController.popBackStack(item.itemId, false)
+        }
         prefs = AppPreferences(this)
         updateNavTabs()
         prefs.registerListener(prefsListener)
@@ -157,7 +172,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackHandling(nav: androidx.navigation.NavController) {
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (nav.currentDestination?.id != R.id.dashboardFragment) {
+                val dest = nav.currentDestination?.id
+                val topLevel = binding.bottomNavigation.menu.findItem(dest ?: 0) != null
+                // A screen opened from a tab (e.g. the debug console) goes back to that tab
+                if (!topLevel && nav.previousBackStackEntry != null) {
+                    nav.popBackStack()
+                    return
+                }
+                if (dest != R.id.dashboardFragment) {
                     binding.bottomNavigation.selectedItemId = R.id.dashboardFragment
                     return
                 }
@@ -194,12 +216,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Show only the tabs that match devices the user configured (battery + settings always). */
+    /**
+     * Bottom bar built in code: Battery, the configured device tabs, Settings, and an empty
+     * slot in the middle under the round Live button. The bar holds at most 5 items, so with
+     * all three device tabs configured the slot is dropped and the button floats centred.
+     */
     private fun updateNavTabs() {
-        val menu = binding.bottomNavigation.menu
-        menu.findItem(R.id.smartSolarFragment)?.isVisible = !prefs.smartSolarDeviceAddress.isNullOrBlank()
-        menu.findItem(R.id.orionFragment)?.isVisible = !prefs.orionDeviceAddress.isNullOrBlank()
-        menu.findItem(R.id.switchPanelFragment)?.isVisible = !prefs.switchPanelDeviceAddress.isNullOrBlank()
+        val nav = binding.bottomNavigation
+        val menu = nav.menu
+        val tabs = mutableListOf(Triple(R.id.dashboardFragment, R.string.nav_dashboard, R.drawable.ic_battery))
+        if (!prefs.smartSolarDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.smartSolarFragment, R.string.nav_solar, R.drawable.ic_solar)
+        if (!prefs.orionDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.orionFragment, R.string.nav_orion, R.drawable.ic_dc)
+        if (!prefs.switchPanelDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.switchPanelFragment, R.string.nav_switches, R.drawable.ic_switch)
+        tabs += Triple(R.id.settingsFragment, R.string.nav_settings, R.drawable.ic_settings)
+        val withSlot = tabs.size < 5
+        val slotAt = (tabs.size + 1) / 2
+        val current = navController?.currentDestination?.id
+        menu.clear()
+        var order = 0
+        tabs.forEachIndexed { i, (id, title, icon) ->
+            if (withSlot && i == slotAt) {
+                menu.add(android.view.Menu.NONE, R.id.nav_live_slot, order++, "").apply { isEnabled = false }
+            }
+            menu.add(android.view.Menu.NONE, id, order++, title).setIcon(icon)
+        }
+        current?.let { menu.findItem(it)?.isChecked = true }
+        nav.post { positionLiveButton() }
     }
+
+    /** Centre the Live button over the empty slot (or the bar when there is none). */
+    private fun positionLiveButton() {
+        val btn = binding.btnLive
+        val slot = binding.bottomNavigation.findViewById<android.view.View>(R.id.nav_live_slot)
+        btn.translationX = if (slot != null && slot.width > 0) {
+            val loc = IntArray(2); slot.getLocationOnScreen(loc)
+            val slotCenter = loc[0] + slot.width / 2f
+            val barLoc = IntArray(2); binding.bottomNavigation.getLocationOnScreen(barLoc)
+            slotCenter - (barLoc[0] + binding.bottomNavigation.width / 2f)
+        } else 0f
+    }
+
+    private var navController: androidx.navigation.NavController? = null
+
+
 
     override fun onDestroy() {
         if (::prefs.isInitialized) prefs.unregisterListener(prefsListener)

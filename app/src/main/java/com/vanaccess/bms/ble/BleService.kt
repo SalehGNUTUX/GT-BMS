@@ -71,6 +71,9 @@ class BleService : LifecycleService() {
         val activeWriteUuid = MutableLiveData<String?>()
         val activeNotifyUuid = MutableLiveData<String?>()
         val activeDriverName = MutableLiveData<String?>()
+        /** Wall-clock time of the last BMS reading (0 = none yet), for "last update: N min ago". */
+        @Volatile var lastDataMs: Long = 0L
+        private var lastDataPersistMs = 0L
         /** Device identity (model, serials, clock…) keyed by DetailKey. */
         val deviceDetails = MutableLiveData<Map<String, String>>(emptyMap())
         val bmsParams = MutableLiveData<List<com.vanaccess.bms.ble.drivers.ParamItem>?>(null)
@@ -146,6 +149,7 @@ class BleService : LifecycleService() {
         super.onCreate()
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
+        if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
         if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
         recorder.onSaved = { com.vanaccess.bms.ui.AdviceText.notifySession(this, it) }
@@ -938,6 +942,9 @@ class BleService : LifecycleService() {
             android.util.Log.i("BleService", "Protocol locked: ${driver.id}")
         }
         out.basic?.let {
+            val nowMs = System.currentTimeMillis()
+            if (nowMs - lastDataPersistMs >= 30_000L) { prefs.lastDataMs = nowMs; lastDataPersistMs = nowMs }
+            lastDataMs = nowMs
             basicInfo.postValue(it)
             alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
             recorder.onReading(it)
