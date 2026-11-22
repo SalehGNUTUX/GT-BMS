@@ -242,6 +242,8 @@ class BatteryScreen(
         b.gauge.charging = charging
         b.ring.level = info.soc
         b.ring.charging = charging
+        b.segments.level = info.soc
+        b.segments.current = info.current
         b.tvSoc.text = "${info.soc}%"
         b.tvSoc.setTextColor(b.gauge.colorFor(info.soc))
 
@@ -700,12 +702,14 @@ class BatteryScreen(
 
     /**
      * Switch the Live tab look. classic = battery drawing (default); ring = circular gauge;
+     * segments = battery of coloured bars whose top bar pulses with the current;
      * compact = dense, three columns, no drawing; ride = very large numbers, detail cards hidden.
      */
     private fun applyDesign() {
         val d = design
         b.gauge.visibility = if (d == "classic") View.VISIBLE else View.GONE
         b.ring.visibility = if (d == "ring") View.VISIBLE else View.GONE
+        b.segments.visibility = if (d == "segments") View.VISIBLE else View.GONE
         b.tvSoc.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSocLabel.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSoc.textSize = when (d) { "compact" -> 38f; "ride" -> 84f; else -> 52f }

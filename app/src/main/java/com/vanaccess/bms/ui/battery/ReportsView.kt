@@ -169,17 +169,15 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     }
 
     private fun confirmDelete(s: Session) {
-        AlertDialog.Builder(ctx)
-            .setTitle(R.string.rep_delete_q)
-            .setPositiveButton(R.string.btn_delete) { _, _ ->
-                thread { ReportStore.get(ctx).delete(s.id); fragment.activity?.runOnUiThread { reload() } }
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
-            .also { d ->
-                styleButton(d.getButton(AlertDialog.BUTTON_POSITIVE), Color.parseColor("#F0544F"))
-                styleButton(d.getButton(AlertDialog.BUTTON_NEGATIVE), Color.parseColor("#3A3F55"))
-            }
+        // Safe action first (right in Arabic) in green, destructive one in red
+        com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.rep_delete_q),
+            message = fragment.getString(R.string.rep_delete_msg),
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
+                com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_delete), com.vanaccess.bms.ui.AppDialog.RED) {
+                    thread { ReportStore.get(ctx).delete(s.id); fragment.activity?.runOnUiThread { reload() } }
+                },
+            ))
     }
 
     // ── Detail ───────────────────────────────────────────────────────────────
@@ -246,34 +244,15 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         col.addView(chart, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (220 * dp).toInt()))
         loadChart(chart, s)
 
-        val scroll = androidx.core.widget.NestedScrollView(ctx).apply { addView(col) }
-        AlertDialog.Builder(ctx)
-            .setTitle(kind(s).first + " " + fragment.getString(kind(s).second) + "  " + date(s.startMs))
-            .setView(scroll)
-            // In the Arabic (RTL) dialog the neutral button sits on the right and the positive on the
-            // left: OK on the right in green, Delete on the left in red.
-            .setNeutralButton(android.R.string.ok, null)
-            .setPositiveButton(R.string.btn_delete) { _, _ -> confirmDelete(s) }
-            .show()
-            .also { d ->
-                styleButton(d.getButton(AlertDialog.BUTTON_NEUTRAL), cGreen)
-                styleButton(d.getButton(AlertDialog.BUTTON_POSITIVE), Color.parseColor("#F0544F"))
-            }
+        com.vanaccess.bms.ui.AppDialog.show(ctx,
+            kind(s).first + " " + fragment.getString(kind(s).second) + "  " + date(s.startMs),
+            body = col,
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(android.R.string.ok), com.vanaccess.bms.ui.AppDialog.GREEN),
+                com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_delete), com.vanaccess.bms.ui.AppDialog.RED) { confirmDelete(s) },
+            ))
     }
 
-    /** Filled, rounded dialog button with white text. */
-    private fun styleButton(btn: android.widget.Button?, color: Int) {
-        btn ?: return
-        btn.background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(color) }
-        btn.setTextColor(Color.WHITE)
-        btn.setTypeface(btn.typeface, Typeface.BOLD)
-        btn.isAllCaps = false
-        btn.minWidth = (96 * dp).toInt()
-        btn.setPadding((20 * dp).toInt(), (8 * dp).toInt(), (20 * dp).toInt(), (8 * dp).toInt())
-        (btn.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
-            lp.marginStart = (6 * dp).toInt(); lp.marginEnd = (6 * dp).toInt(); btn.layoutParams = lp
-        }
-    }
 
     private fun loadChart(chart: LineChart, s: Session) {
         chart.description.isEnabled = false
@@ -316,12 +295,14 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     // ── Export ───────────────────────────────────────────────────────────────
 
     private fun chooseExport() {
-        val opts = arrayOf(fragment.getString(R.string.export_csv), fragment.getString(R.string.export_gpx))
-        AlertDialog.Builder(ctx)
-            .setTitle(R.string.export_title)
-            .setItems(opts) { _, which -> export(gpx = which == 1) }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+        val blue = Color.parseColor("#2A6FB8")
+        com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.export_title),
+            message = fragment.getString(R.string.export_csv) + "\n" + fragment.getString(R.string.export_gpx),
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn("CSV", blue) { export(gpx = false) },
+                com.vanaccess.bms.ui.AppDialog.Btn("GPX", blue) { export(gpx = true) },
+                com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
+            ))
     }
 
     /** Write CSV (all reports) or GPX (GPS trips) to cache/exports and open the share sheet. */

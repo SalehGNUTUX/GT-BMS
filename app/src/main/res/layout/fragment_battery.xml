@@ -153,6 +153,14 @@
                             android:layout_height="132dp"
                             android:layout_marginEnd="18dp" />
 
+                        <!-- "Segments" design gauge (hidden in the other designs) -->
+                        <com.vanaccess.bms.ui.battery.SegmentGaugeView
+                            android:id="@+id/segments"
+                            android:layout_width="84dp"
+                            android:layout_height="150dp"
+                            android:layout_marginEnd="18dp"
+                            android:visibility="gone" />
+
                         <!-- "Ring" design gauge (hidden in the other designs) -->
                         <com.vanaccess.bms.ui.battery.RingGaugeView
                             android:id="@+id/ring"

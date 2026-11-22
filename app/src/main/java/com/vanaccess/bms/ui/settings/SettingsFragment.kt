@@ -904,7 +904,7 @@ class SettingsFragment : Fragment() {
             else binding.radioFahrenheit.id
         )
         // Live tab design
-        val designs = listOf("classic" to R.string.design_classic, "ring" to R.string.design_ring,
+        val designs = listOf("classic" to R.string.design_classic, "segments" to R.string.design_segments, "ring" to R.string.design_ring,
             "compact" to R.string.design_compact, "ride" to R.string.design_ride)
         binding.radioLiveDesign.removeAllViews()
         designs.forEachIndexed { i, (id, label) ->
@@ -916,7 +916,10 @@ class SettingsFragment : Fragment() {
             })
         }
         binding.radioLiveDesign.setOnCheckedChangeListener { _, checked ->
-            designs.getOrNull(checked - 2000)?.let { prefs.liveDesign = it.first }
+            designs.getOrNull(checked - 2000)?.let {
+                prefs.liveDesign = it.first
+                com.vanaccess.bms.widget.BatteryWidget.refresh(requireContext())   // widget follows the design
+            }
         }
 
         binding.radioGroupTemp.setOnCheckedChangeListener { _, checkedId ->

@@ -59,4 +59,6 @@
     <string name="cell_trend_watch">⚠ Cell %1$d keeps sagging — watch it; if it worsens, the pack may need balancing or service.</string>
     <string name="balance_reminder_title">Time for a full charge</string>
     <string name="balance_reminder_switch">Remind me to charge to 100 % (balancing)</string>
+    <string name="rep_delete_msg">The report and its chart will be removed. This cannot be undone.</string>
+    <string name="design_segments">Segments — coloured bars, top bar pulses with the current</string>
 </resources>

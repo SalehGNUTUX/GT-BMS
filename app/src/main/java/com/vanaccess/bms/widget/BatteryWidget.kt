@@ -35,6 +35,33 @@ class BatteryWidget : AppWidgetProvider() {
             if (ids.isNotEmpty()) ids.forEach { m.updateAppWidget(it, views(context)) }
         }
 
+        /** Draw the Live design's gauge (static) into a bitmap for the widget. */
+        fun gaugeBitmap(context: Context, design: String, soc: Int, current: Double): android.graphics.Bitmap {
+            val dm = context.resources.displayMetrics
+            val view: android.view.View
+            val (wDp, hDp) = when (design) {
+                "ring" -> {
+                    view = com.vanaccess.bms.ui.battery.RingGaugeView(context).apply { level = soc; charging = current > 0.1 }
+                    76 to 76
+                }
+                "segments" -> {
+                    view = com.vanaccess.bms.ui.battery.SegmentGaugeView(context).apply { animate = false; level = soc; this.current = current }
+                    42 to 72
+                }
+                else -> {
+                    view = com.vanaccess.bms.ui.battery.BatteryGaugeView(context).apply { level = soc; charging = current > 0.1 }
+                    40 to 68
+                }
+            }
+            val w = (wDp * dm.density).toInt(); val h = (hDp * dm.density).toInt()
+            view.measure(android.view.View.MeasureSpec.makeMeasureSpec(w, android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(h, android.view.View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, w, h)
+            val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            view.draw(android.graphics.Canvas(bmp))
+            return bmp
+        }
+
         private fun views(context: Context): RemoteViews {
             val v = RemoteViews(context.packageName, R.layout.widget_battery)
             val s = AppPreferences(context).liveSummary
@@ -44,6 +71,10 @@ class BatteryWidget : AppWidgetProvider() {
                 v.setViewVisibility(R.id.w_range, View.GONE)
                 v.setTextViewText(R.id.w_time, "")
             } else {
+                val design = AppPreferences(context).liveDesign
+                v.setImageViewBitmap(R.id.w_gauge, gaugeBitmap(context, design, s.soc, s.current))
+                // The ring already shows the percentage inside it
+                v.setViewVisibility(R.id.w_soc, if (design == "ring") View.GONE else View.VISIBLE)
                 v.setTextViewText(R.id.w_soc, "${s.soc}%")
                 v.setTextColor(R.id.w_soc, Color.parseColor(when {
                     s.soc >= 50 -> "#43D17A"; s.soc >= 25 -> "#F5B83D"; else -> "#F0544F"

@@ -60,6 +60,12 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
 - **Saved batteries**, fast reconnect to the last one, automatic reconnection.
 - **In-app updates** from this repository's releases, resilient to GitHub's request limit.
 - **BMS history kept on the phone** with the last download date.
+- **Charger & charging**: recognises your charger from each charge curve (current, constant-voltage stage, what
+  ended the charge) and judges it against your battery's limits, with charging tips.
+- **Live designs**: classic, coloured segments, ring, compact, riding (landscape, screen kept on), and a round Live
+  button in the middle of the bottom bar.
+- **Home-screen widget** drawn like the chosen battery design, and a **live ongoing notification**.
+- **Export** reports as CSV and trip tracks as GPX, **cell tracking over time** to catch a weak cell, and a **balance reminder**.
 - **Privacy**: reports and tracks stay on the phone. GPS runs only during trips, without Google services.
 - **Read-only**: the app never changes BMS settings and sends no control commands.
 
