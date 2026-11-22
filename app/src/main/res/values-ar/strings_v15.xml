@@ -40,5 +40,23 @@
     <string name="design_classic">كلاسيكي — رسم البطارية (الافتراضي)</string>
     <string name="design_ring">حلقة — مقياس دائري</string>
     <string name="design_compact">مدمج — قيم أكثر وأصغر</string>
-    <string name="design_ride">القيادة — أرقام كبيرة جداً</string>
+    <string name="design_ride">القيادة — أرقام كبيرة جداً، والشاشة تبقى مضاءة (ويعمل أفقياً)</string>
+    <string name="widget_desc">نسبة الشحن والجهد والتيار والمدى بنظرة</string>
+    <string name="limit_presets_desc">حد الشحن اليومي: يرنّ تنبيه اكتمال الشحن عند هذه النسبة لتفصل الشاحن. الشحن حتى 100٪ مرة في الأسبوع يتيح موازنة الخلايا.</string>
+    <string name="limit_preset">%1$d٪</string>
+    <string name="export_chip">⇪ تصدير</string>
+    <string name="export_title">تصدير التقارير</string>
+    <string name="export_csv">كل التقارير (CSV، جدول بيانات)</string>
+    <string name="export_gpx">مسارات الرحلات (GPX، خرائط)</string>
+    <string name="export_empty">لا يوجد ما يُصدَّر بعد</string>
+    <string name="cell_trend_title">الخلايا عبر الزمن</string>
+    <string name="cell_trend_desc">الخلايا التي تبقى الأدنى عبر قراءات كثيرة (في الراحة وتحت الحمل). تُجمع أثناء الاتصال.</string>
+    <string name="cell_trend_none">القراءات غير كافية بعد — تُؤخذ عينة كل 30 ثانية.</string>
+    <string name="cell_trend_ok">لا خلية تبرز. البطارية تبدو متوازنة.</string>
+    <string name="cell_trend_row">الخلية %1$d: %2$s • الأدنى في %3$d٪ من القراءات</string>
+    <string name="cell_trend_load">%1$+.0f مللي فولت تحت الحمل</string>
+    <string name="cell_trend_rest">%1$+.0f مللي فولت في الراحة</string>
+    <string name="cell_trend_watch">⚠ الخلية %1$d تهبط باستمرار — راقبها؛ إن ساءت فقد تحتاج البطارية موازنة أو صيانة.</string>
+    <string name="balance_reminder_title">حان وقت شحنة كاملة</string>
+    <string name="balance_reminder_switch">ذكّرني بالشحن حتى 100٪ (للموازنة)</string>
 </resources>

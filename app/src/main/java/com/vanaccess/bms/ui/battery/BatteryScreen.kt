@@ -122,7 +122,15 @@ class BatteryScreen(
         showPage(b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: Page.LIVE)
     }
 
+    /** Riding design: keep the screen on while the Live tab is visible. */
+    private fun updateKeepScreenOn(p: Page) {
+        val w = fragment.activity?.window ?: return
+        val flag = android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        if (design == "ride" && p == Page.LIVE) w.addFlags(flag) else w.clearFlags(flag)
+    }
+
     private fun showPage(p: Page) {
+        updateKeepScreenOn(p)
         b.pageLive.visibility = if (p == Page.LIVE) View.VISIBLE else View.GONE
         b.pageCells.visibility = if (p == Page.CELLS) View.VISIBLE else View.GONE
         b.pageInfo.visibility = if (p == Page.INFO) View.VISIBLE else View.GONE
@@ -136,6 +144,7 @@ class BatteryScreen(
     private fun observe() {
         val owner = fragment.viewLifecycleOwner
         BleService.connectionState.observe(owner) { updateHeader() }
+        BleService.cellStats.observe(owner) { renderCellTrend(it) }
         // Central Live button in the bottom bar
         var lastLiveReq = MainActivity.openLive.value ?: 0L
         MainActivity.openLive.observe(owner) { t ->
@@ -147,7 +156,10 @@ class BatteryScreen(
         }
         b.root.post(ticker)
         owner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
-            override fun onDestroy(o: androidx.lifecycle.LifecycleOwner) { b.root.removeCallbacks(ticker) }
+            override fun onDestroy(o: androidx.lifecycle.LifecycleOwner) {
+                b.root.removeCallbacks(ticker)
+                fragment.activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
         })
         BleService.activeDriverName.observe(owner) { updateHeader(); renderInfo() }
         BleService.activeFeatures.observe(owner) { rebuildTabs(it) }
@@ -463,6 +475,29 @@ class BatteryScreen(
         updateChart(cells, avg)
     }
 
+    /** Weak-cell tracking over time (CellTracker via BleService). */
+    private fun renderCellTrend(weak: List<com.vanaccess.bms.reports.CellTracker.Weak>) {
+        val box = b.boxCellTrend
+        box.removeAllViews()
+        if (weak.isEmpty()) {   // fewer than 10 samples so far
+            box.addView(label(fragment.getString(R.string.cell_trend_none), cGrey, 13f))
+            return
+        }
+        weak.forEach { w ->
+            val dev = w.loadMv?.let { fragment.getString(R.string.cell_trend_load, it) }
+                ?: w.restMv?.let { fragment.getString(R.string.cell_trend_rest, it) } ?: "—"
+            box.addView(label(fragment.getString(R.string.cell_trend_row, w.cell, dev, w.lowestPct),
+                if (w.concerning) cOrange else Color.WHITE, 13f, bold = w.concerning).apply {
+                setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt())
+            })
+        }
+        val watch = weak.firstOrNull { it.concerning }
+        box.addView(label(if (watch != null) fragment.getString(R.string.cell_trend_watch, watch.cell)
+            else fragment.getString(R.string.cell_trend_ok), if (watch != null) cOrange else cGreen, 13f).apply {
+            setPadding(0, (6 * dp).toInt(), 0, 0)
+        })
+    }
+
     private fun cellTile(title: String, mv: String, border: Int): View {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -674,7 +709,15 @@ class BatteryScreen(
         b.tvSoc.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSocLabel.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSoc.textSize = when (d) { "compact" -> 38f; "ride" -> 84f; else -> 52f }
-        b.gridMetrics.columnCount = if (d == "compact") 3 else 2
+        val landscape = fragment.resources.configuration.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        b.gridMetrics.columnCount = when {
+            d == "compact" -> 3
+            d == "ride" && landscape -> 4      // handlebar mount: one row of big numbers
+            landscape -> 3
+            else -> 2
+        }
+        if (d == "ride" && landscape) b.tvSoc.textSize = 64f
         val details = d != "ride"
         listOf(b.boxCapacity.parent, b.gridTemps.parent?.parent, b.gridStatus.parent?.parent).forEach {
             (it as? View)?.visibility = if (details) View.VISIBLE else View.GONE

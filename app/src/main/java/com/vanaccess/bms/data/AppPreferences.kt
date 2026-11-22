@@ -150,6 +150,43 @@ class AppPreferences(context: Context) {
         get() = prefs.getString("live_design", "classic") ?: "classic"
         set(value) = prefs.edit().putString("live_design", value).apply()
 
+    /** Latest reading for the widget / notification. */
+    data class LiveSummary(val soc: Int, val voltage: Double, val current: Double, val rangeKm: Double?, val timeMs: Long)
+
+    var liveSummary: LiveSummary?
+        get() {
+            val raw = prefs.getString("live_summary", null) ?: return null
+            return try {
+                val o = org.json.JSONObject(raw)
+                LiveSummary(o.getInt("s"), o.getDouble("v"), o.getDouble("i"),
+                    if (o.has("r")) o.getDouble("r") else null, o.getLong("t"))
+            } catch (_: Exception) { null }
+        }
+        set(value) {
+            val o = value?.let {
+                org.json.JSONObject().put("s", it.soc).put("v", it.voltage).put("i", it.current).put("t", it.timeMs)
+                    .apply { it.rangeKm?.let { r -> put("r", r) } }.toString()
+            }
+            prefs.edit().putString("live_summary", o).apply()
+        }
+
+    /** Per-cell long-term stats (reports.CellTracker JSON) and the battery they belong to. */
+    var cellStatsJson: String?
+        get() = prefs.getString("cell_stats", null)
+        set(value) = prefs.edit().putString("cell_stats", value).apply()
+
+    var cellStatsAddress: String?
+        get() = prefs.getString("cell_stats_addr", null)
+        set(value) = prefs.edit().putString("cell_stats_addr", value).apply()
+
+    var balanceReminder: Boolean
+        get() = prefs.getBoolean("balance_reminder", true)
+        set(value) = prefs.edit().putBoolean("balance_reminder", value).apply()
+
+    var lastBalanceReminderMs: Long
+        get() = prefs.getLong("last_balance_reminder_ms", 0L)
+        set(value) = prefs.edit().putLong("last_balance_reminder_ms", value).apply()
+
     // ── Smart summaries ──────────────────────────────────────────────────────
     var notifySessionSummary: Boolean
         get() = prefs.getBoolean("notify_session_summary", true)

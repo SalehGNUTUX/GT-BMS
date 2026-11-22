@@ -453,8 +453,25 @@ class SettingsFragment : Fragment() {
         binding.etAlarmLowSoc.setText(prefs.alarmLowSoc.toString())
         binding.etAlarmLowV.setText(fmtV(prefs.alarmLowVoltage))
         binding.etAlarmCooldown.setText(prefs.alarmCooldownMinutes.toString())
+        // Charge-limit presets (80 / 90 / 100 %) for the full-charge alarm
+        binding.chipsSocLimit.removeAllViews()
+        listOf(80, 90, 100).forEach { pct ->
+            binding.chipsSocLimit.addView(com.google.android.material.chip.Chip(requireContext()).apply {
+                text = getString(R.string.limit_preset, pct)
+                isCheckable = true
+                isChecked = prefs.alarmHighSoc == pct
+                setOnClickListener {
+                    prefs.alarmHighSoc = pct
+                    prefs.alarmHighEnabled = true
+                    binding.etAlarmHighSoc.setText(pct.toString())
+                    binding.switchAlarmHigh.isChecked = true
+                }
+            })
+        }
         binding.switchSumNotify.isChecked = prefs.notifySessionSummary
         binding.switchSumNotify.setOnCheckedChangeListener { _, c -> prefs.notifySessionSummary = c }
+        binding.switchBalanceReminder.isChecked = prefs.balanceReminder
+        binding.switchBalanceReminder.setOnCheckedChangeListener { _, c -> prefs.balanceReminder = c }
         binding.switchSumWeekly.isChecked = prefs.notifyWeekly
         binding.switchSumWeekly.setOnCheckedChangeListener { _, c -> prefs.notifyWeekly = c }
         binding.switchAlarmDelta.isChecked = prefs.alarmDeltaEnabled

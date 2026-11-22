@@ -4,4 +4,6 @@
     <cache-path name="updates" path="updates/" />
     <!-- The app's own APK when the user shares it from Settings -->
     <cache-path name="shared_apk" path="shared_apk/" />
+    <!-- Exported reports (CSV / GPX) -->
+    <cache-path name="exports" path="exports/" />
 </paths>

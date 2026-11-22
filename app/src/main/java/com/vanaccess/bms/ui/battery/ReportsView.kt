@@ -64,6 +64,11 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                     setOnClickListener { filter = type; reload() }
                 })
             }
+        b.chipsReports.addView(Chip(ctx).apply {
+            text = fragment.getString(R.string.export_chip)
+            isCheckable = false
+            setOnClickListener { chooseExport() }
+        })
         SessionRecorder.savedCount.observe(fragment.viewLifecycleOwner) { reload() }
     }
 
@@ -171,6 +176,10 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
+            .also { d ->
+                styleButton(d.getButton(AlertDialog.BUTTON_POSITIVE), Color.parseColor("#F0544F"))
+                styleButton(d.getButton(AlertDialog.BUTTON_NEGATIVE), Color.parseColor("#3A3F55"))
+            }
     }
 
     // ── Detail ───────────────────────────────────────────────────────────────
@@ -241,9 +250,29 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         AlertDialog.Builder(ctx)
             .setTitle(kind(s).first + " " + fragment.getString(kind(s).second) + "  " + date(s.startMs))
             .setView(scroll)
-            .setPositiveButton(android.R.string.ok, null)
-            .setNeutralButton(R.string.btn_delete) { _, _ -> confirmDelete(s) }
+            // In the Arabic (RTL) dialog the neutral button sits on the right and the positive on the
+            // left: OK on the right in green, Delete on the left in red.
+            .setNeutralButton(android.R.string.ok, null)
+            .setPositiveButton(R.string.btn_delete) { _, _ -> confirmDelete(s) }
             .show()
+            .also { d ->
+                styleButton(d.getButton(AlertDialog.BUTTON_NEUTRAL), cGreen)
+                styleButton(d.getButton(AlertDialog.BUTTON_POSITIVE), Color.parseColor("#F0544F"))
+            }
+    }
+
+    /** Filled, rounded dialog button with white text. */
+    private fun styleButton(btn: android.widget.Button?, color: Int) {
+        btn ?: return
+        btn.background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(color) }
+        btn.setTextColor(Color.WHITE)
+        btn.setTypeface(btn.typeface, Typeface.BOLD)
+        btn.isAllCaps = false
+        btn.minWidth = (96 * dp).toInt()
+        btn.setPadding((20 * dp).toInt(), (8 * dp).toInt(), (20 * dp).toInt(), (8 * dp).toInt())
+        (btn.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+            lp.marginStart = (6 * dp).toInt(); lp.marginEnd = (6 * dp).toInt(); btn.layoutParams = lp
+        }
     }
 
     private fun loadChart(chart: LineChart, s: Session) {
@@ -280,6 +309,54 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 }
                 chart.data = LineData(sets.toList())
                 chart.invalidate()
+            }
+        }
+    }
+
+    // ── Export ───────────────────────────────────────────────────────────────
+
+    private fun chooseExport() {
+        val opts = arrayOf(fragment.getString(R.string.export_csv), fragment.getString(R.string.export_gpx))
+        AlertDialog.Builder(ctx)
+            .setTitle(R.string.export_title)
+            .setItems(opts) { _, which -> export(gpx = which == 1) }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    /** Write CSV (all reports) or GPX (GPS trips) to cache/exports and open the share sheet. */
+    private fun export(gpx: Boolean) {
+        val app = ctx.applicationContext
+        thread {
+            val store = ReportStore.get(app)
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+            val text: String? = if (gpx) {
+                val trips = store.list(Session.TYPE_TRIP, 500).map { it to store.points(it.id) }
+                    .filter { (_, p) -> p.any { it.lat != null } }
+                if (trips.isEmpty()) null else com.vanaccess.bms.reports.Exporter.gpx(trips)
+            } else {
+                val all = store.list(null, 5000)
+                if (all.isEmpty()) null else com.vanaccess.bms.reports.Exporter.csv(all)
+            }
+            fragment.activity?.runOnUiThread {
+                if (text == null) {
+                    android.widget.Toast.makeText(app, R.string.export_empty, android.widget.Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                try {
+                    val dir = java.io.File(app.cacheDir, "exports").apply { mkdirs() }
+                    val f = java.io.File(dir, "GT-BMS-$stamp." + if (gpx) "gpx" else "csv")
+                    f.writeText(text)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.fileprovider", f)
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = if (gpx) "application/gpx+xml" else "text/csv"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(android.content.Intent.createChooser(send, fragment.getString(R.string.export_title)))
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(app, e.message, android.widget.Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

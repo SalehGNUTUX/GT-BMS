@@ -73,6 +73,8 @@ class BleService : LifecycleService() {
         val activeDriverName = MutableLiveData<String?>()
         /** Wall-clock time of the last BMS reading (0 = none yet), for "last update: N min ago". */
         @Volatile var lastDataMs: Long = 0L
+        /** Cells that sit lowest over time (CellTracker), for the Cells tab. */
+        val cellStats = MutableLiveData<List<com.vanaccess.bms.reports.CellTracker.Weak>>(emptyList())
         private var lastDataPersistMs = 0L
         /** Device identity (model, serials, clock…) keyed by DetailKey. */
         val deviceDetails = MutableLiveData<Map<String, String>>(emptyMap())
@@ -150,6 +152,7 @@ class BleService : LifecycleService() {
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
         if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
+        cellStats.postValue(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest())
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
         if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
         recorder.onSaved = { com.vanaccess.bms.ui.AdviceText.notifySession(this, it) }
@@ -163,6 +166,7 @@ class BleService : LifecycleService() {
                 basicInfo.value?.let { b ->
                     com.vanaccess.bms.ui.AdviceText.maybeWeekly(this@BleService, b.fullCapacity, b.cycleCount)
                 }
+                com.vanaccess.bms.ui.AdviceText.maybeBalanceReminder(this@BleService)
                 handler.postDelayed(this, 60 * 60 * 1000L)
             }
         })
@@ -541,7 +545,7 @@ class BleService : LifecycleService() {
         bluetoothGatt?.close()
         bluetoothGatt = null
         connectionState.postValue(ConnectionState.DISCONNECTED)
-        updateNotification("Disconnected", "")
+        updateNotification(getString(R.string.st_disconnected), "")
     }
 
     private fun scheduleReconnect(address: String) {
@@ -549,7 +553,7 @@ class BleService : LifecycleService() {
         reconnectRunnable = Runnable {
             if (connectionState.value != ConnectionState.CONNECTED) {
                 connectionState.postValue(ConnectionState.RECONNECTING)
-                updateNotification("Reconnecting...", address)
+                updateNotification(getString(R.string.st_reconnecting), address)
                 connectToDevice(address)
             }
         }.also { handler.postDelayed(it, 2000) }
@@ -567,7 +571,7 @@ class BleService : LifecycleService() {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     connectionState.postValue(ConnectionState.CONNECTED)
-                    updateNotification("Connected", gatt.device.name ?: gatt.device.address)
+                    updateNotification(getString(R.string.st_connected), gatt.device.name ?: gatt.device.address)
                     // Request a larger MTU; onMtuChanged fires then we discover services
                     gatt.requestMtu(512)
                 }
@@ -578,7 +582,7 @@ class BleService : LifecycleService() {
                     writeCharacteristic = null
                     notifyCharacteristic = null
                     connectionState.postValue(ConnectionState.DISCONNECTED)
-                    updateNotification("Disconnected", "Auto-reconnecting...")
+                    updateNotification(getString(R.string.st_disconnected), getString(R.string.notif_auto_reconnecting))
                     // Auto reconnect if we have a saved address
                     val savedAddress = prefs.selectedDeviceAddress
                     if (!savedAddress.isNullOrEmpty()) {
@@ -946,12 +950,14 @@ class BleService : LifecycleService() {
             if (nowMs - lastDataPersistMs >= 30_000L) { prefs.lastDataMs = nowMs; lastDataPersistMs = nowMs }
             lastDataMs = nowMs
             basicInfo.postValue(it)
+            publishLive(it, nowMs)
             alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
             recorder.onReading(it)
         }
         out.cells?.let {
             cellVoltages.postValue(it)
             recorder.onCells(it)
+            basicInfo.value?.let { b -> trackCells(it, b.current) }
             basicInfo.value?.let { b -> alarmMonitor.onCells(it, b.current, b.soc) }
         }
         out.hardware?.let { hardwareInfo.postValue(it) }
@@ -1288,6 +1294,71 @@ class BleService : LifecycleService() {
             .build()
     }
 
+    // ── Long-term cell tracking (weak-cell detection) ─────────────────────────
+
+    private var cellTracker: com.vanaccess.bms.reports.CellTracker? = null
+    private var lastCellSampleMs = 0L
+    private var lastCellSaveMs = 0L
+
+    private fun trackCells(cells: List<Double>, current: Double) {
+        val now = System.currentTimeMillis()
+        if (now - lastCellSampleMs < 30_000L) return
+        lastCellSampleMs = now
+        val addr = bluetoothGatt?.device?.address ?: return
+        val t = cellTracker ?: run {
+            // Stats belong to one battery: start fresh when another one is connected
+            if (prefs.cellStatsAddress != addr) { prefs.cellStatsJson = null; prefs.cellStatsAddress = addr }
+            com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson)
+        }.also { cellTracker = it }
+        t.update(cells, current, prefs.vehicle.loadCurrentA)
+        if (now - lastCellSaveMs >= 5 * 60_000L) { lastCellSaveMs = now; prefs.cellStatsJson = t.toJson() }
+        cellStats.postValue(t.weakest())
+    }
+
+    // ── Live summary: persistent notification + home-screen widget ─────────────
+
+    private var lastNotifyMs = 0L
+    private var lastWidgetMs = 0L
+    @Volatile private var learnedCache: Pair<Double, Double>? = null
+    private var learnedAtMs = 0L
+
+    /** Range for vehicle profiles (same estimator as the Live tab). */
+    private fun rangeKm(info: BmsBasicInfo): Double? {
+        val v = prefs.vehicle
+        if (!v.mobile) return null
+        val now = System.currentTimeMillis()
+        if (now - learnedAtMs > 15 * 60_000L) {
+            learnedAtMs = now
+            Thread { learnedCache = try { com.vanaccess.bms.reports.ReportStore.get(this).learnedConsumption() } catch (_: Exception) { null } }.start()
+        }
+        val lim = com.vanaccess.bms.reports.BmsLimits.fromJson(prefs.bmsLimitsJson)
+        return com.vanaccess.bms.reports.RangeEstimator.estimate(info.remainCapacity, info.fullCapacity, info.packVoltage,
+            prefs.bmsCellCount, lim.lfp || lim.cellOvMv == null, prefs.consumptionWhKm.toDouble(), learnedCache,
+            v.defaultWhPerKm)?.km
+    }
+
+    /** Live values in the ongoing notification (every 10 s) and the widget (every 30 s). */
+    private fun publishLive(info: BmsBasicInfo, now: Long) {
+        val range = rangeKm(info)
+        if (now - lastNotifyMs >= 10_000L) {
+            lastNotifyMs = now
+            val state = getString(when {
+                info.current > 0.1 -> R.string.st_charging
+                info.current < -0.1 -> R.string.st_discharging
+                else -> R.string.st_idle
+            })
+            val title = String.format(java.util.Locale.US, "🔋 %d%%  •  %.2f V", info.soc, info.packVoltage)
+            val text = String.format(java.util.Locale.US, "%s  •  %+.1f A  •  %.0f W", state, info.current,
+                kotlin.math.abs(info.powerWatts)) + (range?.let { String.format(java.util.Locale.US, "  •  ≈ %.0f km", it) } ?: "")
+            updateNotification(title, text)
+        }
+        if (now - lastWidgetMs >= 30_000L) {
+            lastWidgetMs = now
+            prefs.liveSummary = AppPreferences.LiveSummary(info.soc, info.packVoltage, info.current, range, now)
+            com.vanaccess.bms.widget.BatteryWidget.refresh(this)
+        }
+    }
+
     private fun updateNotification(title: String, text: String) {
         val nm = getSystemService(NotificationManager::class.java)
         nm.notify(NOTIFICATION_ID, buildNotification(title, text))
@@ -1320,6 +1391,7 @@ class BleService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        cellTracker?.let { prefs.cellStatsJson = it.toJson() }
         recorder.release()
         alarmMonitor.release()
         stopScan()

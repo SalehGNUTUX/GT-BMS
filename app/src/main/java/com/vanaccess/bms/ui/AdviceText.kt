@@ -115,6 +115,28 @@ object AdviceText {
         }.start()
     }
 
+    /**
+     * Balance reminder: no full charge for 7 days → one notification, repeated at most every
+     * 3 days. Cells only balance near full, so an occasional 100 % charge keeps them even.
+     */
+    fun maybeBalanceReminder(ctx: Context) {
+        val prefs = AppPreferences(ctx)
+        val now = System.currentTimeMillis()
+        if (!prefs.balanceReminder || now - prefs.lastBalanceReminderMs < 3 * 86_400_000L) return
+        Thread {
+            val charges = ReportStore.get(ctx).list(Session.TYPE_CHARGE, 200)
+            if (charges.isEmpty()) return@Thread             // nothing recorded yet: no basis to judge
+            val lastFull = charges.firstOrNull { it.b("reached_full") || it.b("ended_by_protection") }
+            val since = lastFull?.endMs ?: charges.last().startMs
+            val days = ((now - since) / 86_400_000L).toInt()
+            if (days < 7) return@Thread
+            prefs.lastBalanceReminderMs = now
+            val lim = limits(ctx)
+            notify(ctx, 4, ctx.getString(R.string.balance_reminder_title),
+                listOf(Advisor.Rec(Advisor.Level.WARNING, "balance_needed", listOf(days, (lim.balanceStartMv ?: 3400) / 1000.0))))
+        }.start()
+    }
+
     /** Weekly summary, at most once every 7 days (background thread). */
     fun maybeWeekly(ctx: Context, fullAh: Double?, cycles: Int?) {
         val prefs = AppPreferences(ctx)
