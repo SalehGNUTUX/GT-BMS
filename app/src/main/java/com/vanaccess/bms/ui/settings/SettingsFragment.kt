@@ -175,7 +175,9 @@ class SettingsFragment : Fragment() {
 
     // ── Section tiles ───────────────────────────────────────────────────────
 
-    private data class Section(val key: String, val icon: String, val title: Int, val sub: Int, val cards: List<View>)
+    private val SECTION_COLORS = mapOf("devices" to "#2ECC71", "vehicle" to "#2196F3", "alarms" to "#F5A623", "charger" to "#FF7043", "prefs" to "#9C8CFF", "updates" to "#26C6DA", "share" to "#EC407A", "backup" to "#4FC3F7", "about" to "#90A4AE")
+
+    private data class Section(val key: String, val icon: Int, val title: Int, val sub: Int, val cards: List<View>)
 
     private var openSection: String? = null
     private lateinit var sections: List<Section>
@@ -183,18 +185,18 @@ class SettingsFragment : Fragment() {
     /** Settings start as a grid of tiles; a tile opens one section with a back arrow. */
     private fun setupSections() {
         sections = listOf(
-            Section("devices", "🔋", R.string.sec_devices, R.string.sec_devices_sub, listOf(binding.cardDevices, binding.cardScan)),
-            Section("vehicle", prefs.vehicle.icon, R.string.sec_vehicle, R.string.sec_vehicle_sub, listOf(binding.cardVehicle)),
-            Section("alarms", "⏰", R.string.sec_alarms, R.string.sec_alarms_sub, listOf(binding.cardAlarms)),
-            Section("charger", "🔌", R.string.charger_section, R.string.charger_section_sub, listOf(binding.cardCharger)),
-            Section("prefs", "⚙️", R.string.sec_prefs, R.string.sec_prefs_sub, listOf(binding.cardPrefs)),
+            Section("devices", R.drawable.ic_sec_devices, R.string.sec_devices, R.string.sec_devices_sub, listOf(binding.cardDevices, binding.cardScan)),
+            Section("vehicle", R.drawable.ic_sec_vehicle, R.string.sec_vehicle, R.string.sec_vehicle_sub, listOf(binding.cardVehicle)),
+            Section("alarms", R.drawable.ic_sec_alarms, R.string.sec_alarms, R.string.sec_alarms_sub, listOf(binding.cardAlarms)),
+            Section("charger", R.drawable.ic_sec_charger, R.string.charger_section, R.string.charger_section_sub, listOf(binding.cardCharger)),
+            Section("prefs", R.drawable.ic_sec_prefs, R.string.sec_prefs, R.string.sec_prefs_sub, listOf(binding.cardPrefs)),
             // F-Droid builds update through F-Droid: no Updates section there
             *(if (com.vanaccess.bms.BuildConfig.SELF_UPDATE)
-                arrayOf(Section("updates", "⬆️", R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)))
+                arrayOf(Section("updates", R.drawable.ic_sec_updates, R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)))
               else emptyArray()),
-            Section("share", "📤", R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
-            Section("backup", "💾", R.string.sec_backup, R.string.sec_backup_sub, listOf(binding.cardBackup)),
-            Section("about", "ℹ️", R.string.sec_about, R.string.sec_about_sub, listOf(binding.cardAbout, binding.cardDev)),
+            Section("share", R.drawable.ic_sec_share, R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
+            Section("backup", R.drawable.ic_sec_backup, R.string.sec_backup, R.string.sec_backup_sub, listOf(binding.cardBackup)),
+            Section("about", R.drawable.ic_sec_about, R.string.sec_about, R.string.sec_about_sub, listOf(binding.cardAbout, binding.cardDev)),
         )
         if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) binding.cardUpdates.visibility = View.GONE
         val dp = resources.displayMetrics.density
@@ -214,7 +216,18 @@ class SettingsFragment : Fragment() {
                 setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
                 minimumHeight = (104 * dp).toInt()
             }
-            col.addView(android.widget.TextView(requireContext()).apply { text = sec.icon; textSize = 26f })
+            // Icon in a soft tile of its own colour (one colour per section)
+            val tint = Color.parseColor(SECTION_COLORS[sec.key] ?: "#4DA3FF")
+            col.addView(android.widget.ImageView(requireContext()).apply {
+                setImageResource(sec.icon)
+                imageTintList = android.content.res.ColorStateList.valueOf(tint)
+                val pad = (9 * dp).toInt(); setPadding(pad, pad, pad, pad)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 13 * dp
+                    setColor(androidx.core.graphics.ColorUtils.setAlphaComponent(tint, 0x2E))
+                    setStroke((1 * dp).toInt(), androidx.core.graphics.ColorUtils.setAlphaComponent(tint, 0x55))
+                }
+            }, android.widget.LinearLayout.LayoutParams((44 * dp).toInt(), (44 * dp).toInt()).apply { bottomMargin = (4 * dp).toInt() })
             col.addView(android.widget.TextView(requireContext()).apply {
                 text = getString(sec.title); textSize = 15f; setTextColor(Color.WHITE)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -264,6 +277,10 @@ class SettingsFragment : Fragment() {
             binding.tilRatedCycles to (R.string.info_cycles_title to R.string.info_cycles),
             binding.tilDeltaRest to (R.string.info_delta_rest_title to R.string.info_delta_rest),
             binding.tilDeltaLoad to (R.string.info_delta_load_title to R.string.info_delta_load),
+            binding.tilPriceKwh to (R.string.cost_price_hint to R.string.info_price_kwh),
+            binding.tilCurrency to (R.string.cost_currency_hint to R.string.info_currency),
+            binding.tilFuelPrice to (R.string.cost_fuel_price_title to R.string.info_fuel_price),
+            binding.tilFuelL100 to (R.string.cost_fuel_l100_title to R.string.info_fuel_l100),
         ).forEach { (til, txt) ->
             til.setEndIconOnClickListener {
                 com.vanaccess.bms.ui.AppDialog.info(requireContext(), getString(txt.first), getString(txt.second))
@@ -395,7 +412,23 @@ class SettingsFragment : Fragment() {
 
     private fun setupUpdates() {
         binding.switchAutoUpdate.isChecked = prefs.autoCheckUpdates
-        binding.switchAutoUpdate.setOnCheckedChangeListener { _, c -> prefs.autoCheckUpdates = c }
+        fun renderInterval() {
+            binding.tvUpdateInterval.visibility = if (prefs.autoCheckUpdates) View.VISIBLE else View.GONE
+            binding.tvUpdateInterval.text = getString(R.string.update_interval,
+                com.vanaccess.bms.ui.UpdateUi.intervalLabel(requireContext(), prefs.updateIntervalH)) + "  ▾"
+        }
+        renderInterval()
+        binding.switchAutoUpdate.setOnCheckedChangeListener { _, c ->
+            prefs.autoCheckUpdates = c; renderInterval(); UpdateChecker.schedule(requireContext())
+        }
+        binding.tvUpdateInterval.setOnClickListener {
+            val all = com.vanaccess.bms.ui.UpdateUi.INTERVALS
+            AD.show(requireContext(), getString(R.string.update_auto_check),
+                items = all.map { com.vanaccess.bms.ui.UpdateUi.intervalLabel(requireContext(), it) },
+                checked = all.indexOf(prefs.updateIntervalH), onItem = { i ->
+                prefs.updateIntervalH = all[i]; renderInterval(); UpdateChecker.schedule(requireContext())
+            })
+        }
         binding.switchPrerelease.isChecked = prefs.allowPrerelease
         binding.switchPrerelease.setOnCheckedChangeListener { _, c -> prefs.allowPrerelease = c }
         binding.btnUpdateCheck.setOnClickListener { UpdateChecker.check(requireContext(), userInitiated = true) }
@@ -448,40 +481,20 @@ class SettingsFragment : Fragment() {
             is UpdatePhase.Available -> getString(R.string.update_available_status, phase.info.version, current)
             else -> getString(R.string.update_current, current)
         }
+        val act = activity as? androidx.appcompat.app.AppCompatActivity ?: return
+        binding.btnUpdateNotes.visibility = View.GONE
         if (phase is UpdatePhase.Available) {
             val info = phase.info
+            binding.btnUpdateNotes.visibility = View.VISIBLE
+            binding.btnUpdateNotes.setOnClickListener { com.vanaccess.bms.ui.UpdateUi.showNotes(act, info) }
             btn.visibility = View.VISIBLE
             btn.text = getString(R.string.update_download_install)
-            btn.setOnClickListener {
-                val asset = info.asset
-                if (asset == null) {
-                    startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(info.releaseUrl)))
-                    return@setOnClickListener
-                }
-                com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.update_available_title, info.version),
-                    message = info.notes.ifBlank { getString(R.string.update_available_text) },
-                    buttons = listOf(
-                        com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.update_download_install), com.vanaccess.bms.ui.AppDialog.GREEN) {
-                            (activity as? MainActivity)?.ensureNotificationPermission()
-                            UpdateService.start(ctx, asset)
-                        },
-                        com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
-                    ))
-            }
+            btn.setOnClickListener { com.vanaccess.bms.ui.UpdateUi.download(act, info) }
         }
     }
 
     private fun installUpdate(file: java.io.File) {
-        val ctx = requireContext()
-        if (!Updater.canInstall(ctx)) {
-            Toast.makeText(ctx, R.string.update_allow_install, Toast.LENGTH_LONG).show()
-            startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:${ctx.packageName}")))
-            return
-        }
-        Updater.install(ctx, file).onFailure {
-            Toast.makeText(ctx, it.message, Toast.LENGTH_LONG).show()
-        }
+        (activity as? androidx.appcompat.app.AppCompatActivity)?.let { com.vanaccess.bms.ui.UpdateUi.install(it, file) }
     }
 
     // ── Battery alarms ──────────────────────────────────────────────────────

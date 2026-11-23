@@ -21,4 +21,13 @@
     <string name="update_prerelease">Inclure les versions bêta</string>
     <string name="update_allow_install">Autorisez GT-BMS à installer des applications, puis appuyez de nouveau sur Installer</string>
     <string name="update_rate_limited">GitHub limite temporairement les requêtes depuis ce réseau ; réessayez dans quelques minutes</string>
+    <string name="update_notes">Nouveautés</string>
+    <string name="update_later">Plus tard</string>
+    <string name="update_retry">Réessayer</string>
+    <string name="update_interval">Vérification : %1$s</string>
+    <string name="update_every_6h">toutes les 6 heures</string>
+    <string name="update_every_12h">toutes les 12 heures</string>
+    <string name="update_every_day">une fois par jour</string>
+    <string name="update_every_week">une fois par semaine</string>
+    <string name="update_mb">%1$.1f / %2$.1f Mo</string>
 </resources>

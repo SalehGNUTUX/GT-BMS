@@ -179,6 +179,10 @@
                     android:layout_marginBottom="6dp" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_price_kwh"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_info"
+                    app:endIconContentDescription="@string/info"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -194,6 +198,10 @@
                         android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_currency"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_info"
+                    app:endIconContentDescription="@string/info"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -211,6 +219,10 @@
                 </LinearLayout>
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="6dp">
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_fuel_price"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_info"
+                    app:endIconContentDescription="@string/info"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -226,6 +238,10 @@
                         android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_fuel_l100"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_info"
+                    app:endIconContentDescription="@string/info"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -1436,6 +1452,16 @@
                     android:text="@string/update_auto_check"
                     android:textColor="@color/text_primary" />
 
+                <TextView
+                    android:id="@+id/tv_update_interval"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:textColor="#4DA3FF"
+                    android:textSize="14sp" />
+
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_prerelease"
                     android:layout_width="match_parent"
@@ -1456,6 +1482,15 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:text="@string/update_check"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_update_notes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:visibility="gone"
+                        android:text="@string/update_notes"
                         style="@style/Widget.Material3.Button.TonalButton" />
 
                     <com.google.android.material.button.MaterialButton

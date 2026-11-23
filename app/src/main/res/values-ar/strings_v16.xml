@@ -29,10 +29,10 @@
     <string name="map_no_app">لعرض الرحلة على خريطة حقيقية ثبّت OsmAnd — مجاني ويعمل دون إنترنت بخرائط قابلة للتنزيل. نسخة OsmAnd~ على F-Droid هي النسخة الحرة بالكامل، ويمكن لـ GT-SPEEDOMETER أيضاً فتحها عبر OsmAnd.</string>
     <string name="cost_title">تكلفة الطاقة</string>
     <string name="cost_desc">تظهر في تقارير الشحن والرحلات، وتشمل نحو 15٪ فقد الشاحن. خانتا الوقود (اختياريتان) للمقارنة بمركبة بنزين.</string>
-    <string name="cost_price_hint">سعر الكيلوواط·ساعة</string>
+    <string name="cost_price_hint">سعر kWh</string>
     <string name="cost_currency_hint">العملة</string>
-    <string name="cost_fuel_price_hint">سعر لتر الوقود</string>
-    <string name="cost_fuel_l100_hint">استهلاك الوقود (لتر/100 كم)</string>
+    <string name="cost_fuel_price_hint">سعر اللتر</string>
+    <string name="cost_fuel_l100_hint">لتر/100 كم</string>
     <string name="cost_row">تكلفة الطاقة</string>
     <string name="cost_per_km">التكلفة لكل كم</string>
     <string name="cost_fuel">الرحلة نفسها بالوقود</string>
@@ -41,7 +41,7 @@
     <string name="devreport_desc">أنشئ تقرير الجهاز (خدمات البلوتوث، البروتوكول المكتشف، آخر الحزم الخام) وشاركه، أو افتح بلاغاً على GitHub وأرفقه. هكذا يُضاف دعم أنظمة إدارة جديدة.</string>
     <string name="devreport_share">مشاركة التقرير</string>
     <string name="devreport_issue">فتح بلاغ على GitHub</string>
-    <string name="devreport_issue_body">طراز البطارية / نظام الإدارة:\nما المشكلة (لا يُكتشف، قيم خاطئة…):\n\nأرفق ملف تقرير الجهاز من GT-BMS (وحدة التشخيص ← مشاركة التقرير).</string>
+    <string name="devreport_issue_body">طراز البطارية / نظام الإدارة:\nما المشكلة (لا يُكتشف، قيم خاطئة…):\n\nأرفق ملف تقرير الجهاز من GT-BMS (وحدة التشخيص › مشاركة التقرير).</string>
     <string name="backup_full_desc">نسخة احتياطية كاملة: كل التقارير ومسارات الرحلات والمستويات والإعدادات في ملف واحد — لنقل GT-BMS إلى هاتف جديد.</string>
     <string name="backup_full_export">نسخة كاملة</string>
     <string name="backup_full_import">استعادة</string>
@@ -67,4 +67,10 @@
         <item>في البرد تنخفض السعة المتاحة؛ توقّع مدى أقصر وانطلق بهدوء حتى تدفأ البطارية.</item>
         <item>راقب «الخلايا عبر الزمن»: إن بقيت خلية تهبط تحت الحمل، خفّف التسارع وافحص التوازن.</item>
     </string-array>
+    <string name="cost_fuel_price_title">سعر لتر الوقود</string>
+    <string name="cost_fuel_l100_title">استهلاك الوقود (لتر لكل 100 كم)</string>
+    <string name="info_price_kwh">ما تدفعه مقابل 1 كيلوواط·ساعة من الكهرباء، كما في فاتورتك (مثلاً 0.80 أو 1.20).\nيضربه GT-BMS في الطاقة التي دخلت البطارية، مع نحو 15٪ تضيع في الشاحن، ليعطيك تكلفة كل شحنة ورحلة وكيلومتر.\nاتركه 0 لإخفاء التكلفة.</string>
+    <string name="info_currency">اسم مختصر أو رمز يظهر بجانب التكلفة: MAD، درهم، €، \$، DZD، TND…\nمجرد تسمية؛ لا يُجرى أي تحويل.</string>
+    <string name="info_fuel_price">اختياري. سعر لتر البنزين بالعملة نفسها.\nمع خانة الاستهلاك، تعرض كل رحلة أيضاً كم كانت ستكلف المسافة نفسها بمركبة بنزين.</string>
+    <string name="info_fuel_l100">اختياري. كم لتراً تستهلك مركبة بنزين مماثلة لكل 100 كم (دراجة نارية صغيرة: نحو 2–3؛ سيارة صغيرة: 5–7).\nمثال: 2.5 لتر/100 كم بسعر 17 للتر › 10 كم تكلف 4.25 وقوداً.\nاتركها فارغة لإخفاء المقارنة.</string>
 </resources>

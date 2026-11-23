@@ -29,10 +29,10 @@
     <string name="map_no_app">To view the trip on a real map, install OsmAnd — free, works offline with downloadable maps. OsmAnd~ on F-Droid is the fully free build; GT-SPEEDOMETER can also open it through OsmAnd.</string>
     <string name="cost_title">Energy cost</string>
     <string name="cost_desc" formatted="false">Shown in charge and trip reports. Includes ~15 % charger loss. Fuel fields (optional) compare with a petrol vehicle.</string>
-    <string name="cost_price_hint">Price per kWh</string>
+    <string name="cost_price_hint">kWh price</string>
     <string name="cost_currency_hint">Currency</string>
-    <string name="cost_fuel_price_hint">Fuel price per litre</string>
-    <string name="cost_fuel_l100_hint">Fuel use (L/100 km)</string>
+    <string name="cost_fuel_price_hint">Fuel/L</string>
+    <string name="cost_fuel_l100_hint">L/100 km</string>
     <string name="cost_row">Energy cost</string>
     <string name="cost_per_km">Cost per km</string>
     <string name="cost_fuel">Same trip with fuel</string>
@@ -67,4 +67,10 @@
         <item>In the cold less capacity is available; expect less range and ride gently until the battery warms up.</item>
         <item>Watch “Cells over time”: if one cell keeps sagging under load, ease acceleration and check the balance.</item>
     </string-array>
+    <string name="cost_fuel_price_title">Fuel price per litre</string>
+    <string name="cost_fuel_l100_title">Fuel use (litres per 100 km)</string>
+    <string name="info_price_kwh" formatted="false">What you pay for 1 kWh of electricity, as on your electricity bill (e.g. 0.80 or 1.20).\nGT-BMS multiplies it by the energy that went into the battery, plus about 15 % lost in the charger, to give the cost of each charge, trip and kilometre.\nLeave it at 0 to hide costs.</string>
+    <string name="info_currency">Short name or symbol shown next to costs: MAD, DH, €, \$, DZD, TND…\nIt is only a label; nothing is converted.</string>
+    <string name="info_fuel_price">Optional. Price of one litre of petrol in the same currency.\nWith the fuel use below, each trip also shows what the same distance would have cost with a petrol vehicle.</string>
+    <string name="info_fuel_l100">Optional. How many litres a comparable petrol vehicle burns per 100 km (a petrol moped: about 2–3; a small car: 5–7).\nExample: 2.5 L/100 km at 17 per litre → 10 km cost 4.25 in fuel.\nLeave empty to hide the comparison.</string>
 </resources>

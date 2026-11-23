@@ -68,7 +68,9 @@
         app:tabSelectedTextColor="@color/accent_blue"
         app:tabTextColor="@color/text_secondary" />
 
-    <FrameLayout
+    <!-- Swiping sideways switches the sub-tabs (vertical scrolling is untouched) -->
+    <com.vanaccess.bms.ui.battery.SwipePager
+        android:id="@+id/page_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
@@ -466,5 +468,5 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
         </LinearLayout>
-    </FrameLayout>
+    </com.vanaccess.bms.ui.battery.SwipePager>
 </LinearLayout>

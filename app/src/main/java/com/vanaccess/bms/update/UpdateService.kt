@@ -42,7 +42,6 @@ object UpdateChecker {
     const val CHANNEL = "gt_bms_update"
     const val NOTIF_AVAILABLE = 3001
     const val EXTRA_OPEN_UPDATES = "open_updates"
-    private const val CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000L
 
     val phase = MutableLiveData<UpdatePhase>(UpdatePhase.Idle)
     @Volatile private var running = false
@@ -52,18 +51,35 @@ object UpdateChecker {
         ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    /** Silent background check: notifies only when a newer version exists. */
-    fun checkIfDue(ctx: Context) {
-        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) return   // F-Droid build: F-Droid handles updates
+    /**
+     * Silent periodic check (on launch, from BleService and from the background alarm):
+     * at most once per chosen interval; notifies only when a newer version exists.
+     */
+    fun checkIfDue(ctx: Context, onDone: (() -> Unit)? = null) {
         val prefs = AppPreferences(ctx)
-        if (!prefs.autoCheckUpdates) return
-        if (System.currentTimeMillis() - prefs.lastUpdateCheck < CHECK_INTERVAL_MS) return
-        check(ctx, userInitiated = false)
+        val due = com.vanaccess.bms.BuildConfig.SELF_UPDATE && prefs.autoCheckUpdates &&
+            System.currentTimeMillis() - prefs.lastUpdateCheck >= prefs.updateIntervalH * 3_600_000L - 5 * 60_000L
+        if (due) check(ctx, userInitiated = false, onDone) else onDone?.invoke()
     }
 
-    fun check(ctx: Context, userInitiated: Boolean) {
-        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) return
-        if (running) return
+    /**
+     * Background check even when GT-BMS is closed: an inexact repeating alarm (battery friendly,
+     * no exact-alarm permission) every interval; re-armed after reboot by [UpdateAlarmReceiver].
+     */
+    fun schedule(ctx: Context) {
+        val app = ctx.applicationContext
+        val am = app.getSystemService(android.app.AlarmManager::class.java) ?: return
+        val pi = PendingIntent.getBroadcast(app, 20, Intent(app, UpdateAlarmReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        am.cancel(pi)
+        val prefs = AppPreferences(app)
+        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE || !prefs.autoCheckUpdates) return
+        val every = prefs.updateIntervalH * 3_600_000L
+        am.setInexactRepeating(android.app.AlarmManager.RTC, System.currentTimeMillis() + every, every, pi)
+    }
+
+    fun check(ctx: Context, userInitiated: Boolean, onDone: (() -> Unit)? = null) {
+        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE || running) { onDone?.invoke(); return }
         running = true
         val app = ctx.applicationContext
         val prefs = AppPreferences(app)
@@ -84,7 +100,8 @@ object UpdateChecker {
                     }
                     else -> if (userInitiated) phase.postValue(UpdatePhase.UpToDate)
                 }
-            } finally { running = false }
+            } catch (_: Exception) {
+            } finally { running = false; onDone?.invoke() }
         }
     }
 
@@ -107,6 +124,17 @@ object UpdateChecker {
         }
         try { ctx.getSystemService(NotificationManager::class.java).notify(NOTIF_AVAILABLE, b.build()) }
         catch (_: SecurityException) {}
+    }
+}
+
+/** Fired by the periodic alarm, and after a reboot to re-arm it. */
+class UpdateAlarmReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            UpdateChecker.schedule(ctx); return
+        }
+        val pending = goAsync()
+        UpdateChecker.checkIfDue(ctx) { pending.finish() }
     }
 }
 

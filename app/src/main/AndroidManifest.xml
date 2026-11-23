@@ -46,6 +46,8 @@
         </intent>
     </queries>
 
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="true"
         android:localeConfig="@xml/locales_config"
@@ -97,6 +99,16 @@
                 android:value="true" />
         </service>
         <!-- Home-screen battery widget -->
+        <!-- Periodic update check while the app is closed; re-armed after reboot / app update -->
+        <receiver
+            android:name=".update.UpdateAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".widget.BatteryWidget"
             android:exported="false">

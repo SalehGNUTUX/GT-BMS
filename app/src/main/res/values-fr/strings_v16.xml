@@ -29,10 +29,10 @@
     <string name="map_no_app">Pour voir le trajet sur une vraie carte, installez OsmAnd — gratuit, fonctionne hors ligne avec des cartes téléchargeables. OsmAnd~ sur F-Droid est la version entièrement libre ; GT-SPEEDOMETER peut aussi l\'ouvrir via OsmAnd.</string>
     <string name="cost_title">Coût de l\'énergie</string>
     <string name="cost_desc" formatted="false">Affiché dans les rapports de recharge et de trajet. Inclut ~15 % de pertes du chargeur. Les champs carburant (facultatifs) comparent avec un véhicule à essence.</string>
-    <string name="cost_price_hint">Prix par kWh</string>
+    <string name="cost_price_hint">Prix kWh</string>
     <string name="cost_currency_hint">Devise</string>
-    <string name="cost_fuel_price_hint">Prix du carburant par litre</string>
-    <string name="cost_fuel_l100_hint">Consommation (L/100 km)</string>
+    <string name="cost_fuel_price_hint">Prix/L</string>
+    <string name="cost_fuel_l100_hint">L/100 km</string>
     <string name="cost_row">Coût de l\'énergie</string>
     <string name="cost_per_km">Coût par km</string>
     <string name="cost_fuel">Même trajet en carburant</string>
@@ -67,4 +67,10 @@
         <item>Par temps froid, moins de capacité est disponible ; attendez-vous à moins d\'autonomie et roulez doucement jusqu\'à ce que la batterie se réchauffe.</item>
         <item>Surveillez « Cellules dans le temps » : si une cellule continue de chuter sous charge, accélérez plus doucement et vérifiez l\'équilibrage.</item>
     </string-array>
+    <string name="cost_fuel_price_title">Prix du litre de carburant</string>
+    <string name="cost_fuel_l100_title">Consommation (litres aux 100 km)</string>
+    <string name="info_price_kwh" formatted="false">Ce que vous payez pour 1 kWh d\'électricité, comme sur votre facture (ex. 0,80 ou 1,20).\nGT-BMS le multiplie par l\'énergie entrée dans la batterie, plus environ 15 % perdus dans le chargeur, pour donner le coût de chaque recharge, trajet et kilomètre.\nLaissez 0 pour masquer les coûts.</string>
+    <string name="info_currency">Nom court ou symbole affiché à côté des coûts : MAD, DH, €, \$, DZD, TND…\nC\'est seulement une étiquette ; aucune conversion.</string>
+    <string name="info_fuel_price">Facultatif. Prix d\'un litre d\'essence dans la même devise.\nAvec la consommation ci-dessous, chaque trajet indique aussi ce qu\'aurait coûté la même distance avec un véhicule à essence.</string>
+    <string name="info_fuel_l100">Facultatif. Combien de litres un véhicule à essence comparable consomme aux 100 km (cyclomoteur : environ 2–3 ; petite voiture : 5–7).\nExemple : 2,5 L/100 km à 17 le litre › 10 km coûtent 4,25 en carburant.\nLaissez vide pour masquer la comparaison.</string>
 </resources>

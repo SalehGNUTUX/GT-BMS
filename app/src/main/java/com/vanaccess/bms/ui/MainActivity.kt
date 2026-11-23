@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui
 
+import android.view.View
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
@@ -113,8 +114,12 @@ class MainActivity : AppCompatActivity() {
         updateNavTabs()
         prefs.registerListener(prefsListener)
 
-        // Self-update: silent check on launch (every 12 h at most) + notification deep-link
+        // Self-update: silent check on launch (once per chosen interval), background alarm,
+        // in-app banner and notification deep-link
         com.vanaccess.bms.update.UpdateChecker.checkIfDue(this)
+        com.vanaccess.bms.update.UpdateChecker.schedule(this)
+        setupUpdateBanner()
+        setupChargePulse()
         handleUpdateIntent(intent)
 
         // Check Bluetooth & permissions
@@ -223,6 +228,74 @@ class MainActivity : AppCompatActivity() {
     /** Read (and cleared) by SettingsFragment. */
     var scrollToUpdates = false
 
+    // ── In-app update banner ────────────────────────────────────────────────
+    /** Download/failed banner closed with ✕ (until the state changes). */
+    private var bannerHiddenFor: Any? = null
+
+    private fun setupUpdateBanner() {
+        com.vanaccess.bms.update.UpdateChecker.phase.observe(this) { renderUpdateBanner() }
+        com.vanaccess.bms.update.UpdateService.state.observe(this) { renderUpdateBanner() }
+    }
+
+    private fun renderUpdateBanner() {
+        val phase = com.vanaccess.bms.update.UpdateChecker.phase.value
+        val dl = com.vanaccess.bms.update.UpdateService.state.value
+        val info = (phase as? com.vanaccess.bms.update.UpdatePhase.Available)?.info
+        val b = binding
+        fun btn(v: android.widget.TextView, text: Int, bg: Int, click: () -> Unit) {
+            v.visibility = View.VISIBLE; v.setText(text); v.setBackgroundResource(bg); v.setOnClickListener { click() }
+        }
+        b.progressBanner.visibility = View.GONE
+        b.btnBannerNotes.visibility = if (info != null) View.VISIBLE else View.GONE
+        b.btnBannerNotes.setOnClickListener { info?.let { com.vanaccess.bms.ui.UpdateUi.showNotes(this, it) } }
+        b.btnBannerClose.visibility = View.VISIBLE
+        val show: Boolean = when (dl) {
+            is com.vanaccess.bms.update.UpdateDownload.Running -> {
+                val pct = if (dl.total > 0) (dl.received * 100 / dl.total).toInt() else 0
+                b.tvBannerTitle.text = getString(R.string.update_downloading_pct, pct)
+                b.tvBannerStatus.text = getString(R.string.update_mb, dl.received / 1048576.0,
+                    if (dl.total > 0) dl.total / 1048576.0 else 0.0)
+                b.progressBanner.visibility = View.VISIBLE
+                b.progressBanner.isIndeterminate = dl.total <= 0
+                b.progressBanner.setProgressCompat(pct, true)
+                b.btnBannerNotes.visibility = View.GONE
+                b.btnBannerClose.visibility = View.GONE
+                btn(b.btnBannerAction, R.string.btn_cancel, R.drawable.banner_btn_red) {
+                    com.vanaccess.bms.update.UpdateService.stop(this) }
+                true
+            }
+            is com.vanaccess.bms.update.UpdateDownload.Done -> {
+                b.tvBannerTitle.text = getString(R.string.update_ready)
+                b.tvBannerStatus.text = info?.let { getString(R.string.update_available_title, it.version) } ?: ""
+                btn(b.btnBannerAction, R.string.update_install, R.drawable.banner_btn_green) {
+                    com.vanaccess.bms.ui.UpdateUi.install(this, dl.file) }
+                bannerHiddenFor != dl
+            }
+            is com.vanaccess.bms.update.UpdateDownload.Failed -> {
+                b.tvBannerTitle.text = getString(R.string.update_failed)
+                b.tvBannerStatus.text = dl.message
+                if (info != null) btn(b.btnBannerAction, R.string.update_retry, R.drawable.banner_btn_green) {
+                    com.vanaccess.bms.ui.UpdateUi.download(this, info) }
+                else b.btnBannerAction.visibility = View.GONE
+                bannerHiddenFor != dl
+            }
+            else -> if (info != null && prefs.dismissedUpdate != info.version) {
+                b.tvBannerTitle.text = "⬆️  " + getString(R.string.update_available_title, info.version)
+                b.tvBannerStatus.text = getString(R.string.update_available_status, info.version,
+                    com.vanaccess.bms.update.Updater.currentVersion(this))
+                btn(b.btnBannerAction, R.string.update_download_install, R.drawable.banner_btn_green) {
+                    com.vanaccess.bms.ui.UpdateUi.download(this, info) }
+                true
+            } else false
+        }
+        b.btnBannerClose.setOnClickListener {
+            if (dl is com.vanaccess.bms.update.UpdateDownload.Done || dl is com.vanaccess.bms.update.UpdateDownload.Failed) bannerHiddenFor = dl
+            else info?.let { prefs.dismissedUpdate = it.version }
+            renderUpdateBanner()
+        }
+        b.updateBanner.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
     // Keep a strong reference: SharedPreferences holds listeners weakly.
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in NAV_KEYS) runOnUiThread { updateNavTabs() }
@@ -274,6 +347,49 @@ class MainActivity : AppCompatActivity() {
             val menu = binding.bottomNavigation.menu
             if (live) menu.findItem(R.id.nav_live_slot)?.let { it.isCheckable = true; it.isChecked = true }
             else if (onBattery) menu.findItem(R.id.dashboardFragment)?.isChecked = true
+            // The slot under the round button keeps no highlight rectangle: the button itself shows Live
+            binding.bottomNavigation.findViewById<View>(R.id.nav_live_slot)?.apply { background = null; foreground = null }
+        }
+    }
+
+    // ── Central button blinks while charging ────────────────────────────────
+    private var chargePulse: android.animation.ValueAnimator? = null
+
+    private fun setupChargePulse() {
+        com.vanaccess.bms.ble.BleService.basicInfo.observe(this) { info ->
+            val charging = info != null && info.current > 0.3 &&
+                com.vanaccess.bms.ble.BleService.connectionState.value == com.vanaccess.bms.ble.BleService.ConnectionState.CONNECTED
+            if (charging) startChargePulse() else stopChargePulse()
+        }
+        com.vanaccess.bms.ble.BleService.connectionState.observe(this) { st ->
+            if (st != com.vanaccess.bms.ble.BleService.ConnectionState.CONNECTED) stopChargePulse()
+        }
+    }
+
+    private fun startChargePulse() {
+        if (chargePulse != null) return
+        val btn = binding.btnLive
+        val blue = android.graphics.Color.parseColor("#2196F3"); val green = android.graphics.Color.parseColor("#2ECC71")
+        chargePulse = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 900
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            addUpdateListener { a ->
+                val f = a.animatedValue as Float
+                btn.imageTintList = android.content.res.ColorStateList.valueOf(
+                    androidx.core.graphics.ColorUtils.blendARGB(blue, green, f))
+                btn.alpha = 1f - 0.35f * (1f - f)
+                btn.scaleX = 1f + 0.06f * f; btn.scaleY = btn.scaleX
+            }
+            start()
+        }
+    }
+
+    private fun stopChargePulse() {
+        chargePulse?.cancel(); chargePulse = null
+        binding.btnLive.apply {
+            imageTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2196F3"))
+            alpha = 1f; scaleX = 1f; scaleY = 1f
         }
     }
 

@@ -68,6 +68,12 @@ class BatteryScreen(
     fun setup() {
         b.tvDeviceName.text = prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)
         setupBatterySwitcher()
+        // Side swipe between Cells / Reports / Info / History (not on Live, which has no tabs)
+        b.pageContainer.onSwipe = { next ->
+            val to = b.tabs.selectedTabPosition + if (next) 1 else -1
+            if (liveMode || to !in 0 until b.tabs.tabCount) false
+            else { b.tabs.getTabAt(to)?.select(); true }
+        }
         b.tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 val p = tab.tag as Page
@@ -170,6 +176,7 @@ class BatteryScreen(
     /** The central button: Live on its own, without the sub-tab row. */
     private fun enterLive() {
         liveMode = true
+        b.pageContainer.enabledSwipe = false
         b.tabs.visibility = View.GONE
         showPage(Page.LIVE)
         b.pageLive.scrollTo(0, 0)
@@ -178,6 +185,7 @@ class BatteryScreen(
     /** The Battery button: back to the last sub-tab used (Cells the first time). */
     private fun enterTabs() {
         liveMode = false
+        b.pageContainer.enabledSwipe = true
         b.tabs.visibility = View.VISIBLE
         val want = savedTab()
         val tab = (0 until b.tabs.tabCount).map { b.tabs.getTabAt(it) }.firstOrNull { it?.tag == want } ?: b.tabs.getTabAt(0)

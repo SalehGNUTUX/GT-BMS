@@ -76,9 +76,20 @@ class AppPreferences(context: Context) {
     fun savedProtocolFor(address: String?): String? = savedBatteries.firstOrNull { it.address == address }?.protocol
 
     // ── Self-update ──────────────────────────────────────────────────────────
+    // New key in 1.6: periodic checking is switched on for everyone, also for those who had turned it off
     var autoCheckUpdates: Boolean
-        get() = prefs.getBoolean("auto_check_updates", true)
-        set(value) = prefs.edit().putBoolean("auto_check_updates", value).apply()
+        get() = prefs.getBoolean("auto_check_updates_v16", true)
+        set(value) = prefs.edit().putBoolean("auto_check_updates_v16", value).apply()
+
+    /** Hours between automatic update checks (6, 12, 24, 168). */
+    var updateIntervalH: Int
+        get() = prefs.getInt("update_interval_h", 12)
+        set(value) = prefs.edit().putInt("update_interval_h", value).apply()
+
+    /** Version whose in-app banner was closed with ✕ (shown again for the next version). */
+    var dismissedUpdate: String
+        get() = prefs.getString("dismissed_update", "") ?: ""
+        set(value) = prefs.edit().putString("dismissed_update", value).apply()
 
     var allowPrerelease: Boolean
         get() = prefs.getBoolean("allow_prerelease", false)
