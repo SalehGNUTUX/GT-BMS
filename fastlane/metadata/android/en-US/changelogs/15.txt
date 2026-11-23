@@ -1,0 +1,1 @@
+1.6 beta 3: last reading kept on the phone after a crash or force-stop; long dialogs scroll with buttons always visible.
