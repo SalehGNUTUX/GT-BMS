@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.settings
 
+import com.vanaccess.bms.ui.AppDialog as AD
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -52,6 +53,38 @@ class SettingsFragment : Fragment() {
         val uri = res.data?.getParcelableExtra<Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
         prefs.setAlarmTone(com.vanaccess.bms.alarm.BatteryAlarmMonitor.Tones.toneKey(kind), uri?.toString())
         renderTones()
+    }
+
+    private val fullBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> if (uri != null) runBackup { com.vanaccess.bms.data.Backup.export(requireContext().applicationContext, uri) } }
+
+    private val fullRestoreLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        AD.show(requireContext(), getString(R.string.backup_restore_q), message = getString(R.string.backup_restore_msg),
+            buttons = listOf(
+                AD.Btn(getString(R.string.btn_cancel), AD.GREEN),
+                AD.Btn(getString(R.string.backup_full_import), AD.RED) {
+                    val app = requireContext().applicationContext
+                    runBackup(restartAfter = true) { com.vanaccess.bms.data.Backup.import(app, uri) }
+                },
+            ))
+    }
+
+    /** Run a backup/restore off the main thread and report the result. */
+    private fun runBackup(restartAfter: Boolean = false, work: () -> Unit) {
+        val app = requireContext().applicationContext
+        kotlin.concurrent.thread {
+            val err = try { work(); null } catch (e: Exception) { e.message ?: e.toString() }
+            activity?.runOnUiThread {
+                if (err != null) {
+                    com.vanaccess.bms.ui.AppDialog.info(requireContext(), getString(R.string.backup_failed), err)
+                } else if (restartAfter) {
+                    Toast.makeText(app, R.string.backup_restored, Toast.LENGTH_LONG).show()
+                    view?.postDelayed({ com.vanaccess.bms.data.Backup.restart(app) }, 1200)
+                } else Toast.makeText(app, R.string.backup_done, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private val importLauncher = registerForActivityResult(
@@ -107,9 +140,8 @@ class SettingsFragment : Fragment() {
         binding.btnBmsProtocol.setOnClickListener {
             val entries = BmsDrivers.selectorEntries(getString(R.string.protocol_auto))
             val current = entries.indexOfFirst { it.first == prefs.bmsProtocol }.coerceAtLeast(0)
-            AlertDialog.Builder(requireContext())
-                .setTitle(R.string.protocol_choose)
-                .setSingleChoiceItems(entries.map { it.second }.toTypedArray(), current) { dialog, which ->
+            com.vanaccess.bms.ui.AppDialog.show(requireContext(), getString(R.string.protocol_choose),
+                items = entries.map { it.second }, checked = current, onItem = { which ->
                     val id = entries[which].first
                     if (id != prefs.bmsProtocol) {
                         prefs.bmsProtocol = id
@@ -121,10 +153,8 @@ class SettingsFragment : Fragment() {
                         val service = (activity as? MainActivity)?.getBleService()
                         if (!addr.isNullOrBlank() && service != null) service.connectToDevice(addr)
                     }
-                    dialog.dismiss()
-                }
-                .setNegativeButton(R.string.btn_cancel, null)
-                .show()
+                },
+                buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
         }
     }
 
@@ -158,11 +188,15 @@ class SettingsFragment : Fragment() {
             Section("alarms", "⏰", R.string.sec_alarms, R.string.sec_alarms_sub, listOf(binding.cardAlarms)),
             Section("charger", "🔌", R.string.charger_section, R.string.charger_section_sub, listOf(binding.cardCharger)),
             Section("prefs", "⚙️", R.string.sec_prefs, R.string.sec_prefs_sub, listOf(binding.cardPrefs)),
-            Section("updates", "⬆️", R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)),
+            // F-Droid builds update through F-Droid: no Updates section there
+            *(if (com.vanaccess.bms.BuildConfig.SELF_UPDATE)
+                arrayOf(Section("updates", "⬆️", R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)))
+              else emptyArray()),
             Section("share", "📤", R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
             Section("backup", "💾", R.string.sec_backup, R.string.sec_backup_sub, listOf(binding.cardBackup)),
             Section("about", "ℹ️", R.string.sec_about, R.string.sec_about_sub, listOf(binding.cardAbout, binding.cardDev)),
         )
+        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) binding.cardUpdates.visibility = View.GONE
         val dp = resources.displayMetrics.density
         binding.gridSections.removeAllViews()
         sections.forEach { sec ->
@@ -232,11 +266,7 @@ class SettingsFragment : Fragment() {
             binding.tilDeltaLoad to (R.string.info_delta_load_title to R.string.info_delta_load),
         ).forEach { (til, txt) ->
             til.setEndIconOnClickListener {
-                AlertDialog.Builder(requireContext())
-                    .setTitle(txt.first)
-                    .setMessage(txt.second)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show()
+                com.vanaccess.bms.ui.AppDialog.info(requireContext(), getString(txt.first), getString(txt.second))
             }
         }
     }
@@ -309,6 +339,13 @@ class SettingsFragment : Fragment() {
         binding.etConsumption.setText(if (prefs.consumptionWhKm > 0) fmtV(prefs.consumptionWhKm) else "0")
         binding.etConsumption.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
         binding.etRatedCycles.setText(prefs.ratedCycles.takeIf { it > 0 }?.toString() ?: "")
+        binding.etPriceKwh.setText(prefs.pricePerKwh.takeIf { it > 0 }?.toString() ?: "")
+        binding.etCurrency.setText(prefs.currency)
+        binding.etFuelPrice.setText(prefs.fuelPrice.takeIf { it > 0 }?.toString() ?: "")
+        binding.etFuelL100.setText(prefs.fuelL100.takeIf { it > 0 }?.toString() ?: "")
+        listOf(binding.etPriceKwh, binding.etCurrency, binding.etFuelPrice, binding.etFuelL100).forEach { et ->
+            et.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
+        }
         binding.etRatedCycles.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
         refreshVehicleBox()
     }
@@ -316,6 +353,11 @@ class SettingsFragment : Fragment() {
     private fun saveConsumption() {
         if (_binding == null) return
         parseNum(binding.etConsumption.text)?.let { prefs.consumptionWhKm = it.toFloat().coerceIn(0f, 1000f) }
+        fun num(t: CharSequence?) = parseNum(t)?.toFloat()?.coerceAtLeast(0f) ?: 0f
+        prefs.pricePerKwh = num(binding.etPriceKwh.text)
+        prefs.currency = binding.etCurrency.text?.toString()?.trim()?.ifEmpty { null } ?: prefs.currency
+        prefs.fuelPrice = num(binding.etFuelPrice.text)
+        prefs.fuelL100 = num(binding.etFuelL100.text)
         val rc = binding.etRatedCycles.text?.toString()?.trim().orEmpty()
         prefs.ratedCycles = if (rc.isEmpty()) 0 else (parseNum(rc)?.toInt()?.coerceIn(0, 20000) ?: prefs.ratedCycles)
     }
@@ -416,15 +458,15 @@ class SettingsFragment : Fragment() {
                     startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(info.releaseUrl)))
                     return@setOnClickListener
                 }
-                AlertDialog.Builder(ctx)
-                    .setTitle(getString(R.string.update_available_title, info.version))
-                    .setMessage(info.notes.ifBlank { getString(R.string.update_available_text) })
-                    .setPositiveButton(R.string.update_download_install) { _, _ ->
-                        (activity as? MainActivity)?.ensureNotificationPermission()
-                        UpdateService.start(ctx, asset)
-                    }
-                    .setNegativeButton(R.string.btn_cancel, null)
-                    .show()
+                com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.update_available_title, info.version),
+                    message = info.notes.ifBlank { getString(R.string.update_available_text) },
+                    buttons = listOf(
+                        com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.update_download_install), com.vanaccess.bms.ui.AppDialog.GREEN) {
+                            (activity as? MainActivity)?.ensureNotificationPermission()
+                            UpdateService.start(ctx, asset)
+                        },
+                        com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
+                    ))
             }
         }
     }
@@ -1039,39 +1081,33 @@ class SettingsFragment : Fragment() {
     // ── Confirm clear dialog ────────────────────────────────────────────────
 
     private fun showPinDialog() {
-        val editText = android.widget.EditText(requireContext()).apply {
-            hint = "Enter PIN (e.g. 2410)"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            setText(prefs.bmsPin ?: "")
-        }
-        AlertDialog.Builder(requireContext())
-            .setTitle("123SmartBMS PIN")
-            .setMessage("Enter the BMS PIN to authenticate.\nDefault is usually 0000 or the last 4 digits of the serial number.")
-            .setView(editText)
-            .setPositiveButton("Save") { _, _ ->
-                val pin = editText.text.toString().trim()
-                if (pin.isNotEmpty()) {
-                    prefs.bmsPin = pin
-                    binding.etBmsPin.setText(pin)
-                    Toast.makeText(requireContext(), "PIN saved", Toast.LENGTH_SHORT).show()
-                    // Reconnect to apply PIN
-                    val service = (activity as? MainActivity)?.getBleService() ?: return@setPositiveButton
-                    val addr = prefs.selectedDeviceAddress ?: return@setPositiveButton
-                    service.connectToDevice(addr)
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val ctx = requireContext()
+        val editText = com.vanaccess.bms.ui.AppDialog.input(ctx, prefs.bmsPin ?: "", getString(R.string.pin_hint),
+            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD)
+        com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.pin_title), message = getString(R.string.pin_msg), body = editText,
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_save), com.vanaccess.bms.ui.AppDialog.GREEN) {
+                    val pin = editText.text.toString().trim()
+                    if (pin.isNotEmpty()) {
+                        prefs.bmsPin = pin
+                        binding.etBmsPin.setText(pin)
+                        Toast.makeText(ctx, R.string.pin_saved, Toast.LENGTH_SHORT).show()
+                        val service = (activity as? MainActivity)?.getBleService() ?: return@Btn
+                        val addr = prefs.selectedDeviceAddress ?: return@Btn
+                        service.connectToDevice(addr)
+                    }
+                },
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
+            ))
     }
 
     private fun confirmClear(type: String, deviceName: String?, onConfirm: () -> Unit) {
-        val name = deviceName ?: "this device"
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.remove_title, type))
-            .setMessage(getString(R.string.remove_msg, name))
-            .setPositiveButton(R.string.btn_remove) { _, _ -> onConfirm() }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+        val name = deviceName ?: getString(R.string.this_device)
+        com.vanaccess.bms.ui.AppDialog.show(requireContext(), getString(R.string.remove_title, type), message = getString(R.string.remove_msg, name),
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_remove), com.vanaccess.bms.ui.AppDialog.RED) { onConfirm() },
+            ))
     }
 
     // ── Role assignment dialog ──────────────────────────────────────────────
@@ -1081,23 +1117,19 @@ class SettingsFragment : Fragment() {
         val vehicles = com.vanaccess.bms.data.VehicleProfile.all
         val options = vehicles.map { "${it.icon}  " + getString(R.string.role_battery_for, getString(it.labelRes)) } +
             listOf(getString(R.string.role_orion), getString(R.string.role_solar), getString(R.string.role_switch))
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.role_assign, device.name))
-            .setItems(options.toTypedArray()) { _, which ->
-                when {
-                    which < vehicles.size -> {
-                        prefs.vehicleType = vehicles[which].id
-                        if (vehicles[which].mobile) (activity as? MainActivity)?.ensureLocationPermission()
-                        selectBattery(device)
-                        setupVehicle()
-                    }
-                    which == vehicles.size -> selectOrion(device)
-                    which == vehicles.size + 1 -> selectSmartSolar(device)
-                    else -> selectSwitchPanel(device)
+        com.vanaccess.bms.ui.AppDialog.show(requireContext(), getString(R.string.role_assign, device.name), items = options, onItem = { which ->
+            when {
+                which < vehicles.size -> {
+                    prefs.vehicleType = vehicles[which].id
+                    if (vehicles[which].mobile) (activity as? MainActivity)?.ensureLocationPermission()
+                    selectBattery(device)
+                    setupVehicle()
                 }
+                which == vehicles.size -> selectOrion(device)
+                which == vehicles.size + 1 -> selectSmartSolar(device)
+                else -> selectSwitchPanel(device)
             }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+        }, buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
     }
 
     private fun selectBattery(device: ScannedDevice) {
@@ -1150,6 +1182,11 @@ class SettingsFragment : Fragment() {
         binding.btnExport.setOnClickListener {
             exportLauncher.launch("gt_bms_settings.json")
         }
+        binding.btnBackupFull.setOnClickListener {
+            val stamp = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+            fullBackupLauncher.launch("GT-BMS-backup-$stamp.zip")
+        }
+        binding.btnRestoreFull.setOnClickListener { fullRestoreLauncher.launch(arrayOf("application/zip", "*/*")) }
         binding.btnImport.setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
         }

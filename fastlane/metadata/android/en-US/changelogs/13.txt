@@ -1,0 +1,1 @@
+1.6: guided capacity test, charging time, cold-adjusted range, trip map and OsmAnd, energy cost, battery switcher, device report, full backup, driving-style advice, French.

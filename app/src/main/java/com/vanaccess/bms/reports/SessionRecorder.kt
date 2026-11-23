@@ -360,6 +360,12 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             put("hard_accel", t.hardAccel)
             put("vehicle", prefs.vehicleType)
             put("gps", t.distanceKm > 0 || t.maxSpeed > 0)
+            // Driving style from the current curve (throttle shocks, press-and-release, time at high current)
+            val style = DrivingAnalyzer.analyze(t.points, BmsLimits.fromJson(prefs.bmsLimitsJson).dischargeOcA)
+            put("throttle_shocks", style.shocks)
+            put("onoff_cycles", style.onOff)
+            put("high_current_pct", style.highPct)
+            put("high_current_a", style.highA)
         }
         save(Session.TYPE_TRIP, t, data)
     }

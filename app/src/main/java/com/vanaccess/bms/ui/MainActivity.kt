@@ -28,7 +28,12 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private val NAV_KEYS = setOf("solar_address", "orion_address", "switchpanel_address")
         /** Bumped when the Live button is pressed; the battery screen jumps to its Live tab. */
-        val openLive = androidx.lifecycle.MutableLiveData<Long>()
+        const val MODE_LIVE = "live"
+        const val MODE_TABS = "tabs"
+        /** Battery screen mode: Live (central button, the home screen) or the sub-tabs (Battery button). */
+        val batteryMode = androidx.lifecycle.MutableLiveData(MODE_LIVE)
+        /** Icon of the Battery button = the last Battery sub-tab used. */
+        val batteryTabIcon = androidx.lifecycle.MutableLiveData<Int>()
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -84,18 +89,26 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.setupWithNavController(navController)
         setupBackHandling(navController)
         this.navController = navController
+        // Central button → Live (its own screen). Battery button → the last Battery sub-tab.
         binding.btnLive.setOnClickListener {
             if (navController.currentDestination?.id != R.id.dashboardFragment)
-                binding.bottomNavigation.selectedItemId = R.id.dashboardFragment
-            openLive.value = System.currentTimeMillis()
+                androidx.navigation.ui.NavigationUI.onNavDestinationSelected(
+                    binding.bottomNavigation.menu.findItem(R.id.dashboardFragment), navController)
+            batteryMode.value = MODE_LIVE
         }
-        navController.addOnDestinationChangedListener { _, d, _ ->
-            binding.btnLive.isSelected = d.id == R.id.dashboardFragment
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            val ok = androidx.navigation.ui.NavigationUI.onNavDestinationSelected(item, navController)
+            if (item.itemId == R.id.dashboardFragment) batteryMode.value = MODE_TABS
+            ok
         }
         // Tapping the current tab again returns to that tab's root (e.g. from the debug console)
         binding.bottomNavigation.setOnItemReselectedListener { item ->
             if (navController.currentDestination?.id != item.itemId) navController.popBackStack(item.itemId, false)
+            if (item.itemId == R.id.dashboardFragment) batteryMode.value = MODE_TABS
         }
+        navController.addOnDestinationChangedListener { _, _, _ -> syncBarSelection() }
+        batteryMode.observe(this) { syncBarSelection() }
+        batteryTabIcon.observe(this) { icon -> binding.bottomNavigation.menu.findItem(R.id.dashboardFragment)?.setIcon(icon) }
         prefs = AppPreferences(this)
         updateNavTabs()
         prefs.registerListener(prefsListener)
@@ -224,7 +237,11 @@ class MainActivity : AppCompatActivity() {
     private fun updateNavTabs() {
         val nav = binding.bottomNavigation
         val menu = nav.menu
-        val tabs = mutableListOf(Triple(R.id.dashboardFragment, R.string.nav_dashboard, R.drawable.ic_battery))
+        val batteryIcon = batteryTabIcon.value ?: when (prefs.lastBatteryTab) {
+            "REPORTS" -> R.drawable.ic_tab_reports; "INFO" -> R.drawable.ic_tab_info
+            "HISTORY" -> R.drawable.ic_tab_history; else -> R.drawable.ic_tab_cells
+        }
+        val tabs = mutableListOf(Triple(R.id.dashboardFragment, R.string.nav_dashboard, batteryIcon))
         if (!prefs.smartSolarDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.smartSolarFragment, R.string.nav_solar, R.drawable.ic_solar)
         if (!prefs.orionDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.orionFragment, R.string.nav_orion, R.drawable.ic_dc)
         if (!prefs.switchPanelDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.switchPanelFragment, R.string.nav_switches, R.drawable.ic_switch)
@@ -242,6 +259,22 @@ class MainActivity : AppCompatActivity() {
         }
         current?.let { menu.findItem(it)?.isChecked = true }
         nav.post { positionLiveButton() }
+        syncBarSelection()
+    }
+
+    /**
+     * On Live the round button is the selected one and no bar item is highlighted (the empty
+     * middle slot takes the "checked" state); on the Battery sub-tabs the Battery item is.
+     */
+    private fun syncBarSelection() {
+        val onBattery = navController?.currentDestination?.id == R.id.dashboardFragment
+        val live = onBattery && batteryMode.value == MODE_LIVE
+        binding.btnLive.isSelected = live
+        binding.bottomNavigation.post {
+            val menu = binding.bottomNavigation.menu
+            if (live) menu.findItem(R.id.nav_live_slot)?.let { it.isCheckable = true; it.isChecked = true }
+            else if (onBattery) menu.findItem(R.id.dashboardFragment)?.isChecked = true
+        }
     }
 
     /** Centre the Live button over the empty slot (or the bar when there is none). */

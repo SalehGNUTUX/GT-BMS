@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_title">Mises à jour</string>
+    <string name="update_channel">Mises à jour de l\'application</string>
+    <string name="update_check">Rechercher des mises à jour</string>
+    <string name="update_checking">Vérification…</string>
+    <string name="update_current">Version actuelle : %1$s</string>
+    <string name="update_up_to_date">Vous avez la dernière version (%1$s)</string>
+    <string name="update_error">Vérification impossible : %1$s</string>
+    <string name="update_available_status">Nouvelle version %1$s disponible (actuelle %2$s)</string>
+    <string name="update_available_title">GT-BMS %1$s est disponible</string>
+    <string name="update_available_text">Une nouvelle version est prête à être téléchargée et installée.</string>
+    <string name="update_download_install">Télécharger et installer</string>
+    <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_downloading_pct">Téléchargement de la mise à jour… %1$d%%</string>
+    <string name="update_ready">Mise à jour téléchargée — prête à installer</string>
+    <string name="update_tap_install">Appuyez pour installer</string>
+    <string name="update_install">Installer</string>
+    <string name="update_failed">Échec du téléchargement de la mise à jour</string>
+    <string name="update_auto_check">Rechercher les mises à jour automatiquement</string>
+    <string name="update_prerelease">Inclure les versions bêta</string>
+    <string name="update_allow_install">Autorisez GT-BMS à installer des applications, puis appuyez de nouveau sur Installer</string>
+    <string name="update_rate_limited">GitHub limite temporairement les requêtes depuis ce réseau ; réessayez dans quelques minutes</string>
+</resources>

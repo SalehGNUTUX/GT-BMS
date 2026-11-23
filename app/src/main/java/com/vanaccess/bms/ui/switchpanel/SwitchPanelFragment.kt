@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.switchpanel
 
+import com.vanaccess.bms.R
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
@@ -142,23 +143,17 @@ class SwitchPanelFragment : Fragment() {
     }
 
     private fun showRenameDialog(channelNum: Int) {
-        val current = prefs.getSwitchPanelChannelName(channelNum)
-        val input = EditText(requireContext()).apply {
-            setText(current)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
-            selectAll()
-        }
-        AlertDialog.Builder(requireContext())
-            .setTitle("Rename Channel $channelNum")
-            .setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                val name = input.text.toString().trim()
-                prefs.setSwitchPanelChannelName(channelNum, name)
-                channels[channelNum - 1].chName.text =
-                    prefs.getSwitchPanelChannelName(channelNum)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val ctx = requireContext()
+        val input = com.vanaccess.bms.ui.AppDialog.input(ctx, prefs.getSwitchPanelChannelName(channelNum), "",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+        com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.rename_channel, channelNum), body = input,
+            buttons = listOf(
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_save), com.vanaccess.bms.ui.AppDialog.GREEN) {
+                    prefs.setSwitchPanelChannelName(channelNum, input.text.toString().trim())
+                    channels[channelNum - 1].chName.text = prefs.getSwitchPanelChannelName(channelNum)
+                },
+                com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
+            ))
     }
 
     override fun onDestroyView() {

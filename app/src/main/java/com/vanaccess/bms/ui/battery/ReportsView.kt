@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.battery
 
+import com.vanaccess.bms.ui.AppDialog as AD
+import com.vanaccess.bms.reports.Advisor.Level as L
+import com.vanaccess.bms.reports.CapacityTest.Phase as P
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -64,12 +67,22 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                     setOnClickListener { filter = type; reload() }
                 })
             }
+        // Export as an icon-only chip on the same row as the filters
         b.chipsReports.addView(Chip(ctx).apply {
-            text = fragment.getString(R.string.export_chip)
+            text = ""
+            contentDescription = fragment.getString(R.string.export_title)
             isCheckable = false
+            chipIcon = androidx.core.content.ContextCompat.getDrawable(ctx, R.drawable.ic_export)
+            chipIconTint = android.content.res.ColorStateList.valueOf(Color.parseColor("#4DA3FF"))
+            isChipIconVisible = true
+            chipIconSize = 22 * dp
+            textStartPadding = 0f; textEndPadding = 0f
+            chipStartPadding = 10 * dp; chipEndPadding = 2 * dp
+            iconStartPadding = 0f; iconEndPadding = 0f
             setOnClickListener { chooseExport() }
         })
         SessionRecorder.savedCount.observe(fragment.viewLifecycleOwner) { reload() }
+        com.vanaccess.bms.ble.BleService.capacityTest.observe(fragment.viewLifecycleOwner) { if (filter == LEVELS) reload() }
     }
 
     fun reload() {
@@ -80,8 +93,9 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         b.rvReports.visibility = if (levels) View.GONE else View.VISIBLE
         if (levels) { b.tvReportsEmpty.visibility = View.GONE; loadLevels(); return }
         thread {
-            val list = if (f == DISCHARGES) store.listTypes(listOf(Session.TYPE_DISCHARGE, Session.TYPE_TRIP))
-                else store.list(f)
+            val bat = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
+            val list = if (f == DISCHARGES) store.listTypes(listOf(Session.TYPE_DISCHARGE, Session.TYPE_TRIP), battery = bat)
+                else store.list(f, battery = bat)
             fragment.activity?.runOnUiThread {
                 if (fragment.view == null) return@runOnUiThread
                 adapter.submit(list)
@@ -219,6 +233,18 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 fragment.getString(R.string.delta_at, s.i("max_delta_mv"), s.d("current_at_max_delta"))
         }
         if (!s.data.isNull("max_temp")) rows += R.string.rep_max_temp to f("%.0f °C", s.d("max_temp"))
+        // Energy cost (if a price is set in Settings → Vehicle & trips)
+        val cp = com.vanaccess.bms.data.AppPreferences(ctx)
+        if (cp.pricePerKwh > 0 && s.d("wh") > 0) {
+            val cur = cp.currency
+            rows += R.string.cost_row to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.cost(s.d("wh"), cp.pricePerKwh.toDouble()), cur)
+            if (!charge && !s.data.isNull("wh_per_km") && s.d("distance_km") > 0) {
+                rows += R.string.cost_per_km to f("%.3f %s", com.vanaccess.bms.reports.EnergyCost.perKm(s.d("wh_per_km"), cp.pricePerKwh.toDouble()), cur)
+                if (cp.fuelPrice > 0 && cp.fuelL100 > 0)
+                    rows += R.string.cost_fuel to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.fuel(s.d("distance_km"),
+                        cp.fuelL100.toDouble(), cp.fuelPrice.toDouble()), cur)
+            }
+        }
         rows.forEach { (k, v) -> col.addView(row(fragment.getString(k), v)) }
         badges(s).forEach { col.addView(text(it, cOrange, 13f, true).apply { setPadding(0, (4 * dp).toInt(), 0, 0) }) }
         if (s.type == Session.TYPE_TRIP && s.d("distance_km") <= 0) col.addView(text(fragment.getString(R.string.rep_no_gps), cGrey, 12f, false))
@@ -237,6 +263,30 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             }
         }
 
+        // Trip map (offline sketch coloured by current) + open the track in OsmAnd
+        if (s.type == Session.TYPE_TRIP && s.d("distance_km") > 0) {
+            col.addView(text(fragment.getString(R.string.map_title), Color.WHITE, 14f, true).apply {
+                setPadding(0, (14 * dp).toInt(), 0, (2 * dp).toInt())
+            })
+            col.addView(text(fragment.getString(R.string.map_legend), cGrey, 12f, false))
+            val route = RouteView(ctx)
+            col.addView(route, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (230 * dp).toInt())
+                .apply { topMargin = (6 * dp).toInt() })
+            val open = TextView(ctx).apply {
+                text = fragment.getString(R.string.map_open_osmand)
+                setTextColor(Color.WHITE); textSize = 14f; setTypeface(typeface, Typeface.BOLD); gravity = Gravity.CENTER
+                setPadding((16 * dp).toInt(), (9 * dp).toInt(), (16 * dp).toInt(), (9 * dp).toInt())
+                background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor("#2A6FB8")) }
+                setOnClickListener { openInMaps(s) }
+            }
+            col.addView(open, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = (8 * dp).toInt() })
+            thread {
+                val pts = ReportStore.get(ctx).points(s.id)
+                fragment.activity?.runOnUiThread { route.setTrack(pts) }
+            }
+        }
+
         col.addView(text(fragment.getString(R.string.rep_chart), Color.WHITE, 14f, true).apply {
             setPadding(0, (14 * dp).toInt(), 0, (6 * dp).toInt())
         })
@@ -246,7 +296,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
         com.vanaccess.bms.ui.AppDialog.show(ctx,
             kind(s).first + " " + fragment.getString(kind(s).second) + "  " + date(s.startMs),
-            body = col,
+            body = col, tall = true,
             buttons = listOf(
                 com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(android.R.string.ok), com.vanaccess.bms.ui.AppDialog.GREEN),
                 com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_delete), com.vanaccess.bms.ui.AppDialog.RED) { confirmDelete(s) },
@@ -290,6 +340,55 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 chart.invalidate()
             }
         }
+    }
+
+    // ── Maps (OsmAnd) ────────────────────────────────────────────────────────
+
+    /** OsmAnd (Play), OsmAnd+ / OsmAnd~ (F-Droid build, same package), OsmAnd nightly. */
+    private val OSMAND = listOf("net.osmand.plus", "net.osmand", "net.osmand.dev")
+
+    /** Open one trip's GPX in OsmAnd if installed, else any GPX viewer, else suggest OsmAnd. */
+    private fun openInMaps(s: Session) {
+        val app = ctx.applicationContext
+        thread {
+            val gpx = com.vanaccess.bms.reports.Exporter.gpx(listOf(s to ReportStore.get(app).points(s.id)))
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date(s.startMs))
+            val f = java.io.File(java.io.File(app.cacheDir, "exports").apply { mkdirs() }, "GT-BMS-trip-$stamp.gpx")
+            f.writeText(gpx)
+            fragment.activity?.runOnUiThread {
+                val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.fileprovider", f)
+                fun view(pkg: String?) = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/gpx+xml")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    pkg?.let { setPackage(it) }
+                }
+                val pm = ctx.packageManager
+                val osmand = OSMAND.firstOrNull { pkg ->
+                    try { pm.getPackageInfo(pkg, 0); true } catch (_: Exception) { false }
+                }
+                try {
+                    if (osmand != null) ctx.startActivity(view(osmand))
+                    else ctx.startActivity(android.content.Intent.createChooser(view(null), fragment.getString(R.string.map_open_osmand)))
+                } catch (_: Exception) {
+                    suggestOsmand()
+                }
+            }
+        }
+    }
+
+    private fun suggestOsmand() {
+        AD.show(ctx, fragment.getString(R.string.map_no_app_title), message = fragment.getString(R.string.map_no_app),
+            buttons = listOf(
+                AD.Btn("F-Droid", AD.GREEN) {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://f-droid.org/packages/net.osmand.plus/")))
+                },
+                AD.Btn("Google Play", Color.parseColor("#2A6FB8")) {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=net.osmand")))
+                },
+                AD.Btn(fragment.getString(R.string.btn_cancel), AD.GREY),
+            ))
     }
 
     // ── Export ───────────────────────────────────────────────────────────────
@@ -350,7 +449,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             val store = ReportStore.get(ctx)
             val now = System.currentTimeMillis()
             val levels = store.levels(now - 14 * 86_400_000L)
-            val charges = store.list(Session.TYPE_CHARGE, 300)
+            val charges = store.list(Session.TYPE_CHARGE, 300, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
             val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx)
             val info = com.vanaccess.bms.ble.BleService.basicInfo.value
             val fullAh = info?.fullCapacity ?: levels.lastOrNull()?.fullAh
@@ -360,6 +459,12 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             val allLevels = store.levels(0)
             val lastDeep = allLevels.lastOrNull { it.soc <= 10 || (it.minCell > 0 && it.minCell <= lowCal) }
             val cycles = info?.cycleCount ?: levels.lastOrNull()?.cycles
+            val prefs0 = com.vanaccess.bms.data.AppPreferences(ctx)
+            val trips = store.list(Session.TYPE_TRIP, 60, prefs0.selectedDeviceAddress)
+            val repeats = com.vanaccess.bms.reports.HistoryCache.load(ctx, prefs0.selectedDeviceAddress)
+                ?.let { com.vanaccess.bms.reports.DrivingAnalyzer.protectionRepeats(it.records) } ?: 0
+            val capTest = com.vanaccess.bms.reports.CapacityTest.State.fromJson(
+                com.vanaccess.bms.data.AppPreferences(ctx).capacityTestJson)
             fragment.activity?.runOnUiThread {
                 if (fragment.view == null) return@runOnUiThread
                 box.removeAllViews()
@@ -368,13 +473,14 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 health.bmsSohPct?.let { hCard.addView(text(fragment.getString(R.string.health_bms, it), Color.WHITE, 14f, true)) }
                 if (health.bmsReportsDesign && lim.designAh != null)
                     hCard.addView(text(fragment.getString(R.string.health_bms_design, lim.designAh), cGrey, 12f, false))
-                if (health.measuredAh != null && lim.designAh != null) {
-                    hCard.addView(text(fragment.getString(R.string.health_measured, health.measuredAh,
-                        health.measuredSohPct ?: 0, lim.designAh), cGreen, 14f, true))
-                } else {
-                    hCard.addView(text(fragment.getString(R.string.health_how, lowCal), cBlue, 12f, false)
-                        .apply { setPadding(0, (6 * dp).toInt(), 0, 0) })
+                // A finished capacity test is the most reliable measurement; else a qualifying charge
+                val testAh = capTest.resultAh?.takeIf { capTest.phase == com.vanaccess.bms.reports.CapacityTest.Phase.DONE }
+                val measuredAh = testAh ?: health.measuredAh
+                if (measuredAh != null && lim.designAh != null) {
+                    hCard.addView(text(fragment.getString(R.string.health_measured, measuredAh,
+                        (measuredAh / lim.designAh * 100).toInt(), lim.designAh), cGreen, 14f, true))
                 }
+                renderCapacityTest(hCard, capTest, lowCal)
                 // Facts
                 val fCard = card(box, "📊 " + fragment.getString(R.string.levels_title))
                 fCard.addView(row(fragment.getString(R.string.levels_cycles), cycles?.toString() ?: "—"))
@@ -386,6 +492,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                     ?: fragment.getString(R.string.levels_never)))
                 fCard.addView(row(fragment.getString(R.string.levels_last_deep), lastDeep?.let { date(it.tMs) }
                     ?: fragment.getString(R.string.levels_never)))
+                renderUsageCard(box, trips, repeats)
                 // SOC chart
                 val cCard = card(box, fragment.getString(R.string.levels_days))
                 val chart = LineChart(ctx)
@@ -406,6 +513,75 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 chart.invalidate()
             }
         }
+    }
+
+    /**
+     * "Driving & usage": style over the last trips, most economical speed band from your own
+     * trips, repeated protection cuts while charging, and lithium driving tips.
+     */
+    private fun renderUsageCard(box: LinearLayout, trips: List<Session>, protectionRepeats: Int) {
+        val AT = com.vanaccess.bms.ui.AdviceText
+        val c = card(box, "🛵 " + fragment.getString(R.string.usage_title))
+        fun rec(r: com.vanaccess.bms.reports.Advisor.Rec) =
+            c.addView(text(AT.icon(r.level) + " " + AT.text(ctx, r), AT.color(r.level), 13f, false)
+                .apply { setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) })
+        val recent = trips.filter { it.data.has("throttle_shocks") }.take(10)
+        if (recent.isNotEmpty()) {
+            val km = recent.sumOf { it.d("distance_km") }.coerceAtLeast(0.1)
+            val shocks = recent.sumOf { it.i("throttle_shocks") }
+            rec(com.vanaccess.bms.reports.Advisor.Rec(if (shocks / km >= 0.5) L.WARNING else L.OK,
+                "usage_shocks", listOf(recent.size, shocks, km)))
+        }
+        com.vanaccess.bms.reports.DrivingAnalyzer.bestSpeed(trips)?.let { b ->
+            rec(com.vanaccess.bms.reports.Advisor.Rec(L.INFO, "usage_best_speed",
+                listOf(b.fromKmh, b.fromKmh + 10, b.bestWhKm, b.worstFromKmh, b.worstFromKmh + 10, b.worstWhKm)))
+        }
+        if (protectionRepeats >= 2) rec(com.vanaccess.bms.reports.Advisor.Rec(L.WARNING, "usage_protection_repeats",
+            listOf(protectionRepeats, AT.chargerAdviceV(ctx) ?: 0.0)))
+        c.addView(text(fragment.getString(R.string.driving_tips_title), Color.WHITE, 13f, true)
+            .apply { setPadding(0, (10 * dp).toInt(), 0, (2 * dp).toInt()) })
+        fragment.resources.getStringArray(R.array.driving_tips).forEach { c.addView(text("• $it", Color.parseColor("#C9CFDD"), 13f, false)
+            .apply { setPadding(0, (2 * dp).toInt(), 0, (2 * dp).toInt()) }) }
+    }
+
+    /** Guided capacity test: explanation, live step and start / cancel buttons. */
+    private fun renderCapacityTest(card: LinearLayout, st: com.vanaccess.bms.reports.CapacityTest.State, lowV: Double) {
+        card.addView(text("🧪 " + fragment.getString(R.string.captest_title), Color.WHITE, 14f, true)
+            .apply { setPadding(0, (12 * dp).toInt(), 0, (2 * dp).toInt()) })
+        val minCell = com.vanaccess.bms.ble.BleService.cellVoltages.value?.minOrNull()
+        val stepText = when (st.phase) {
+            P.DISCHARGE -> fragment.getString(R.string.captest_discharge, lowV, minCell?.let { f("%.3f V", it) } ?: "—")
+            P.READY -> fragment.getString(R.string.captest_ready)
+            P.CHARGING -> fragment.getString(R.string.captest_charging, st.ah)
+            P.DONE -> fragment.getString(R.string.captest_done, st.resultAh ?: 0.0, date(st.finishedMs))
+            P.FAILED -> fragment.getString(R.string.captest_failed)
+            P.IDLE -> fragment.getString(R.string.captest_desc, lowV)
+        }
+        card.addView(text(stepText, if (st.phase == P.FAILED) Color.parseColor("#F0544F") else cBlue, 13f, false))
+        val running = st.phase in setOf(P.DISCHARGE, P.READY, P.CHARGING)
+        val btn = TextView(ctx).apply {
+            text = fragment.getString(if (running) R.string.captest_cancel else R.string.captest_start)
+            setTextColor(Color.WHITE); textSize = 14f; setTypeface(typeface, Typeface.BOLD); gravity = Gravity.CENTER
+            setPadding((16 * dp).toInt(), (9 * dp).toInt(), (16 * dp).toInt(), (9 * dp).toInt())
+            background = GradientDrawable().apply {
+                cornerRadius = 12 * dp
+                setColor(if (running) com.vanaccess.bms.ui.AppDialog.RED else com.vanaccess.bms.ui.AppDialog.GREEN)
+            }
+            setOnClickListener {
+                val svc = (fragment.activity as? com.vanaccess.bms.ui.MainActivity)?.getBleService() ?: return@setOnClickListener
+                if (running) { svc.cancelCapacityTest(); reload() }
+                else com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.captest_start_q),
+                    message = fragment.getString(R.string.captest_desc, lowV),
+                    buttons = listOf(
+                        com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.captest_start), com.vanaccess.bms.ui.AppDialog.GREEN) {
+                            svc.startCapacityTest(); reload()
+                        },
+                        com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY),
+                    ))
+            }
+        }
+        card.addView(btn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = (8 * dp).toInt() })
     }
 
     private fun styleChart(chart: LineChart) {

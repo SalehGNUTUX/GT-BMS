@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pin_title">رمز 123SmartBMS</string>
+    <string name="pin_msg">أدخل رمز نظام الإدارة للمصادقة. غالباً 0000 أو آخر 4 أرقام من الرقم التسلسلي.</string>
+    <string name="pin_hint">الرمز (مثلاً 2410)</string>
+    <string name="pin_saved">حُفظ الرمز</string>
+    <string name="this_device">هذا الجهاز</string>
+    <string name="rename_channel">إعادة تسمية القناة %1$d</string>
+    <string name="history_stop">إيقاف التحميل</string>
+    <string name="eta_80">80٪ بعد %1$s</string>
+    <string name="eta_100">100٪ بعد %1$s</string>
+    <string name="range_cold">\n\nالبرد: عند %1$.0f°م يُتاح نحو %2$d٪ من السعة فقط، فيُخفَّض المدى بالنسبة نفسها.</string>
+    <string name="captest_title">اختبار السعة</string>
+    <string name="captest_desc">يقيس السعة الحقيقية للبطارية مستقلاً عن نظام الإدارة: استعملها حتى %1$.2f فولت للخلية (≈ فارغة)، ثم اشحنها حتى الامتلاء دفعة واحدة. الأمبير·ساعة المعدودة هي السعة الحقيقية.</string>
+    <string name="captest_start">بدء الاختبار</string>
+    <string name="captest_cancel">إلغاء الاختبار</string>
+    <string name="captest_discharge">الخطوة 1 من 2 — استعمل البطارية حتى %1$.2f فولت للخلية. أدنى خلية الآن: %2$s.</string>
+    <string name="captest_ready">الخطوة 2 من 2 — صِل الشاحن الآن ودعه يشحن حتى الامتلاء دون فصل.</string>
+    <string name="captest_charging">يشحن ويعدّ: %1$.2f أمبير·ساعة حتى الآن. لا تفصل الشاحن قبل الامتلاء.</string>
+    <string name="captest_done">السعة المقاسة: %1$.2f أمبير·ساعة (%2$s)</string>
+    <string name="captest_failed">توقف الاختبار: انقطع الشحن قبل الامتلاء. ابدأه من جديد.</string>
+    <string name="captest_ready_notify">البطارية عند نقطة الفراغ. صِل الشاحن واشحنها حتى الامتلاء دون انقطاع.</string>
+    <string name="captest_done_notify">انتهى: السعة الحقيقية %1$.2f أمبير·ساعة.</string>
+    <string name="captest_start_q">بدء اختبار السعة؟</string>
+    <string name="map_title">المسار</string>
+    <string name="map_legend">أخضر = حمل خفيف • برتقالي • أحمر = تسارع قوي. النقطة الخضراء = البداية، الحمراء = النهاية.</string>
+    <string name="map_open_osmand">فتح في OsmAnd</string>
+    <string name="map_no_app_title">ثبّت تطبيق خرائط</string>
+    <string name="map_no_app">لعرض الرحلة على خريطة حقيقية ثبّت OsmAnd — مجاني ويعمل دون إنترنت بخرائط قابلة للتنزيل. نسخة OsmAnd~ على F-Droid هي النسخة الحرة بالكامل، ويمكن لـ GT-SPEEDOMETER أيضاً فتحها عبر OsmAnd.</string>
+    <string name="cost_title">تكلفة الطاقة</string>
+    <string name="cost_desc">تظهر في تقارير الشحن والرحلات، وتشمل نحو 15٪ فقد الشاحن. خانتا الوقود (اختياريتان) للمقارنة بمركبة بنزين.</string>
+    <string name="cost_price_hint">سعر الكيلوواط·ساعة</string>
+    <string name="cost_currency_hint">العملة</string>
+    <string name="cost_fuel_price_hint">سعر لتر الوقود</string>
+    <string name="cost_fuel_l100_hint">استهلاك الوقود (لتر/100 كم)</string>
+    <string name="cost_row">تكلفة الطاقة</string>
+    <string name="cost_per_km">التكلفة لكل كم</string>
+    <string name="cost_fuel">الرحلة نفسها بالوقود</string>
+    <string name="switch_battery">اختر البطارية</string>
+    <string name="devreport_title">البطارية لا تُقرأ بشكل صحيح؟</string>
+    <string name="devreport_desc">أنشئ تقرير الجهاز (خدمات البلوتوث، البروتوكول المكتشف، آخر الحزم الخام) وشاركه، أو افتح بلاغاً على GitHub وأرفقه. هكذا يُضاف دعم أنظمة إدارة جديدة.</string>
+    <string name="devreport_share">مشاركة التقرير</string>
+    <string name="devreport_issue">فتح بلاغ على GitHub</string>
+    <string name="devreport_issue_body">طراز البطارية / نظام الإدارة:\nما المشكلة (لا يُكتشف، قيم خاطئة…):\n\nأرفق ملف تقرير الجهاز من GT-BMS (وحدة التشخيص ← مشاركة التقرير).</string>
+    <string name="backup_full_desc">نسخة احتياطية كاملة: كل التقارير ومسارات الرحلات والمستويات والإعدادات في ملف واحد — لنقل GT-BMS إلى هاتف جديد.</string>
+    <string name="backup_full_export">نسخة كاملة</string>
+    <string name="backup_full_import">استعادة</string>
+    <string name="backup_restore_q">استعادة هذه النسخة؟</string>
+    <string name="backup_restore_msg">ستُستبدل التقارير والإعدادات الحالية بمحتوى النسخة، ثم يُعاد تشغيل التطبيق.</string>
+    <string name="backup_failed">فشلت العملية</string>
+    <string name="backup_restored">تمت الاستعادة — إعادة التشغيل…</string>
+    <string name="backup_done">حُفظت النسخة</string>
+    <string name="usage_title">القيادة والاستعمال</string>
+    <string name="driving_tips_title">نصائح القيادة مع الليثيوم</string>
+    <string name="adv_drive_shocks">%1$d قفزة تيار مفاجئة في هذه الرحلة (من شبه الصفر إلى أكثر من 15 أمبير في ثانيتين). الضغط المتدرج والثابت على المقبض أرفق بالخلايا وأقل هدراً للطاقة — خاصة للخلية الضعيفة.</string>
+    <string name="adv_drive_onoff">أسلوب «اضغط وأفلت» %1$d مرة. كان يناسب بطاريات الرصاص التي تستعيد شيئاً من جهدها في الراحة؛ الليثيوم لا يحتاج راحة، والسرعة الثابتة أكفأ.</string>
+    <string name="adv_drive_smooth">قيادة سلسة: لا قفزات تيار مفاجئة.</string>
+    <string name="adv_drive_high_current">%1$d٪ من الرحلة فوق %2$.0f أمبير. السرعة العالية ترفع التيار والحرارة والاستهلاك؛ السرعة المعتدلة تطيل المدى وعمر البطارية.</string>
+    <string name="adv_usage_shocks">آخر %1$d رحلات: %2$d قفزة تيار مفاجئة على %3$.1f كم.</string>
+    <string name="adv_usage_best_speed">أكفأ متوسط سرعة لرحلاتك: %1$d–%2$d كم/س (%3$.1f واط·ساعة/كم)، مقابل %4$d–%5$d كم/س (%6$.1f واط·ساعة/كم).</string>
+    <string name="adv_usage_protection_repeats">سجل النظام يُظهر قطع الحماية للشحنة نفسها %1$d مرات: الشاحن يعيد الشحن بعد كل تحرير. افصله بعد الامتلاء، أو استعمل شاحناً بجهد %2$.1f فولت.</string>
+    <string-array name="driving_tips">
+        <item>اضغط المقبض تدريجياً وثبّته؛ تجنّب «اضغط وأفلت» المتكرر — كان مناسباً للرصاص لا لليثيوم.</item>
+        <item>السرعة المعتدلة الثابتة أكفأ: الاستهلاك والتيار والحرارة ترتفع بسرعة مع السرعة.</item>
+        <item>عند الانطلاق ابدأ برفق: أعلى تيار يحدث عند التسارع من التوقف، وهو ما يُجهد الخلية الأضعف.</item>
+        <item>تجنّب استنزاف البطارية حتى النهاية؛ ابدأ رحلة العودة وفيها 20٪ على الأقل.</item>
+        <item>في البرد تنخفض السعة المتاحة؛ توقّع مدى أقصر وانطلق بهدوء حتى تدفأ البطارية.</item>
+        <item>راقب «الخلايا عبر الزمن»: إن بقيت خلية تهبط تحت الحمل، خفّف التسارع وافحص التوازن.</item>
+    </string-array>
+</resources>

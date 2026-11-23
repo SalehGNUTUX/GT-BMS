@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.debug
 
+import com.vanaccess.bms.R
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -31,6 +32,13 @@ class DebugFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.btnDebugBack.setOnClickListener { requireActivity().onBackPressedDispatcher.onBackPressed() }
+        binding.btnDevreportShare.setOnClickListener { shareDeviceReport() }
+        binding.btnDevreportIssue.setOnClickListener {
+            val title = android.net.Uri.encode("Device report: " + (com.vanaccess.bms.data.AppPreferences(requireContext()).selectedDeviceName ?: "BMS"))
+            val body = android.net.Uri.encode(getString(R.string.devreport_issue_body))
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://github.com/SalehGNUTUX/GT-BMS/issues/new?title=$title&body=$body")))
+        }
         setupButtons()
         observeData()
     }
@@ -108,6 +116,43 @@ class DebugFragment : Fragment() {
             requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
         Toast.makeText(requireContext(), "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * One text file for adding or fixing support of a BMS: versions, the device's Bluetooth
+     * services, what protocol was detected and the last raw packets.
+     */
+    private fun shareDeviceReport() {
+        val ctx = requireContext()
+        val prefs = com.vanaccess.bms.data.AppPreferences(ctx)
+        val text = buildString {
+            appendLine("GT-BMS device report")
+            appendLine("App: ${com.vanaccess.bms.BuildConfig.VERSION_NAME} (${com.vanaccess.bms.BuildConfig.VERSION_CODE})")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+            appendLine("Battery: ${prefs.selectedDeviceName ?: "-"}  ${prefs.selectedDeviceAddress ?: ""}")
+            appendLine("Protocol setting: ${prefs.bmsProtocol}  detected: ${BleService.activeDriverName.value ?: "-"}")
+            appendLine("Service: ${BleService.activeServiceUuid.value ?: "-"}")
+            appendLine("Write: ${BleService.activeWriteUuid.value ?: "-"}  Notify: ${BleService.activeNotifyUuid.value ?: "-"}")
+            appendLine()
+            appendLine("== GATT ==")
+            appendLine(BleService.gattDump.value ?: "(none)")
+            appendLine()
+            appendLine("== Last packets (newest first) ==")
+            (BleService.rawPacketLog.value ?: emptyList()).take(150).forEach { appendLine(it) }
+        }
+        try {
+            val dir = java.io.File(ctx.cacheDir, "exports").apply { mkdirs() }
+            val f = java.io.File(dir, "GT-BMS-device-report.txt").apply { writeText(text) }
+            val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", f)
+            startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "GT-BMS device report")
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, getString(R.string.devreport_share)))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(ctx, e.message, android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onDestroyView() {

@@ -23,11 +23,14 @@ android {
         applicationId "com.gnutux.gtbms"
         minSdk 26
         targetSdk 34
-        versionCode 12
-        versionName "1.5.0"
+        versionCode 13
+        versionName "1.6.0-beta.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "BUILD_DATE", "\"${versionName}\""
+        // F-Droid builds and signs the app itself, so the GitHub self-updater is switched off there:
+        //   ./gradlew assembleRelease -Pfdroid
+        buildConfigField "boolean", "SELF_UPDATE", project.hasProperty('fdroid') ? "false" : "true"
     }
 
     signingConfigs {

@@ -54,6 +54,7 @@ object UpdateChecker {
 
     /** Silent background check: notifies only when a newer version exists. */
     fun checkIfDue(ctx: Context) {
+        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) return   // F-Droid build: F-Droid handles updates
         val prefs = AppPreferences(ctx)
         if (!prefs.autoCheckUpdates) return
         if (System.currentTimeMillis() - prefs.lastUpdateCheck < CHECK_INTERVAL_MS) return
@@ -61,6 +62,7 @@ object UpdateChecker {
     }
 
     fun check(ctx: Context, userInitiated: Boolean) {
+        if (!com.vanaccess.bms.BuildConfig.SELF_UPDATE) return
         if (running) return
         running = true
         val app = ctx.applicationContext

@@ -116,9 +116,16 @@ class ReportStore private constructor(ctx: Context) :
     }
 
     @Synchronized
-    fun list(type: String? = null, limit: Int = 200): List<Session> {
-        val where = if (type != null) "WHERE type = ?" else ""
-        val args = if (type != null) arrayOf(type) else null
+    /**
+     * @param battery only this battery's reports (plus old ones saved before the address was
+     *        recorded); null = every battery.
+     */
+    fun list(type: String? = null, limit: Int = 200, battery: String? = null): List<Session> {
+        val conds = mutableListOf<String>(); val a = mutableListOf<String>()
+        if (type != null) { conds += "type = ?"; a += type }
+        if (!battery.isNullOrBlank()) { conds += "(battery = ? OR battery = '' OR battery IS NULL)"; a += battery }
+        val where = if (conds.isEmpty()) "" else "WHERE " + conds.joinToString(" AND ")
+        val args = if (a.isEmpty()) null else a.toTypedArray()
         readableDatabase.rawQuery(
             "SELECT id, type, start_ms, end_ms, battery, data FROM sessions $where ORDER BY start_ms DESC LIMIT $limit", args
         ).use { c ->
@@ -133,8 +140,8 @@ class ReportStore private constructor(ctx: Context) :
 
     /** Sessions of several types, newest first. */
     @Synchronized
-    fun listTypes(types: List<String>, limit: Int = 200): List<Session> =
-        types.flatMap { list(it, limit) }.sortedByDescending { it.startMs }.take(limit)
+    fun listTypes(types: List<String>, limit: Int = 200, battery: String? = null): List<Session> =
+        types.flatMap { list(it, limit, battery) }.sortedByDescending { it.startMs }.take(limit)
 
     @Synchronized
     fun points(sessionId: Long): List<Point> {

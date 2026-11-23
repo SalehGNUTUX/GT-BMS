@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pin_title">123SmartBMS PIN</string>
+    <string name="pin_msg">Enter the BMS PIN to authenticate. Usually 0000 or the last 4 digits of the serial number.</string>
+    <string name="pin_hint">PIN (e.g. 2410)</string>
+    <string name="pin_saved">PIN saved</string>
+    <string name="this_device">this device</string>
+    <string name="rename_channel">Rename channel %1$d</string>
+    <string name="history_stop">Stop</string>
+    <string name="eta_80">80 %% in %1$s</string>
+    <string name="eta_100">100 %% in %1$s</string>
+    <string name="range_cold">\n\nCold: at %1$.0f °C about %2$d %% of the capacity is usable, so the range is reduced accordingly.</string>
+    <string name="captest_title">Capacity test</string>
+    <string name="captest_desc">Measures the battery\'s real capacity, independent of the BMS: use it down to %1$.2f V per cell (≈ empty), then charge to full in one go. The amp-hours counted are the real capacity.</string>
+    <string name="captest_start">Start test</string>
+    <string name="captest_cancel">Cancel test</string>
+    <string name="captest_discharge">Step 1 of 2 — use the battery down to %1$.2f V per cell. Lowest cell now: %2$s.</string>
+    <string name="captest_ready">Step 2 of 2 — plug in the charger now and let it charge to full without unplugging.</string>
+    <string name="captest_charging">Charging and counting: %1$.2f Ah so far. Don\'t unplug until full.</string>
+    <string name="captest_done">Measured capacity: %1$.2f Ah (%2$s)</string>
+    <string name="captest_failed">The test stopped: the charge was interrupted before full. Start again.</string>
+    <string name="captest_ready_notify">The battery is at the empty point. Plug in the charger and charge to full without interruption.</string>
+    <string name="captest_done_notify">Done: real capacity %1$.2f Ah.</string>
+    <string name="captest_start_q">Start the capacity test?</string>
+    <string name="map_title">Route</string>
+    <string name="map_legend">Green = light load • amber • red = heavy throttle. Green dot = start, red dot = end.</string>
+    <string name="map_open_osmand">Open in OsmAnd</string>
+    <string name="map_no_app_title">Install a map app</string>
+    <string name="map_no_app">To view the trip on a real map, install OsmAnd — free, works offline with downloadable maps. OsmAnd~ on F-Droid is the fully free build; GT-SPEEDOMETER can also open it through OsmAnd.</string>
+    <string name="cost_title">Energy cost</string>
+    <string name="cost_desc" formatted="false">Shown in charge and trip reports. Includes ~15 % charger loss. Fuel fields (optional) compare with a petrol vehicle.</string>
+    <string name="cost_price_hint">Price per kWh</string>
+    <string name="cost_currency_hint">Currency</string>
+    <string name="cost_fuel_price_hint">Fuel price per litre</string>
+    <string name="cost_fuel_l100_hint">Fuel use (L/100 km)</string>
+    <string name="cost_row">Energy cost</string>
+    <string name="cost_per_km">Cost per km</string>
+    <string name="cost_fuel">Same trip with fuel</string>
+    <string name="switch_battery">Choose a battery</string>
+    <string name="devreport_title">Battery not read correctly?</string>
+    <string name="devreport_desc">Create a device report (Bluetooth services, detected protocol, last raw packets) and share it, or open an issue on GitHub and attach it. This is how support for new BMS models is added.</string>
+    <string name="devreport_share">Share report</string>
+    <string name="devreport_issue">Open GitHub issue</string>
+    <string name="devreport_issue_body">Battery / BMS model:\nWhat is wrong (not detected, wrong values…):\n\nPlease attach the GT-BMS device report file (Debug console → Share report).</string>
+    <string name="backup_full_desc">Full backup: all reports, trip tracks, levels and settings in one file — to move GT-BMS to a new phone.</string>
+    <string name="backup_full_export">Full backup</string>
+    <string name="backup_full_import">Restore</string>
+    <string name="backup_restore_q">Restore this backup?</string>
+    <string name="backup_restore_msg">Current reports and settings will be replaced by the backup, then the app restarts.</string>
+    <string name="backup_failed">Backup failed</string>
+    <string name="backup_restored">Restored — restarting…</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="usage_title">Driving &amp; usage</string>
+    <string name="driving_tips_title">Driving tips for lithium</string>
+    <string name="adv_drive_shocks">%1$d sudden current jumps on this trip (from almost 0 to over 15 A in two seconds). Progressive, steady throttle is gentler on the cells and wastes less energy — especially for a weak cell.</string>
+    <string name="adv_drive_onoff">“Press and release” %1$d times. It suited lead-acid batteries, which recover while resting; lithium needs no rest, and a steady speed is more efficient.</string>
+    <string name="adv_drive_smooth">Smooth riding: no sudden current jumps.</string>
+    <string name="adv_drive_high_current">%1$d %% of this trip above %2$.0f A. High speed raises current, heat and consumption; a moderate speed extends range and battery life.</string>
+    <string name="adv_usage_shocks">Last %1$d trips: %2$d sudden throttle jumps over %3$.1f km.</string>
+    <string name="adv_usage_best_speed">Your most economical average speed: %1$d–%2$d km/h (%3$.1f Wh/km), vs %4$d–%5$d km/h (%6$.1f Wh/km).</string>
+    <string name="adv_usage_protection_repeats">The BMS history shows one charge cut by the protection %1$d times: the charger restarts after every release. Unplug once full, or use a %2$.1f V charger.</string>
+    <string-array name="driving_tips">
+        <item>Open the throttle progressively and hold it; avoid repeated press-and-release — it suited lead-acid, not lithium.</item>
+        <item>A steady moderate speed is most efficient: consumption, current and heat rise fast with speed.</item>
+        <item>Start gently: the highest current happens when accelerating from a stop, and that is what strains the weakest cell.</item>
+        <item>Don’t run the battery flat; head back with at least 20 % left.</item>
+        <item>In the cold less capacity is available; expect less range and ride gently until the battery warms up.</item>
+        <item>Watch “Cells over time”: if one cell keeps sagging under load, ease acceleration and check the balance.</item>
+    </string-array>
+</resources>

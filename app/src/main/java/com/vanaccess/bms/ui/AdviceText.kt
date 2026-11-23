@@ -66,7 +66,7 @@ object AdviceText {
             val design = lim.designAh
             val range = if (whKm != null && whKm > 0 && design != null)
                 s.i("soc_end") / 100.0 * design * ((s.d("max_v") + s.d("min_v")) / 2) / whKm else null
-            Advisor.afterTrip(s, lim, learned, range)
+            Advisor.afterTrip(s, lim, learned, range) + com.vanaccess.bms.reports.DrivingAnalyzer.recs(s)
         }
     }
 
@@ -98,6 +98,17 @@ object AdviceText {
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
+        try { ctx.getSystemService(NotificationManager::class.java).notify(4000 + id, n) } catch (_: SecurityException) {}
+    }
+
+    /** Plain one-line notification on the summary channel. */
+    fun notifyPlain(ctx: Context, id: Int, title: String, text: String) {
+        channel(ctx)
+        val open = PendingIntent.getActivity(ctx, 40 + id, Intent(ctx, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(ctx, CHANNEL)
+            .setSmallIcon(R.drawable.ic_battery).setContentTitle(title).setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true).build()
         try { ctx.getSystemService(NotificationManager::class.java).notify(4000 + id, n) } catch (_: SecurityException) {}
     }
 

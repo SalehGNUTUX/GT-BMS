@@ -80,6 +80,9 @@ interface BmsDriver {
     /** Commands that start a history download (sent through the poll queue). */
     fun historyCommands(): List<ByteArray> = emptyList()
 
+    /** Stop a running history download (records already read are kept). */
+    fun cancelHistory() {}
+
     /** True when the advertised device name clearly belongs to this BMS family. */
     fun matchesName(name: String?): Boolean
 

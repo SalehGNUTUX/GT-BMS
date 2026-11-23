@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adv_title" formatted="false">Recommandations</string>
+    <string name="adv_cell_empty">La cellule %1$d est à %2$.3f V (%3$d %%) — la batterie est presque vide. Rechargez maintenant.</string>
+    <string name="adv_battery_low">Batterie faible (%1$d %%). Rechargez bientôt.</string>
+    <string name="adv_cell_near_ov">La cellule %1$d est à %2$.3f V, proche de la protection du BMS (%3$.3f V). La charge va bientôt se terminer — c\'est normal.</string>
+    <string name="adv_delta_load">Écart de %1$d mV entre cellules à %2$.0f A (cellule %3$d la plus basse). Réduisez la charge — cellule faible ou déséquilibrée.</string>
+    <string name="adv_delta_rest">Écart de %1$d mV entre cellules au repos (cellule %2$d la plus basse). Chargez une fois à 100 %% : l\'équilibrage agit près de la pleine charge (au-dessus de %3$.2f V par cellule).</string>
+    <string name="adv_temp_charge">Température %1$.0f °C en charge (limite BMS %2$d °C). Rechargez dans un endroit plus frais ou plus lentement.</string>
+    <string name="adv_temp_discharge">Température %1$.0f °C sous charge (limite BMS %2$d °C). Réduisez la vitesse ou la charge.</string>
+    <string name="adv_cold_charge">Recharge à %1$.0f °C (limite BMS %2$d °C). Recharger du lithium au froid use les cellules — réchauffez d\'abord la batterie.</string>
+    <string name="adv_temp_mos">Étage de puissance du BMS à %1$.0f °C (limite %2$d °C). Réduisez le courant.</string>
+    <string name="adv_charger_voltage">Vos recharges se terminent par la protection du BMS. Régler le chargeur sur %1$.1f V les termine juste en dessous.</string>
+    <string name="adv_all_ok" formatted="false">Tout semble normal.</string>
+    <string name="adv_charge_summary">Rechargée de %1$d %% à %2$d %% en %3$.1f h, moyenne %4$.1f A (+%5$.2f Ah).</string>
+    <string name="adv_balance_needed">Aucune charge complète depuis %1$d jours. L\'équilibrage n\'agit que près de la pleine charge (au-dessus de %2$.2f V par cellule) : chargez à 100 %% une fois cette semaine.</string>
+    <string name="adv_charge_delta">Écart entre cellules jusqu\'à %1$d mV pendant cette recharge.</string>
+    <string name="adv_charge_hot">Jusqu\'à %1$.0f °C pendant cette recharge (limite BMS %2$d °C).</string>
+    <string name="adv_fast_charge">Charge rapide (%1$.2fC). Acceptable de temps en temps ; une charge plus lente ménage les cellules.</string>
+    <string name="adv_trip_summary">%1$.1f km à %2$.1f Wh/km (%3$.3f Ah/km), moyenne %4$.0f km/h.</string>
+    <string name="adv_trip_summary_nogps">%1$.0f Wh utilisés (%2$.2f Ah). Pas de distance GPS pour ce trajet.</string>
+    <string name="adv_trip_above_avg">Consommation %1$.0f %% au-dessus de votre moyenne (%2$.1f Wh/km) — vent, côtes, charge ou vitesse.</string>
+    <string name="adv_trip_below_avg">Consommation %1$.0f %% en dessous de votre moyenne (%2$.1f Wh/km). Conduite économe.</string>
+    <string name="adv_trip_range">La charge restante couvre environ %1$.0f km à cette consommation.</string>
+    <string name="adv_trip_peak_current">Courant de pointe %1$.0f A, proche du seuil de surintensité du BMS (%2$d A).</string>
+    <string name="adv_trip_delta">Écart de %1$d mV entre cellules à %2$.0f A — surveillez une éventuelle cellule faible.</string>
+    <string name="adv_week_summary">Cette semaine : %1$d recharges, %2$d trajets, %3$.1f km, %4$.0f Wh utilisés.</string>
+    <string name="adv_week_cycles">Nombre de cycles indiqué par le BMS : %1$d.</string>
+    <string name="adv_week_soh">Santé de la batterie : %1$d %%.</string>
+    <string name="adv_tip_lfp" formatted="false">Conseil LiFePO₄ : charger à 100 % ne pose pas de problème et permet aux cellules de s\'équilibrer ; évitez de la laisser pleine et inutilisée pendant des semaines, et ne la laissez pas vide.</string>
+    <string name="adv_tip_liion" formatted="false">Conseil Li-ion : au quotidien, restez entre 20 % et 85 % ; chargez à 100 % uniquement avant les longs trajets.</string>
+    <string name="adv_weekly_title" formatted="false">Bilan hebdomadaire GT-BMS</string>
+    <string name="adv_charge_title" formatted="false">Recharge terminée</string>
+    <string name="adv_trip_title" formatted="false">Trajet terminé</string>
+    <string name="sum_notify" formatted="false">Bilan après chaque recharge et trajet</string>
+    <string name="sum_weekly" formatted="false">Bilan hebdomadaire</string>
+    <string name="levels_title" formatted="false">Niveaux</string>
+    <string name="levels_days" formatted="false">État de charge — 14 derniers jours</string>
+    <string name="health_title" formatted="false">Santé de la batterie</string>
+    <string name="health_bms">Indiquée par le BMS : %1$d %%</string>
+    <string name="health_bms_design">Le BMS indique sa capacité nominale (%1$.1f Ah) ; il ne mesure pas l\'usure.</string>
+    <string name="health_measured">Capacité mesurée : %1$.1f Ah (%2$d %% de %3$.1f Ah)</string>
+    <string name="health_how">Pour mesurer la capacité réelle : utilisez la batterie jusqu\'au point de calibrage bas (environ %1$.2f V par cellule), puis rechargez-la complètement sans interruption.</string>
+    <string name="levels_cycles" formatted="false">Cycles de charge</string>
+    <string name="levels_last_full" formatted="false">Dernière charge complète</string>
+    <string name="levels_last_deep" formatted="false">Dernière décharge profonde</string>
+    <string name="levels_never" formatted="false">—</string>
+    <string name="cycles_left">Cycles restants (estimation)</string>
+    <string name="cycles_left_val">≈ %1$d / %2$d</string>
+    <string name="cycle_life">Durée de vie nominale (cycles)</string>
+    <string name="cycle_life_desc">D\'après la fiche technique de la batterie. Typique : LiFePO₄ 3000, Li-ion 800. Sert uniquement à estimer les cycles restants.</string>
+    <string name="vehicle_etrike">Tricycle électrique / cargo</string>
+    <string name="vehicle_wheelchair">Fauteuil roulant électrique</string>
+    <string name="vehicle_eboat">Bateau électrique</string>
+    <string name="tones_title">Sonneries d\'alarme</string>
+    <string name="tones_desc">Chaque alarme a sa propre sonnerie pour savoir laquelle sonne. Appuyez sur un nom pour choisir ; ▶ pour l\'écouter.</string>
+    <string name="tone_high">Charge complète</string>
+    <string name="tone_low">Batterie faible</string>
+    <string name="tone_delta">Écart cellules (sous charge)</string>
+    <string name="tone_pick">Choisir la sonnerie</string>
+    <string name="tone_none">(par défaut)</string>
+    <string name="chart_no_data">Pas encore de données — un point est enregistré toutes les 10 minutes quand la batterie est connectée.</string>
+    <string name="lang_title">Langue de l\'application</string>
+    <string name="lang_system">Suivre la langue du système</string>
+    <string name="m_range_i">Autonomie estimée ⓘ</string>
+    <string name="range_info_title">Comment l\'autonomie est estimée</string>
+    <string name="range_info_none">Pas encore assez de données : la capacité restante de la batterie est nécessaire.</string>
+    <string name="range_basis_user">votre propre valeur (Réglages → Véhicule et trajets)</string>
+    <string name="range_basis_learned_km">moyenne de vos trajets (%1$.1f km enregistrés)</string>
+    <string name="range_basis_type">valeur typique pour %1$s (vos trajets sont utilisés après %2$.0f km)</string>
+    <string name="range_info_body">Capacité restante : %1$.1f Ah\nRéserve conservée : %2$.1f Ah (%3$d %% de la pleine charge)\nTension nominale du pack : %4$.1f V\n→ Énergie utilisable = (restante − réserve) × tension = %5$.0f Wh\n\nConsommation : %6$.1f Wh/km — %7$s\n\nAutonomie = énergie utilisable ÷ consommation ≈ %8$.0f km\n\nLa tension nominale (et non la tension au repos) est utilisée car le pack chute sous charge. Vitesse, vent, côtes, charge et froid modifient la consommation : considérez-la comme une estimation.</string>
+    <string name="end_trip">Terminer le trajet</string>
+    <string name="live_discharge">En décharge depuis %1$s · −%2$.2f Ah</string>
+    <string name="rep_discharges">Décharge</string>
+    <string name="rep_discharge">Décharge</string>
+    <string name="rep_avg_power">Puissance moyenne</string>
+    <string name="adv_discharge_title">Décharge terminée</string>
+    <string name="adv_discharge_summary">%1$.2f Ah utilisés (%2$.0f Wh) de %3$d %% à %4$d %% en %5$.1f h, moyenne %6$.0f W.</string>
+    <string name="alarm_short">Alarme courte (5 s) — désactivée = sonne jusqu\'à l\'arrêt</string>
+    <string name="info">Explication</string>
+    <string name="consumption_manual">Consommation manuelle (Wh/km, 0 = automatique)</string>
+    <string name="info_consumption_title">Consommation manuelle</string>
+    <string name="info_consumption">Le nombre de wattheures que votre véhicule consomme par kilomètre. Il sert uniquement à l\'autonomie estimée.\n\n• Laissez 0 (recommandé) : l\'application utilise la moyenne de vos trajets enregistrés dès que vous avez au moins 5 km, et une valeur typique du type de véhicule en attendant.\n• Saisissez un nombre seulement si vous connaissez votre consommation réelle, par exemple via l\'écran du véhicule ou de nombreux trajets : Wh/km = énergie utilisée (Wh) ÷ distance (km).\n\nValeurs typiques : vélo électrique 8–15, trottinette 10–20, scooter électrique 20–40, petite voiture 100–150 Wh/km.\n\nUne valeur saisie ici est toujours prioritaire sur la moyenne apprise.</string>
+    <string name="info_cycles_title">Durée de vie nominale</string>
+    <string name="info_cycles">Le nombre de cycles de charge complets garantis par le fabricant avant que la capacité tombe à environ 80 %. Cherchez « Cycle life » dans la fiche technique de la batterie.\n\n• Laissez vide pour utiliser la valeur typique : LiFePO₄ 3000, Li-ion 800.\n• Elle sert uniquement à estimer les « Cycles restants » = cycles nominaux − cycles comptés par le BMS.\n\nElle ne change pas la façon dont la batterie est chargée ou protégée.</string>
+    <string name="info_delta_rest_title">Écart cellules au repos</string>
+    <string name="info_delta_rest">Le plus grand écart de tension entre la cellule la plus haute et la plus basse, en millivolts, mesuré sans charge (moins de 1 A pendant 2 minutes) et seulement entre 20 % et 90 % de charge.\n\nPar défaut 30 mV. Un pack sain et équilibré reste généralement sous 20 mV au repos. Au-delà de la limite, une notification discrète vous propose une charge complète pour que le BMS puisse équilibrer.</string>
+    <string name="info_delta_load_title">Écart cellules sous charge</string>
+    <string name="info_delta_load">Le plus grand écart entre cellules, en millivolts, pendant que la batterie fournit du courant (au-dessus du seuil de courant d\'utilisation du type de véhicule).\n\nPar défaut 150 mV. Sous charge, l\'écart augmente naturellement ; une valeur bien plus grande indique une cellule faible ou déséquilibrée. Cette alarme peut sonner en roulant — utilisez « Alarme courte (5 s) » dans Sonneries d\'alarme si vous préférez.</string>
+    <string name="history_reload">Actualiser</string>
+    <string name="history_cached">%1$d enregistrements · dernier téléchargement %2$s</string>
+    <string name="end_trip_q">Terminer le trajet maintenant ?</string>
+    <string name="end_trip_msg">Le trajet est enregistré avec ce qui a été mesuré jusqu\'ici. Un nouveau trajet ne commence qu\'après un court arrêt du véhicule.</string>
+    <string name="vehicle_motor">Moteur fixe / pompe</string>
+</resources>

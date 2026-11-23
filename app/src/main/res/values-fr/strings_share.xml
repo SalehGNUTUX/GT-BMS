@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="share_section">Partager GT-BMS</string>
+    <string name="share_section_hint">Le texte envoie une description avec des liens ; le fichier d\'installation envoie l\'application elle-même — pratique pour quelqu\'un sans internet.</string>
+    <string name="share_app_text">Partager l\'application</string>
+    <string name="share_app_apk">Partager le fichier d\'installation</string>
+    <string name="share_subject">GT-BMS — moniteur de batterie Bluetooth</string>
+    <string name="share_pitch">GT-BMS (GNUTUX BMS) : une application Android gratuite qui lit les batteries lithium intelligentes en Bluetooth — Bestway, JBD, JK, Daly, PowerQueen et d\'autres. État de charge, tension de chaque cellule, températures, alertes de protection, historique des événements et alarmes de charge complète et de batterie faible. Sans pub, sans pistage, sans compte.</string>
+    <string name="share_version">Version %1$s</string>
+    <string name="share_site_label">Site web</string>
+    <string name="share_repo_label">Code source</string>
+    <string name="share_hashtags">#GT_BMS #GNUTUX #BMS #LiFePO4 #Batterie #Bluetooth #Android #LogicielLibre #OpenSource #GPLv3</string>
+    <string name="share_apk_failed">Impossible de préparer le fichier d\'installation</string>
+    <string name="share_open_site">Site web</string>
+    <string name="share_open_repo">Dépôt</string>
+</resources>

@@ -73,6 +73,8 @@ class BleService : LifecycleService() {
         val activeDriverName = MutableLiveData<String?>()
         /** Wall-clock time of the last BMS reading (0 = none yet), for "last update: N min ago". */
         @Volatile var lastDataMs: Long = 0L
+        /** Guided capacity test (Reports → Levels). */
+        val capacityTest = MutableLiveData<com.vanaccess.bms.reports.CapacityTest.State>()
         /** Cells that sit lowest over time (CellTracker), for the Cells tab. */
         val cellStats = MutableLiveData<List<com.vanaccess.bms.reports.CellTracker.Weak>>(emptyList())
         private var lastDataPersistMs = 0L
@@ -152,6 +154,7 @@ class BleService : LifecycleService() {
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
         if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
+        capacityTest.postValue(com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson))
         cellStats.postValue(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest())
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
         if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
@@ -945,21 +948,7 @@ class BleService : LifecycleService() {
             recorder.onBattery(bluetoothGatt?.device?.address)
             android.util.Log.i("BleService", "Protocol locked: ${driver.id}")
         }
-        out.basic?.let {
-            val nowMs = System.currentTimeMillis()
-            if (nowMs - lastDataPersistMs >= 30_000L) { prefs.lastDataMs = nowMs; lastDataPersistMs = nowMs }
-            lastDataMs = nowMs
-            basicInfo.postValue(it)
-            publishLive(it, nowMs)
-            alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
-            recorder.onReading(it)
-        }
-        out.cells?.let {
-            cellVoltages.postValue(it)
-            recorder.onCells(it)
-            basicInfo.value?.let { b -> trackCells(it, b.current) }
-            basicInfo.value?.let { b -> alarmMonitor.onCells(it, b.current, b.soc) }
-        }
+        publishReading(out.basic, out.cells)
         out.hardware?.let { hardwareInfo.postValue(it) }
         out.details?.let { d -> synchronized(detailsLock) { details.putAll(d); deviceDetails.postValue(details.toMap()) } }
         out.params?.let { p ->
@@ -1002,6 +991,80 @@ class BleService : LifecycleService() {
         handler.postDelayed({
             if (historyLoading.value == true) { historyLoading.postValue(false); saveHistoryCache() }
         }, 180_000)
+    }
+
+    /**
+     * One place for every live reading (all drivers and the 123SmartBMS bridge): screen,
+     * widget/notification, alarms, reports, cell tracking.
+     */
+    private fun publishReading(basic: BmsBasicInfo?, cells: List<Double>?) {
+        basic?.let {
+            val nowMs = System.currentTimeMillis()
+            if (nowMs - lastDataPersistMs >= 30_000L) { prefs.lastDataMs = nowMs; lastDataPersistMs = nowMs }
+            lastDataMs = nowMs
+            basicInfo.postValue(it)
+            publishLive(it, nowMs)
+            alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
+            recorder.onReading(it)
+            stepCapacityTest(it, cells ?: cellVoltages.value)
+        }
+        cells?.let {
+            cellVoltages.postValue(it)
+            recorder.onCells(it)
+            val b = basic ?: basicInfo.value
+            b?.let { bi -> trackCells(it, bi.current); alarmMonitor.onCells(it, bi.current, bi.soc) }
+        }
+    }
+
+    // ── Guided capacity test ─────────────────────────────────────────────────
+
+    private var capTest: com.vanaccess.bms.reports.CapacityTest.State? = null
+    private var capSavedMs = 0L
+
+    fun startCapacityTest() {
+        capTest = com.vanaccess.bms.reports.CapacityTest.start(System.currentTimeMillis()).also { saveCapTest(it) }
+    }
+
+    fun cancelCapacityTest() {
+        capTest = com.vanaccess.bms.reports.CapacityTest.State().also { saveCapTest(it) }
+    }
+
+    private fun saveCapTest(st: com.vanaccess.bms.reports.CapacityTest.State) {
+        prefs.capacityTestJson = st.toJson(); capSavedMs = System.currentTimeMillis()
+        capacityTest.postValue(st)
+    }
+
+    private fun stepCapacityTest(info: BmsBasicInfo, cells: List<Double>?) {
+        val st = capTest ?: com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson).also { capTest = it }
+        if (st.phase !in setOf(com.vanaccess.bms.reports.CapacityTest.Phase.DISCHARGE, com.vanaccess.bms.reports.CapacityTest.Phase.READY, com.vanaccess.bms.reports.CapacityTest.Phase.CHARGING)) return
+        val lim = com.vanaccess.bms.reports.BmsLimits.fromJson(prefs.bmsLimitsJson)
+        val lowV = (lim.socLowCalMv ?: if (lim.lfp || lim.cellOvMv == null) 3050 else 3300) / 1000.0
+        val ovV = (lim.cellOvMv ?: 3650) / 1000.0
+        val now = System.currentTimeMillis()
+        val next = com.vanaccess.bms.reports.CapacityTest.update(st, now, info.soc, info.current, cells?.minOrNull() ?: 0.0, cells?.maxOrNull() ?: 0.0,
+            info.chargeFetOn, lowV, ovV)
+        capTest = next
+        if (next.phase != st.phase) {
+            saveCapTest(next)
+            when (next.phase) {
+                com.vanaccess.bms.reports.CapacityTest.Phase.READY -> com.vanaccess.bms.ui.AdviceText.notifyPlain(this, 5,
+                    getString(R.string.captest_title), getString(R.string.captest_ready_notify))
+                com.vanaccess.bms.reports.CapacityTest.Phase.DONE -> com.vanaccess.bms.ui.AdviceText.notifyPlain(this, 5,
+                    getString(R.string.captest_title), getString(R.string.captest_done_notify, next.resultAh ?: 0.0))
+                com.vanaccess.bms.reports.CapacityTest.Phase.FAILED -> com.vanaccess.bms.ui.AdviceText.notifyPlain(this, 5,
+                    getString(R.string.captest_title), getString(R.string.captest_failed))
+                else -> {}
+            }
+        } else if (now - capSavedMs >= 30_000L) saveCapTest(next)
+    }
+
+    /** Stop the history download; keep (and cache) what has been read so far. */
+    fun cancelHistory() {
+        activeDriver?.cancelHistory()
+        if (historyLoading.value == true) {
+            historyLoading.postValue(false)
+            saveHistoryCache()
+        }
     }
 
     private fun clearDeviceData() {
@@ -1257,9 +1320,9 @@ class BleService : LifecycleService() {
             smartBmsParser.parseLine(line)
             smartBmsParser.state.updateCount++
             smartBmsState.postValue(smartBmsParser.state.copy())
-            smartBmsParser.state.let { st ->
-                if (st.soc >= 0 && !st.packVoltage.isNaN())
-                    alarmMonitor.onReading(st.soc, st.packVoltage, if (st.netCurrent.isNaN()) 0.0 else st.netCurrent)
+            // 123SmartBMS joins the common pipeline (new battery screen, reports, alarms, widget)
+            smartBmsParser.state.toBasicInfo()?.let { info ->
+                publishReading(info, smartBmsParser.state.cellVoltagesList().takeIf { it.size >= 2 })
             }
             schedule123BmsRefresh()
             return
@@ -1334,7 +1397,7 @@ class BleService : LifecycleService() {
         val lim = com.vanaccess.bms.reports.BmsLimits.fromJson(prefs.bmsLimitsJson)
         return com.vanaccess.bms.reports.RangeEstimator.estimate(info.remainCapacity, info.fullCapacity, info.packVoltage,
             prefs.bmsCellCount, lim.lfp || lim.cellOvMv == null, prefs.consumptionWhKm.toDouble(), learnedCache,
-            v.defaultWhPerKm)?.km
+            v.defaultWhPerKm, info.temperatures.minOrNull())?.km
     }
 
     /** Live values in the ongoing notification (every 10 s) and the widget (every 30 s). */

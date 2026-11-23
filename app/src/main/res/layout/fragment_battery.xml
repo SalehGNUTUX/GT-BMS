@@ -362,13 +362,21 @@
             android:paddingTop="8dp"
             android:visibility="gone">
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chips_reports"
+            <!-- Filters + export icon on one line (scrolls sideways if the screen is narrow) -->
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="6dp"
-                app:singleSelection="true"
-                app:selectionRequired="true" />
+                android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chips_reports"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:singleSelection="true"
+                    app:selectionRequired="true" />
+            </HorizontalScrollView>
 
             <TextView
                 android:id="@+id/tv_reports_empty"

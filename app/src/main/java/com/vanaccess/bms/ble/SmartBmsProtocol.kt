@@ -153,6 +153,24 @@ class SmartBmsState {
     val alertFlags: List<SmartBmsFlag> get() =
         SmartBmsProtocol.decodeStatusFlags(statusByte).filter { it.isError && it.active }
 
+    /**
+     * Same data model as the other BMS drivers, so 123SmartBMS uses the common battery screen.
+     * The BMS reports stored energy (Wh), not Ah: remaining Ah ≈ Wh ÷ pack V, full ≈ remaining ÷ SOC.
+     */
+    fun toBasicInfo(): BmsBasicInfo? {
+        if (soc < 0 || packVoltage.isNaN()) return null
+        val remainAh = if (packVoltage > 0) energyStored / packVoltage else 0.0
+        val fullAh = if (soc > 0) remainAh * 100.0 / soc else 0.0
+        val cells = cellVoltagesList()
+        return com.vanaccess.bms.ble.drivers.basicInfo(
+            source = "123bms", voltage = packVoltage, current = if (netCurrent.isNaN()) 0.0 else netCurrent,
+            soc = soc, remainAh = remainAh, fullAh = fullAh, cellCount = if (numCells > 0) numCells else cells.size,
+            temps = cellTemps.toSortedMap().values.toList(),
+            chargeFet = chargeAllowed, dischargeFet = dischargeAllowed,
+            alarms = alertFlags.map { it.name },
+        )
+    }
+
     /** Get ordered cell voltages list (for chart). */
     fun cellVoltagesList(): List<Double> {
         if (cellVoltages.isEmpty()) return emptyList()

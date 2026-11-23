@@ -30,7 +30,31 @@ object AppDialog {
 
     data class Btn(val text: String, val color: Int, val onClick: (() -> Unit)? = null)
 
-    fun show(ctx: Context, title: String, message: String? = null, body: View? = null, buttons: List<Btn>): Dialog {
+
+    /** Simple information box with one OK button (green). */
+    fun info(ctx: Context, title: String, message: String) =
+        show(ctx, title, message = message, buttons = listOf(Btn(ctx.getString(android.R.string.ok), GREEN)))
+
+    /** Dark text field for dialogs, styled like the app. */
+    fun input(ctx: Context, value: String, hint: String, inputType: Int): android.widget.EditText {
+        val dp = ctx.resources.displayMetrics.density
+        return android.widget.EditText(ctx).apply {
+            setText(value); this.hint = hint; this.inputType = inputType
+            setTextColor(Color.WHITE); setHintTextColor(Color.parseColor("#6F7890")); textSize = 16f
+            setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
+            background = GradientDrawable().apply {
+                cornerRadius = 12 * dp; setColor(Color.parseColor("#262A3B"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#3A3F55"))
+            }
+        }
+    }
+
+    /**
+     * @param items   optional choice list (tap = pick and close); [checked] marks the current one
+     * @param tall    give the body most of the screen height (long reports)
+     */
+    fun show(ctx: Context, title: String, message: String? = null, body: View? = null, buttons: List<Btn> = emptyList(),
+             items: List<String>? = null, checked: Int = -1, onItem: ((Int) -> Unit)? = null, tall: Boolean = false): Dialog {
         val dp = ctx.resources.displayMetrics.density
         val d = Dialog(ctx)
         d.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -55,8 +79,34 @@ object AppDialog {
             })
         }
         body?.let {
-            val scroll = ScrollView(ctx).apply { addView(it) }
-            card.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            if (tall) {
+                val scroll = ScrollView(ctx).apply { addView(it) }
+                card.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            } else card.addView(it)
+        }
+        items?.let { list ->
+            val box = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            list.forEachIndexed { i, label ->
+                val sel = i == checked
+                box.addView(TextView(ctx).apply {
+                    text = (if (sel) "●  " else "") + label
+                    textSize = 15f
+                    setTextColor(if (sel) Color.parseColor("#4DA3FF") else Color.WHITE)
+                    if (sel) setTypeface(typeface, Typeface.BOLD)
+                    setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
+                    background = GradientDrawable().apply {
+                        cornerRadius = 12 * dp
+                        setColor(Color.parseColor(if (sel) "#1F2E4A" else "#262A3B"))
+                    }
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { d.dismiss(); onItem?.invoke(i) }
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    .apply { bottomMargin = (6 * dp).toInt() })
+            }
+            if (list.size > 7) {
+                card.addView(ScrollView(ctx).apply { addView(box) },
+                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (ctx.resources.displayMetrics.heightPixels * 0.55).toInt()))
+            } else card.addView(box)
         }
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -75,13 +125,13 @@ object AppDialog {
                 marginStart = (6 * dp).toInt(); marginEnd = (6 * dp).toInt()
             })
         }
-        card.addView(row)
+        if (buttons.isNotEmpty()) card.addView(row)
 
         d.setContentView(card)
         d.window?.apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             val w = (ctx.resources.displayMetrics.widthPixels * 0.9).toInt()
-            setLayout(w, if (body != null) (ctx.resources.displayMetrics.heightPixels * 0.82).toInt()
+            setLayout(w, if (tall) (ctx.resources.displayMetrics.heightPixels * 0.82).toInt()
                          else ViewGroup.LayoutParams.WRAP_CONTENT)
         }
         d.show()

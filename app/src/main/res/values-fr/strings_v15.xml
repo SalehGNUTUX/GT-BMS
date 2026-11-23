@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="last_update">dernière mise à jour : %1$s</string>
+    <string name="ago_now">à l\'instant</string>
+    <string name="ago_min">il y a %1$d min</string>
+    <string name="ago_hours">il y a %1$d h</string>
+    <string name="ago_days">il y a %1$d jours</string>
+    <string name="adv_charger_seen">Chargeur : environ %1$.1f A, maintient la tension à %2$.1f V (phase à tension constante constatée).</string>
+    <string name="adv_charger_seen_nocv">Chargeur : environ %1$.1f A ; la tension est montée à %2$.1f V sans phase à tension constante.</string>
+    <string name="adv_charger_wrong_type">⚠ Cela ressemble à un chargeur Li-ion (%1$.2f V par cellule) sur une batterie LiFePO₄. Ne l\'utilisez pas.</string>
+    <string name="adv_charger_above_protection">La tension du chargeur atteint ou dépasse la protection du BMS (%1$.2f V) : le BMS doit couper chaque recharge. Un chargeur réglé sur %2$.1f V convient à cette batterie.</string>
+    <string name="adv_charger_too_low">La tension du chargeur, %1$.1f V (%2$.2f V par cellule), est basse : la batterie ne se chargera pas complètement et ne s\'équilibrera pas.</string>
+    <string name="adv_charger_voltage_ok">La tension du chargeur, %1$.1f V (%2$.2f V par cellule), convient à cette batterie.</string>
+    <string name="adv_charger_current_limit">Le courant de charge de %1$.1f A atteint la limite de surintensité du BMS (%2$d A). Utilisez un chargeur moins puissant.</string>
+    <string name="adv_charger_current_high">Le courant de charge de %1$.1f A (%2$.2fC) est élevé pour cette batterie ; il chauffe et vieillit les cellules.</string>
+    <string name="adv_charger_current_fast">Courant de charge %1$.1f A (%2$.2fC) : une charge rapide. Acceptable de temps en temps.</string>
+    <string name="adv_charger_current_slow">Courant de charge %1$.1f A (%2$.2fC) : un chargeur très lent.</string>
+    <string name="adv_charger_current_ok">Le courant de charge de %1$.1f A (%2$.2fC) ménage les cellules.</string>
+    <string name="adv_charger_interrupted">Cette recharge a été interrompue alors qu\'elle était encore en cours.</string>
+    <string name="charger_title">Chargeur</string>
+    <string name="charger_section">Chargeur et recharge</string>
+    <string name="charger_section_sub">Votre chargeur, conseils de recharge</string>
+    <string name="charger_detected">Détecté d\'après vos %1$d dernières recharges</string>
+    <string name="charger_none">Aucune recharge enregistrée pour l\'instant. Branchez le chargeur : l\'application apprendra son courant et sa tension.</string>
+    <string name="tips_title">Conseils de recharge</string>
+    <string-array name="charging_tips">
+        <item>Rechargez dans un endroit sec et aéré, à l\'abri du soleil et de la chaleur, sur une surface non inflammable.</item>
+        <item>Ne rechargez pas en dessous d\'environ 0 °C ni au-dessus de 45 °C ; laissez la batterie revenir à température ambiante après un trajet ou le froid.</item>
+        <item>Utilisez un chargeur adapté à la chimie et au nombre de cellules de votre batterie : un chargeur Li-ion ou plomb ne convient pas au LiFePO₄.</item>
+        <item>Idéalement, c\'est le chargeur qui termine la charge (phase à tension constante), pas la protection du BMS — voir « Tensions recommandées » dans Alarmes.</item>
+        <item>Un courant de charge jusqu\'à la moitié de la capacité (0.5C) ménage les cellules ; plus haut, c\'est plus rapide mais plus chaud.</item>
+        <item>Chargez à 100 % au moins une fois par semaine pour que l\'équilibrage puisse agir ; les cellules ne s\'équilibrent que près de la pleine charge.</item>
+        <item>Ne laissez pas la batterie vide ; rechargez-la rapidement après une décharge profonde.</item>
+        <item>Pour un stockage prolongé, laissez-la à 40–60 % et vérifiez-la chaque mois.</item>
+        <item>Débranchez d\'abord le chargeur de la prise, puis de la batterie ; gardez câbles et connecteurs en bon état.</item>
+        <item>Si la batterie ou le chargeur devient anormalement chaud ou dégage une odeur, débranchez immédiatement.</item>
+    </string-array>
+    <string name="design_title">Style de l\'écran Direct</string>
+    <string name="design_desc">Comment l\'onglet Direct affiche votre batterie.</string>
+    <string name="design_classic">Classique — dessin de batterie (par défaut)</string>
+    <string name="design_ring">Anneau — jauge circulaire</string>
+    <string name="design_compact">Compact — plus de valeurs, plus petites</string>
+    <string name="design_ride">Conduite — très grands chiffres, écran toujours allumé (paysage aussi)</string>
+    <string name="widget_desc">Niveau, tension, courant et autonomie de la batterie en un coup d\'œil</string>
+    <string name="limit_presets_desc">Limite de charge quotidienne : l\'alarme de charge complète sonne à ce niveau pour que vous débranchiez. 100 % une fois par semaine permet aux cellules de s\'équilibrer.</string>
+    <string name="limit_preset">%1$d %%</string>
+    <string name="export_chip">⇪ Exporter</string>
+    <string name="export_title">Exporter les rapports</string>
+    <string name="export_csv">Tous les rapports (CSV, tableur)</string>
+    <string name="export_gpx">Traces des trajets (GPX, cartes)</string>
+    <string name="export_empty">Rien à exporter pour l\'instant</string>
+    <string name="cell_trend_title">Cellules dans le temps</string>
+    <string name="cell_trend_desc">Cellules qui restent les plus basses sur de nombreuses mesures (au repos et sous charge). Collecté pendant la connexion.</string>
+    <string name="cell_trend_none">Pas encore assez de mesures — un échantillon est pris toutes les 30 s.</string>
+    <string name="cell_trend_ok">Aucune cellule ne se démarque. Le pack semble équilibré.</string>
+    <string name="cell_trend_row">Cellule %1$d : %2$s • la plus basse dans %3$d %% des mesures</string>
+    <string name="cell_trend_load">%1$+.0f mV sous charge</string>
+    <string name="cell_trend_rest">%1$+.0f mV au repos</string>
+    <string name="cell_trend_watch">⚠ La cellule %1$d continue de chuter — surveillez-la ; si cela empire, le pack peut nécessiter un équilibrage ou une révision.</string>
+    <string name="balance_reminder_title">C\'est le moment d\'une charge complète</string>
+    <string name="balance_reminder_switch">Me rappeler de charger à 100 % (équilibrage)</string>
+    <string name="rep_delete_msg">Le rapport et son graphique seront supprimés. Cette action est irréversible.</string>
+    <string name="design_segments">Segments — barres colorées, la barre du haut pulse avec le courant</string>
+</resources>

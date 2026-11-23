@@ -35,6 +35,17 @@
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
+    <!-- Android 11+ package visibility: detect OsmAnd to open trip tracks -->
+    <queries>
+        <package android:name="net.osmand.plus" />
+        <package android:name="net.osmand" />
+        <package android:name="net.osmand.dev" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/gpx+xml" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:localeConfig="@xml/locales_config"

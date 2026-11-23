@@ -187,6 +187,35 @@ class AppPreferences(context: Context) {
         get() = prefs.getLong("last_balance_reminder_ms", 0L)
         set(value) = prefs.edit().putLong("last_balance_reminder_ms", value).apply()
 
+    /** Last Battery sub-tab (CELLS, REPORTS, INFO, HISTORY) — restored by the Battery button. */
+    var lastBatteryTab: String
+        get() = prefs.getString("last_battery_tab", "CELLS") ?: "CELLS"
+        set(value) = prefs.edit().putString("last_battery_tab", value).apply()
+
+    /** Guided capacity test state (reports.CapacityTest JSON). */
+    var capacityTestJson: String?
+        get() = prefs.getString("capacity_test", null)
+        set(value) = prefs.edit().putString("capacity_test", value).apply()
+
+    // ── Energy cost ──────────────────────────────────────────────────────────
+    /** Electricity price per kWh (0 = cost not shown). */
+    var pricePerKwh: Float
+        get() = prefs.getFloat("price_kwh", 0f)
+        set(value) = prefs.edit().putFloat("price_kwh", value).apply()
+
+    var currency: String
+        get() = prefs.getString("currency", "MAD") ?: "MAD"
+        set(value) = prefs.edit().putString("currency", value).apply()
+
+    /** Optional fuel comparison (0 = off). */
+    var fuelPrice: Float
+        get() = prefs.getFloat("fuel_price", 0f)
+        set(value) = prefs.edit().putFloat("fuel_price", value).apply()
+
+    var fuelL100: Float
+        get() = prefs.getFloat("fuel_l100", 0f)
+        set(value) = prefs.edit().putFloat("fuel_l100", value).apply()
+
     // ── Smart summaries ──────────────────────────────────────────────────────
     var notifySessionSummary: Boolean
         get() = prefs.getBoolean("notify_session_summary", true)

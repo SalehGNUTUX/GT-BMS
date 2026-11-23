@@ -90,6 +90,11 @@ class BwbmDriver : BmsDriver {
         return emptyList()
     }
 
+    override fun cancelHistory() {
+        history.reset()                                    // ignore further 0x23 replies, queue no "next"
+        queue.removeAll { it.size > 4 && it[4] == 0x23.toByte() }
+    }
+
     fun build(cmd: Int, data: ByteArray = ByteArray(0)): ByteArray {
         val f = ByteArray(6 + data.size)
         f[0] = 0x7F; f[1] = addr.toByte(); f[2] = 0x02; f[3] = f.size.toByte(); f[4] = cmd.toByte()

@@ -67,8 +67,15 @@ class BatteryScreen(
 
     fun setup() {
         b.tvDeviceName.text = prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)
+        setupBatterySwitcher()
         b.tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) = showPage(tab.tag as Page)
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                val p = tab.tag as Page
+                if (liveMode) return
+                prefs.lastBatteryTab = p.name
+                MainActivity.batteryTabIcon.value = iconFor(p)
+                showPage(p)
+            }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
@@ -78,7 +85,9 @@ class BatteryScreen(
         b.rvHistory.layoutManager = LinearLayoutManager(ctx)
         b.rvHistory.adapter = historyAdapter
         b.btnHistory.setOnClickListener {
-            (fragment.activity as? MainActivity)?.getBleService()?.requestHistory()
+            val svc = (fragment.activity as? MainActivity)?.getBleService()
+            // While loading, the same button stops the download
+            if (BleService.historyLoading.value == true) svc?.cancelHistory() else svc?.requestHistory()
         }
         applyDesign()
         observe()
@@ -87,9 +96,8 @@ class BatteryScreen(
         fragment.requireActivity().onBackPressedDispatcher.addCallback(fragment.viewLifecycleOwner,
             object : androidx.activity.OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    val current = b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page
-                    if (current != null && current != Page.LIVE) {
-                        b.tabs.getTabAt(0)?.select()
+                    if (!liveMode) {
+                        MainActivity.batteryMode.value = MainActivity.MODE_LIVE
                     } else {
                         isEnabled = false
                         fragment.requireActivity().onBackPressedDispatcher.onBackPressed()
@@ -102,12 +110,13 @@ class BatteryScreen(
     // ── Tabs ─────────────────────────────────────────────────────────────────
 
     private fun rebuildTabs(features: Set<Feature>) {
+        // Live is its own screen (central button); the Battery tabs start at Cells
         val wanted = buildList {
-            add(Page.LIVE); add(Page.CELLS); add(Page.REPORTS); add(Page.INFO)
+            add(Page.CELLS); add(Page.REPORTS); add(Page.INFO)
             if (Feature.HISTORY in features) add(Page.HISTORY)
         }
         if (wanted == pages) return
-        val current = b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: Page.LIVE
+        val current = b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: savedTab()
         pages = wanted
         b.tabs.removeAllTabs()
         wanted.forEach { p ->
@@ -119,7 +128,69 @@ class BatteryScreen(
             b.tabs.addTab(b.tabs.newTab().setText(title).setTag(p), p == current)
         }
         if (current !in wanted) b.tabs.getTabAt(0)?.select()
-        showPage(b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: Page.LIVE)
+        if (!liveMode) showPage(b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: Page.CELLS)
+    }
+
+    // ── Saved batteries: switch from the header ──────────────────────────────
+
+    /** With two or more saved batteries, tapping the name lists them; picking one connects to it. */
+    private fun setupBatterySwitcher() {
+        val saved = prefs.savedBatteries
+        if (saved.size < 2) { b.tvDeviceName.setCompoundDrawables(null, null, null, null); return }
+        b.tvDeviceName.text = (prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)) + "  ⇅"
+        b.tvDeviceName.setOnClickListener {
+            val current = saved.indexOfFirst { it.address == prefs.selectedDeviceAddress }
+            com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.switch_battery),
+                items = saved.map { sb ->
+                    sb.name + "  •  " + (com.vanaccess.bms.ble.drivers.BmsDrivers.byId(sb.protocol)?.displayName ?: sb.protocol)
+                },
+                checked = current,
+                onItem = { i ->
+                    val sb = saved[i]
+                    if (sb.address == prefs.selectedDeviceAddress) return@show
+                    prefs.selectedDeviceAddress = sb.address
+                    prefs.selectedDeviceName = sb.name
+                    prefs.batteryType = sb.protocol
+                    prefs.batteryTypeAddress = sb.address
+                    (fragment.activity as? MainActivity)?.getBleService()?.connectToDevice(sb.address)
+                    b.tvDeviceName.text = sb.name + "  ⇅"
+                    reports.reload()
+                },
+                buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
+        }
+    }
+
+    // ── Live screen vs. Battery sub-tabs ─────────────────────────────────────
+
+    private var liveMode = true
+
+    private fun savedTab(): Page = runCatching { Page.valueOf(prefs.lastBatteryTab) }.getOrDefault(Page.CELLS)
+        .takeIf { it != Page.LIVE } ?: Page.CELLS
+
+    /** The central button: Live on its own, without the sub-tab row. */
+    private fun enterLive() {
+        liveMode = true
+        b.tabs.visibility = View.GONE
+        showPage(Page.LIVE)
+        b.pageLive.scrollTo(0, 0)
+    }
+
+    /** The Battery button: back to the last sub-tab used (Cells the first time). */
+    private fun enterTabs() {
+        liveMode = false
+        b.tabs.visibility = View.VISIBLE
+        val want = savedTab()
+        val tab = (0 until b.tabs.tabCount).map { b.tabs.getTabAt(it) }.firstOrNull { it?.tag == want } ?: b.tabs.getTabAt(0)
+        if (tab != null && !tab.isSelected) tab.select() else showPage(tab?.tag as? Page ?: Page.CELLS)
+        MainActivity.batteryTabIcon.value = iconFor(tab?.tag as? Page ?: Page.CELLS)
+    }
+
+    private fun iconFor(p: Page) = when (p) {
+        Page.CELLS -> R.drawable.ic_tab_cells
+        Page.REPORTS -> R.drawable.ic_tab_reports
+        Page.INFO -> R.drawable.ic_tab_info
+        Page.HISTORY -> R.drawable.ic_tab_history
+        Page.LIVE -> R.drawable.ic_battery
     }
 
     /** Riding design: keep the screen on while the Live tab is visible. */
@@ -146,13 +217,9 @@ class BatteryScreen(
         BleService.connectionState.observe(owner) { updateHeader() }
         BleService.cellStats.observe(owner) { renderCellTrend(it) }
         // Central Live button in the bottom bar
-        var lastLiveReq = MainActivity.openLive.value ?: 0L
-        MainActivity.openLive.observe(owner) { t ->
-            if (t != null && t != lastLiveReq) {
-                lastLiveReq = t
-                b.tabs.getTabAt(0)?.select()
-                b.pageLive.smoothScrollTo(0, 0)
-            }
+        // Central button (Live) vs. Battery button (last sub-tab)
+        MainActivity.batteryMode.observe(owner) { m ->
+            if (m == MainActivity.MODE_TABS) enterTabs() else enterLive()
         }
         b.root.post(ticker)
         owner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
@@ -261,10 +328,17 @@ class BatteryScreen(
             discharging && info.remainCapacity > 0 -> info.remainCapacity / abs(info.current)
             else -> null
         }
-        b.tvTimeLeft.text = hours?.takeIf { it in 0.0..500.0 }?.let { h ->
-            val dur = fragment.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
-            fragment.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur)
-        } ?: ""
+        fun dur(h: Double) = fragment.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
+        val chargeEta = if (charging) com.vanaccess.bms.reports.ChargeTime.estimate(info.soc, info.fullCapacity, info.current) else null
+        b.tvTimeLeft.text = when {
+            // Charging: time to 80 % and to 100 % (the last 10 % is slower)
+            chargeEta != null -> listOfNotNull(
+                chargeEta.to80h?.let { fragment.getString(R.string.eta_80, dur(it)) },
+                fragment.getString(R.string.eta_100, dur(chargeEta.to100h))).joinToString("  •  ")
+            else -> hours?.takeIf { it in 0.0..500.0 }?.let { h ->
+                fragment.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur(h))
+            } ?: ""
+        }
 
         // Metric tiles
         val delta = if (lastCells.size > 1) ((lastCells.max() - lastCells.min()) * 1000).toInt() else null
@@ -370,7 +444,7 @@ class BatteryScreen(
         val remainAh = if (info.remainCapacity > 0) info.remainCapacity else info.soc / 100.0 * info.fullCapacity
         val r = com.vanaccess.bms.reports.RangeEstimator.estimate(
             remainAh, info.fullCapacity, info.packVoltage, cells, limits.lfp || limits.cellOvMv == null,
-            prefs.consumptionWhKm.toDouble(), learned, v.defaultWhPerKm)
+            prefs.consumptionWhKm.toDouble(), learned, v.defaultWhPerKm, info.temperatures.minOrNull())
         lastRange = r
         metric(b.gridMetrics, "r", R.string.m_range_i, r?.let { fmt("≈ %.0f km", it.km) } ?: "—", cGreen)
         // Tap the range tile for how it is calculated, with the live numbers
@@ -392,11 +466,9 @@ class BatteryScreen(
                 r.remainAh, r.reserveAh, com.vanaccess.bms.reports.RangeEstimator.RESERVE_PCT, r.nominalV,
                 r.usableWh, r.whPerKm, basis, r.km)
         }
-        androidx.appcompat.app.AlertDialog.Builder(ctx)
-            .setTitle(R.string.range_info_title)
-            .setMessage(msg)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
+        val cold = r?.takeIf { it.tempFactor < 0.999 && it.tempC != null }
+            ?.let { fragment.getString(R.string.range_cold, it.tempC, (it.tempFactor * 100).toInt()) } ?: ""
+        com.vanaccess.bms.ui.AppDialog.info(ctx, fragment.getString(R.string.range_info_title), msg + cold)
     }
 
     private fun refreshLearned() {
@@ -426,14 +498,13 @@ class BatteryScreen(
         b.tvSessionBanner.text = txt
         b.btnEndTrip.visibility = if (trip != null) View.VISIBLE else View.GONE
         b.btnEndTrip.setOnClickListener {
-            androidx.appcompat.app.AlertDialog.Builder(ctx)
-                .setTitle(R.string.end_trip_q)
-                .setMessage(R.string.end_trip_msg)
-                .setPositiveButton(R.string.end_trip) { _, _ ->
-                    (fragment.activity as? MainActivity)?.getBleService()?.endTripNow()
-                }
-                .setNegativeButton(R.string.btn_cancel, null)
-                .show()
+            com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.end_trip_q), message = fragment.getString(R.string.end_trip_msg),
+                buttons = listOf(
+                    com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
+                    com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.end_trip), com.vanaccess.bms.ui.AppDialog.RED) {
+                        (fragment.activity as? MainActivity)?.getBleService()?.endTripNow()
+                    },
+                ))
         }
         b.boxSessionBanner.background = GradientDrawable().apply {
             cornerRadius = 14 * dp
@@ -615,8 +686,15 @@ class BatteryScreen(
         val cached = cachedHistory
         val list = live ?: cached?.records
         b.progressHistory.visibility = if (loading) View.VISIBLE else View.GONE
-        b.btnHistory.isEnabled = !loading
-        b.btnHistory.text = fragment.getString(if (cached != null || live != null) R.string.history_reload else R.string.history_load)
+        b.btnHistory.isEnabled = true
+        b.btnHistory.text = fragment.getString(when {
+            loading -> R.string.history_stop
+            cached != null || live != null -> R.string.history_reload
+            else -> R.string.history_load
+        })
+        b.btnHistory.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            if (loading) com.vanaccess.bms.ui.AppDialog.RED else Color.parseColor("#3A3F55"))
+        b.btnHistory.setTextColor(Color.WHITE)
         val savedAt = cached?.let {
             java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(java.util.Date(it.savedMs))
         }

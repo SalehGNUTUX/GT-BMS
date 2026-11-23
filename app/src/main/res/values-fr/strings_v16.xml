@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pin_title">PIN 123SmartBMS</string>
+    <string name="pin_msg">Saisissez le PIN du BMS pour vous authentifier. Généralement 0000 ou les 4 derniers chiffres du numéro de série.</string>
+    <string name="pin_hint">PIN (ex. 2410)</string>
+    <string name="pin_saved">PIN enregistré</string>
+    <string name="this_device">cet appareil</string>
+    <string name="rename_channel">Renommer le canal %1$d</string>
+    <string name="history_stop">Arrêter</string>
+    <string name="eta_80">80 %% dans %1$s</string>
+    <string name="eta_100">100 %% dans %1$s</string>
+    <string name="range_cold">\n\nFroid : à %1$.0f °C, environ %2$d %% de la capacité est utilisable, l\'autonomie est donc réduite d\'autant.</string>
+    <string name="captest_title">Test de capacité</string>
+    <string name="captest_desc">Mesure la capacité réelle de la batterie, indépendamment du BMS : utilisez-la jusqu\'à %1$.2f V par cellule (≈ vide), puis rechargez-la complètement d\'une traite. Les ampères-heures comptés correspondent à la capacité réelle.</string>
+    <string name="captest_start">Lancer le test</string>
+    <string name="captest_cancel">Annuler le test</string>
+    <string name="captest_discharge">Étape 1 sur 2 — utilisez la batterie jusqu\'à %1$.2f V par cellule. Cellule la plus basse actuellement : %2$s.</string>
+    <string name="captest_ready">Étape 2 sur 2 — branchez maintenant le chargeur et laissez-le charger complètement sans débrancher.</string>
+    <string name="captest_charging">Recharge et comptage : %1$.2f Ah pour l\'instant. Ne débranchez pas avant la pleine charge.</string>
+    <string name="captest_done">Capacité mesurée : %1$.2f Ah (%2$s)</string>
+    <string name="captest_failed">Le test s\'est arrêté : la recharge a été interrompue avant la pleine charge. Recommencez.</string>
+    <string name="captest_ready_notify">La batterie a atteint le point vide. Branchez le chargeur et rechargez complètement sans interruption.</string>
+    <string name="captest_done_notify">Terminé : capacité réelle %1$.2f Ah.</string>
+    <string name="captest_start_q">Lancer le test de capacité ?</string>
+    <string name="map_title">Itinéraire</string>
+    <string name="map_legend">Vert = faible charge • orange • rouge = forte accélération. Point vert = départ, point rouge = arrivée.</string>
+    <string name="map_open_osmand">Ouvrir dans OsmAnd</string>
+    <string name="map_no_app_title">Installer une application de cartes</string>
+    <string name="map_no_app">Pour voir le trajet sur une vraie carte, installez OsmAnd — gratuit, fonctionne hors ligne avec des cartes téléchargeables. OsmAnd~ sur F-Droid est la version entièrement libre ; GT-SPEEDOMETER peut aussi l\'ouvrir via OsmAnd.</string>
+    <string name="cost_title">Coût de l\'énergie</string>
+    <string name="cost_desc" formatted="false">Affiché dans les rapports de recharge et de trajet. Inclut ~15 % de pertes du chargeur. Les champs carburant (facultatifs) comparent avec un véhicule à essence.</string>
+    <string name="cost_price_hint">Prix par kWh</string>
+    <string name="cost_currency_hint">Devise</string>
+    <string name="cost_fuel_price_hint">Prix du carburant par litre</string>
+    <string name="cost_fuel_l100_hint">Consommation (L/100 km)</string>
+    <string name="cost_row">Coût de l\'énergie</string>
+    <string name="cost_per_km">Coût par km</string>
+    <string name="cost_fuel">Même trajet en carburant</string>
+    <string name="switch_battery">Choisir une batterie</string>
+    <string name="devreport_title">Batterie mal lue ?</string>
+    <string name="devreport_desc">Créez un rapport d\'appareil (services Bluetooth, protocole détecté, derniers paquets bruts) et partagez-le, ou ouvrez un ticket sur GitHub et joignez-le. C\'est ainsi que la prise en charge de nouveaux modèles de BMS est ajoutée.</string>
+    <string name="devreport_share">Partager le rapport</string>
+    <string name="devreport_issue">Ouvrir un ticket GitHub</string>
+    <string name="devreport_issue_body">Modèle de batterie / BMS :\nCe qui ne va pas (non détectée, valeurs fausses…) :\n\nMerci de joindre le fichier de rapport d\'appareil GT-BMS (Console de débogage → Partager le rapport).</string>
+    <string name="backup_full_desc">Sauvegarde complète : tous les rapports, traces de trajets, niveaux et réglages dans un seul fichier — pour transférer GT-BMS vers un nouveau téléphone.</string>
+    <string name="backup_full_export">Sauvegarde complète</string>
+    <string name="backup_full_import">Restaurer</string>
+    <string name="backup_restore_q">Restaurer cette sauvegarde ?</string>
+    <string name="backup_restore_msg">Les rapports et réglages actuels seront remplacés par la sauvegarde, puis l\'application redémarrera.</string>
+    <string name="backup_failed">Échec de la sauvegarde</string>
+    <string name="backup_restored">Restauré — redémarrage…</string>
+    <string name="backup_done">Sauvegarde enregistrée</string>
+    <string name="usage_title">Conduite et usage</string>
+    <string name="driving_tips_title">Conseils de conduite pour le lithium</string>
+    <string name="adv_drive_shocks">%1$d pics de courant soudains pendant ce trajet (de presque 0 à plus de 15 A en deux secondes). Une accélération progressive et régulière ménage les cellules et gaspille moins d\'énergie — surtout en cas de cellule faible.</string>
+    <string name="adv_drive_onoff">« Accélérer puis relâcher » %1$d fois. Cela convenait aux batteries au plomb, qui récupèrent au repos ; le lithium n\'a pas besoin de repos, et une vitesse constante est plus efficace.</string>
+    <string name="adv_drive_smooth">Conduite souple : aucun pic de courant soudain.</string>
+    <string name="adv_drive_high_current">%1$d %% de ce trajet au-dessus de %2$.0f A. Une vitesse élevée augmente le courant, la chaleur et la consommation ; une vitesse modérée prolonge l\'autonomie et la durée de vie de la batterie.</string>
+    <string name="adv_usage_shocks">%1$d derniers trajets : %2$d accélérations brusques sur %3$.1f km.</string>
+    <string name="adv_usage_best_speed">Votre vitesse moyenne la plus économique : %1$d–%2$d km/h (%3$.1f Wh/km), contre %4$d–%5$d km/h (%6$.1f Wh/km).</string>
+    <string name="adv_usage_protection_repeats">L\'historique du BMS montre une recharge coupée %1$d fois par la protection : le chargeur reprend après chaque levée. Débranchez une fois la batterie pleine, ou utilisez un chargeur de %2$.1f V.</string>
+    <string-array name="driving_tips">
+        <item>Accélérez progressivement et maintenez ; évitez d\'accélérer et relâcher sans cesse — cela convenait au plomb, pas au lithium.</item>
+        <item>Une vitesse modérée et constante est la plus efficace : consommation, courant et chaleur augmentent vite avec la vitesse.</item>
+        <item>Démarrez en douceur : le courant le plus fort survient en accélérant depuis l\'arrêt, et c\'est ce qui sollicite le plus la cellule la plus faible.</item>
+        <item>Ne videz pas la batterie ; prenez le chemin du retour avec au moins 20 % restants.</item>
+        <item>Par temps froid, moins de capacité est disponible ; attendez-vous à moins d\'autonomie et roulez doucement jusqu\'à ce que la batterie se réchauffe.</item>
+        <item>Surveillez « Cellules dans le temps » : si une cellule continue de chuter sous charge, accélérez plus doucement et vérifiez l\'équilibrage.</item>
+    </string-array>
+</resources>

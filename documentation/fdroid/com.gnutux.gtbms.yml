@@ -1,0 +1,32 @@
+# Draft recipe for https://gitlab.com/fdroid/fdroiddata (metadata/com.gnutux.gtbms.yml)
+# See documentation/FDROID.md for how to submit it.
+Categories:
+  - Connectivity
+  - System
+License: GPL-3.0-or-later
+AuthorName: GNUTUX
+SourceCode: https://github.com/SalehGNUTUX/GT-BMS
+IssueTracker: https://github.com/SalehGNUTUX/GT-BMS/issues
+Changelog: https://github.com/SalehGNUTUX/GT-BMS/blob/HEAD/CHANGELOG.md
+WebSite: https://salehgnutux.github.io/GT-BMS/
+
+AutoName: GT-BMS
+
+RepoType: git
+Repo: https://github.com/SalehGNUTUX/GT-BMS.git
+
+Builds:
+  - versionName: 1.6.0
+    versionCode: 13
+    commit: v1.6.0
+    subdir: app
+    gradle:
+      - yes
+    # The in-app GitHub updater is disabled for F-Droid builds (F-Droid signs with its own key)
+    gradleprops:
+      - fdroid
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.6.0
+CurrentVersionCode: 13

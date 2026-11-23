@@ -84,10 +84,7 @@
     <string name="cell_at">%1$.3f V (cell %2$d)</string>
     <string name="delta_at">%1$d mV at %2$.0f A</string>
     <string name="advice_title">💡 Recommended voltages for your battery</string>
-    <string name="advice_body">BMS protection: %1$.3f V per cell × %2$d = %3$.2f V. The BMS cuts charging there.
-
-• Charger: set it to %4$.1f V (%5$.2f V per cell) so the charge ends just below the protection and the BMS does not have to stop it.
-• Full-charge alarm: %6$.1f V (%7$.2f V per cell) — reachable, and rings just before the charge ends.</string>
+    <string name="advice_body">BMS protection: %1$.3f V per cell × %2$d = %3$.2f V. The BMS cuts charging there.\n\n• Charger: set it to %4$.1f V (%5$.2f V per cell) so the charge ends just below the protection and the BMS does not have to stop it.\n• Full-charge alarm: %6$.1f V (%7$.2f V per cell) — reachable, and rings just before the charge ends.</string>
     <string name="advice_current_unreachable">Your current alarm voltage (%1$.1f V) is above the BMS protection, so it can never ring.</string>
     <string name="advice_apply">Use %1$.1f V for the alarm</string>
     <string name="advice_applied">Full-charge alarm set to %1$.1f V</string>
