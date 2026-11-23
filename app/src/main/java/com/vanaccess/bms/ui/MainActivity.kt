@@ -120,6 +120,7 @@ class MainActivity : AppCompatActivity() {
         com.vanaccess.bms.update.UpdateChecker.schedule(this)
         setupUpdateBanner()
         setupChargePulse()
+        com.vanaccess.bms.ble.BleService.restoreLastReading(this)
         handleUpdateIntent(intent)
 
         // Check Bluetooth & permissions

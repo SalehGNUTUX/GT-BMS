@@ -47,6 +47,19 @@ class BleService : LifecycleService() {
         val connectionState = MutableLiveData<ConnectionState>(ConnectionState.DISCONNECTED)
         val basicInfo = MutableLiveData<BmsBasicInfo?>()
         val cellVoltages = MutableLiveData<List<Double>?>()
+
+        /**
+         * After a crash / force-stop / reboot: show the last saved reading (dimmed, with its age)
+         * instead of an empty screen, until the battery sends fresh data.
+         */
+        fun restoreLastReading(ctx: android.content.Context) {
+            if (basicInfo.value != null) return
+            val addr = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
+            val snap = com.vanaccess.bms.data.LastReading.load(ctx, addr) ?: return
+            basicInfo.value = snap.basic
+            if (cellVoltages.value == null) cellVoltages.value = snap.cells
+            if (lastDataMs < snap.timeMs) lastDataMs = snap.timeMs
+        }
         val hardwareInfo = MutableLiveData<BmsHardwareInfo?>()
         val scanResults = MutableLiveData<List<ScannedDevice>>(emptyList())
         val lastError = MutableLiveData<String?>()
@@ -154,6 +167,7 @@ class BleService : LifecycleService() {
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
         if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
+        restoreLastReading(this)
         capacityTest.postValue(com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson))
         cellStats.postValue(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest())
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
@@ -997,12 +1011,22 @@ class BleService : LifecycleService() {
      * One place for every live reading (all drivers and the 123SmartBMS bridge): screen,
      * widget/notification, alarms, reports, cell tracking.
      */
+    private var lastSnapshotMs = 0L
+
     private fun publishReading(basic: BmsBasicInfo?, cells: List<Double>?) {
         basic?.let {
             val nowMs = System.currentTimeMillis()
             if (nowMs - lastDataPersistMs >= 30_000L) { prefs.lastDataMs = nowMs; lastDataPersistMs = nowMs }
             lastDataMs = nowMs
             basicInfo.postValue(it)
+            // Local copy for after a crash / force-stop (every 10 s, atomic)
+            if (nowMs - lastSnapshotMs >= 10_000L) {
+                lastSnapshotMs = nowMs
+                prefs.selectedDeviceAddress?.let { addr ->
+                    val snap = com.vanaccess.bms.data.LastReading.Snapshot(addr, nowMs, it, cells ?: cellVoltages.value)
+                    Thread { com.vanaccess.bms.data.LastReading.save(applicationContext, snap) }.start()
+                }
+            }
             publishLive(it, nowMs)
             alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
             recorder.onReading(it)

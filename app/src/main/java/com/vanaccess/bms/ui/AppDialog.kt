@@ -72,17 +72,28 @@ object AppDialog {
             text = title; textSize = 18f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD)
             setPadding(0, 0, 0, (10 * dp).toInt())
         })
+        // Message and body scroll inside a capped area; the buttons below always stay visible
+        val content = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         message?.let {
-            card.addView(TextView(ctx).apply {
+            content.addView(TextView(ctx).apply {
                 text = it; textSize = 15f; setTextColor(Color.parseColor("#C9CFDD"))
+                setLineSpacing(2 * dp, 1f)
                 setPadding(0, 0, 0, (14 * dp).toInt())
             })
         }
-        body?.let {
+        body?.let { content.addView(it) }
+        if (message != null || body != null) {
+            val screenH = ctx.resources.displayMetrics.heightPixels
             if (tall) {
-                val scroll = ScrollView(ctx).apply { addView(it) }
-                card.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            } else card.addView(it)
+                card.addView(ScrollView(ctx).apply { addView(content) },
+                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            } else {
+                val maxH = (screenH * (if (items != null) 0.25 else 0.6)).toInt()
+                card.addView(object : ScrollView(ctx) {
+                    override fun onMeasure(w: Int, h: Int) =
+                        super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
+                }.apply { isFillViewport = false; addView(content) })
+            }
         }
         items?.let { list ->
             val box = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
