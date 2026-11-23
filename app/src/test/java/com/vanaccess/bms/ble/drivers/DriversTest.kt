@@ -136,4 +136,32 @@ class DriversTest {
         assertEquals("3650 mV", v("Cell overvoltage protection (level 1)"))
         assertEquals("23", v("Cell count"))
     }
+
+    /**
+     * Real frames from a device report (BWBM-631M-23S40A, 2026-11-23) when the radio link degraded:
+     * continuation chunks arrived before their header, and a header lost its continuations.
+     * Nothing wrong may be decoded from those; the next intact frame must decode exactly.
+     */
+    @Test fun bwbmRealReportOutOfOrderChunks() {
+        fun h(s: String) = s.split(" ").map { it.toInt(16).toByte() }.toByteArray()
+        val head = h("7F 10 02 4C 12 00 00 00 00 00 00 17 05 0D 06 0D 05 0D 04 0D")
+        val c2 = h("03 0D 04 0D 04 0D 04 0D FF 0C 03 0D 06 0D 04 0D 00 0D 0A 0D")
+        val c3 = h("0C 0D 0B 0D 0A 0D 0A 0D 0D 0D 0E 0D 0D 0D 0B 0D 0C 0D 00 00")
+        val tail = h("00 03 13 13 13 02 13 13 03 00 08 01 2B 01 C0 D1")
+        val d = BwbmDriver()
+        // 09:58:25 — continuations first, then a lone header, then continuations of another frame
+        assertEquals(null, d.onNotification(c2)?.basic)
+        assertEquals(null, d.onNotification(c3)?.basic)
+        assertEquals(null, d.onNotification(tail)?.basic)
+        assertEquals(null, d.onNotification(head)?.basic)
+        assertEquals(null, d.onNotification(c3)?.basic)          // wrong chunk → checksum fails, resync
+        // 09:58:30 — an intact frame
+        var out: DriverOutput? = null
+        listOf(head, c2, c3, tail).forEach { out = d.onNotification(it) ?: out }
+        val cells = out!!.cells!!
+        assertEquals(23, cells.size)
+        assertEquals(3.327, cells.minOrNull()!!, 1e-9)              // cell #9 (0x0CFF)
+        assertEquals(3.342, cells.maxOrNull()!!, 1e-9)
+        assertEquals(0.0, out!!.basic!!.current, 1e-9)
+    }
 }
