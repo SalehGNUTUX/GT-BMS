@@ -1,0 +1,1 @@
+1.6.0: Live as its own screen; guided capacity test; charging time; cold-adjusted range; offline trip map and Open in OsmAnd; energy cost; driving-style advice; several batteries; last reading kept after a crash; full backup; device report; update banner and periodic check; side swipe between tabs; French.

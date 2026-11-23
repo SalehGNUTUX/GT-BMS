@@ -33,7 +33,9 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
   | JK-BMS (JK02, 24S & 32S) | experimental — written from community docs |
   | Daly (BLE Modbus protocol) | experimental — written from community docs |
 
-- **Battery screen** with tabs shown according to what the BMS supports:
+- **Live** as its own screen on the round button in the middle of the bar (it blinks while charging), and a
+  **Battery screen** with tabs shown according to what the BMS supports, switched by swiping sideways; the Battery
+  button remembers the last tab:
   - **Live**: SOC gauge, voltage, signed current, power, cell difference, capacity, cycles, every temperature
     probe, charge/discharge MOS, balancing, heating, and localised protection alerts.
   - **Cells**: per-cell mV grid with highest/lowest highlighted, plus a deviation-from-average chart.
@@ -66,6 +68,18 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
   button in the middle of the bottom bar.
 - **Home-screen widget** drawn like the chosen battery design, and a **live ongoing notification**.
 - **Export** reports as CSV and trip tracks as GPX, **cell tracking over time** to catch a weak cell, and a **balance reminder**.
+- **Guided capacity test**: empty to full to measure the real capacity and health, with a notification at each step.
+- **Charging time** to 80 % and 100 %, and **range adjusted for the cold**.
+- **Trip map** offline, coloured by current, and **Open in OsmAnd** (or OsmAnd~ from F-Droid).
+- **Energy cost** per charge, trip and kilometre, with an optional fuel comparison.
+- **Driving style**: sudden current jumps, press-and-release, time at high current, your most economical speed, and
+  repeated protection cuts while charging, with lithium riding tips.
+- **Several batteries**: switch from the screen header, with per-battery reports.
+- **Last reading kept on the phone**, shown after a crash or force-stop until the battery reconnects.
+- **Full backup** (reports, tracks, settings) to move to another phone.
+- **Device report** in the diagnostics screen to add support for new BMSs (share or open a GitHub issue).
+- **Updates**: periodic automatic check (on by default) and an in-app banner with download progress and install.
+- **Languages**: Arabic, English and French.
 - **Privacy**: reports and tracks stay on the phone. GPS runs only during trips, without Google services.
 - **Read-only**: the app never changes BMS settings and sends no control commands.
 
@@ -78,6 +92,7 @@ Android 8+ with Bluetooth LE. Then: **Settings → Scan** → tap your battery �
 
 - [Bestway BWBM protocol](documentation/PROTOCOL-BWBM.md)
 - [Build, release and signing](documentation/BUILD.md)
+- [Publishing on F-Droid](documentation/FDROID.md)
 - [Changelog](CHANGELOG.md)
 
 ## Origin and license

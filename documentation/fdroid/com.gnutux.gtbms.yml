@@ -17,7 +17,7 @@ Repo: https://github.com/SalehGNUTUX/GT-BMS.git
 
 Builds:
   - versionName: 1.6.0
-    versionCode: 13
+    versionCode: 16
     commit: v1.6.0
     subdir: app
     gradle:
@@ -29,4 +29,4 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 CurrentVersion: 1.6.0
-CurrentVersionCode: 13
+CurrentVersionCode: 16
