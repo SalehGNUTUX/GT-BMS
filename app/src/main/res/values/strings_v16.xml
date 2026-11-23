@@ -73,4 +73,8 @@
     <string name="info_currency">Short name or symbol shown next to costs: MAD, DH, €, \$, DZD, TND…\nIt is only a label; nothing is converted.</string>
     <string name="info_fuel_price">Optional. Price of one litre of petrol in the same currency.\nWith the fuel use below, each trip also shows what the same distance would have cost with a petrol vehicle.</string>
     <string name="info_fuel_l100">Optional. How many litres a comparable petrol vehicle burns per 100 km (a petrol moped: about 2–3; a small car: 5–7).\nExample: 2.5 L/100 km at 17 per litre → 10 km cost 4.25 in fuel.\nLeave empty to hide the comparison.</string>
+    <string name="about_site">🌐  GT-BMS website</string>
+    <string name="about_gnutux">🧩  GNUTUX projects</string>
+    <string name="about_speedometer_open">🛵  Open GT-SPEEDOMETER</string>
+    <string name="about_speedometer">Our sister project: a phone speedometer that records speed, distance and the route over a live camera view. GT-BMS took several of its features from it (GPS speed and distance on trips, track recording, opening routes in OsmAnd).</string>
 </resources>

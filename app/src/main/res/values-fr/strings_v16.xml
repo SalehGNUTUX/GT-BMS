@@ -73,4 +73,8 @@
     <string name="info_currency">Nom court ou symbole affiché à côté des coûts : MAD, DH, €, \$, DZD, TND…\nC\'est seulement une étiquette ; aucune conversion.</string>
     <string name="info_fuel_price">Facultatif. Prix d\'un litre d\'essence dans la même devise.\nAvec la consommation ci-dessous, chaque trajet indique aussi ce qu\'aurait coûté la même distance avec un véhicule à essence.</string>
     <string name="info_fuel_l100">Facultatif. Combien de litres un véhicule à essence comparable consomme aux 100 km (cyclomoteur : environ 2–3 ; petite voiture : 5–7).\nExemple : 2,5 L/100 km à 17 le litre › 10 km coûtent 4,25 en carburant.\nLaissez vide pour masquer la comparaison.</string>
+    <string name="about_site">🌐  Site de GT-BMS</string>
+    <string name="about_gnutux">🧩  Projets GNUTUX</string>
+    <string name="about_speedometer_open">🛵  Ouvrir GT-SPEEDOMETER</string>
+    <string name="about_speedometer">Notre projet frère : un compteur de vitesse, de distance et de trajet pour téléphone, sur une vue caméra en direct. GT-BMS lui a emprunté plusieurs fonctions (vitesse et distance GPS des trajets, enregistrement du tracé, ouverture des trajets dans OsmAnd).</string>
 </resources>

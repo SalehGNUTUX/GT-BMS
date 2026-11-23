@@ -1657,14 +1657,25 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- App icon + name + version, centred -->
+                <ImageView
+                    android:id="@+id/iv_about_logo"
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="4dp"
+                    android:contentDescription="@string/app_name"
+                    android:src="@mipmap/ic_launcher" />
+
                 <TextView
-                    android:text="@string/lbl_about"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:text="GT-BMS"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tv_about_version"
@@ -1673,7 +1684,8 @@
                     android:textSize="13sp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:text="@string/lbl_about_text"
@@ -1681,6 +1693,47 @@
                     android:textSize="13sp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_about_site"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/about_site" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_about_gnutux"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/about_gnutux" />
+
+                <!-- Our sister project -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="GT-SPEEDOMETER"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/about_speedometer"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_about_speedometer"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/about_speedometer_open" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

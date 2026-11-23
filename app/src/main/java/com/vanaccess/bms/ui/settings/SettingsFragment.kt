@@ -119,6 +119,12 @@ class SettingsFragment : Fragment() {
         observeData()
 
         binding.tvAboutVersion.text = getString(R.string.version_fmt, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+        fun open(url: String) = runCatching {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)))
+        }
+        binding.btnAboutSite.setOnClickListener { open(com.vanaccess.bms.data.Share.SITE) }
+        binding.btnAboutGnutux.setOnClickListener { open("https://salehgnutux.github.io/gnutux/") }
+        binding.btnAboutSpeedometer.setOnClickListener { open("https://salehgnutux.github.io/GT-SPEEDOMETER/") }
     }
 
     // ── Device scan list ────────────────────────────────────────────────────

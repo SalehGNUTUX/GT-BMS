@@ -3,7 +3,7 @@
 <resources>
     <string name="lbl_123_pin">123SmartBMS PIN</string>
     <string name="lbl_about">About</string>
-    <string name="lbl_about_text">GT-BMS (GNUTUX BMS)\n\nUnofficial BMS monitor app based on the open-source VanAccess project (GPL-3.0).\nUse at your own risk. Read-only mode — no settings are changed on the BMS.</string>
+    <string name="lbl_about_text">Unofficial BMS monitor app based on the open-source VanAccess project (GPL-3.0).\nUse at your own risk. Read-only mode — no settings are changed on the BMS.</string>
     <string name="lbl_active_connection">Active Connection</string>
     <string name="lbl_adv_key">Advertisement Key (32 hex)</string>
     <string name="lbl_all_off">All Off</string>

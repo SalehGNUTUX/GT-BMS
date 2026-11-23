@@ -73,4 +73,8 @@
     <string name="info_currency">اسم مختصر أو رمز يظهر بجانب التكلفة: MAD، درهم، €، \$، DZD، TND…\nمجرد تسمية؛ لا يُجرى أي تحويل.</string>
     <string name="info_fuel_price">اختياري. سعر لتر البنزين بالعملة نفسها.\nمع خانة الاستهلاك، تعرض كل رحلة أيضاً كم كانت ستكلف المسافة نفسها بمركبة بنزين.</string>
     <string name="info_fuel_l100">اختياري. كم لتراً تستهلك مركبة بنزين مماثلة لكل 100 كم (دراجة نارية صغيرة: نحو 2–3؛ سيارة صغيرة: 5–7).\nمثال: 2.5 لتر/100 كم بسعر 17 للتر › 10 كم تكلف 4.25 وقوداً.\nاتركها فارغة لإخفاء المقارنة.</string>
+    <string name="about_site">🌐  موقع GT-BMS</string>
+    <string name="about_gnutux">🧩  مشاريع غنوتوكس</string>
+    <string name="about_speedometer_open">🛵  فتح GT-SPEEDOMETER</string>
+    <string name="about_speedometer">مشروعنا الشقيق: عدّاد سرعة ومسافة ومسار للهاتف فوق كاميرا حيّة. اعتمد عليه GT-BMS في جلب عدد من مزاياه (السرعة والمسافة بالـGPS في الرحلات، وتسجيل المسار، وفتح المسارات في OsmAnd).</string>
 </resources>

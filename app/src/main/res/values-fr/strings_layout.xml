@@ -2,7 +2,7 @@
 <resources>
     <string name="lbl_123_pin">PIN 123SmartBMS</string>
     <string name="lbl_about">À propos</string>
-    <string name="lbl_about_text">GT-BMS (GNUTUX BMS)\n\nApplication non officielle de surveillance BMS, basée sur le projet libre VanAccess (GPL-3.0).\nUtilisation à vos risques. Mode lecture seule — aucun réglage n\'est modifié sur le BMS.</string>
+    <string name="lbl_about_text">Application non officielle de surveillance BMS, basée sur le projet libre VanAccess (GPL-3.0).\nUtilisation à vos risques. Mode lecture seule — aucun réglage n\'est modifié sur le BMS.</string>
     <string name="lbl_active_connection">Connexion active</string>
     <string name="lbl_adv_key">Clé d\'annonce (32 hex)</string>
     <string name="lbl_all_off">Tout éteindre</string>

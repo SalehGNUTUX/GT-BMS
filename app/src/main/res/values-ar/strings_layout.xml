@@ -3,7 +3,7 @@
 <resources>
     <string name="lbl_123_pin">رمز PIN لـ 123SmartBMS</string>
     <string name="lbl_about">حول التطبيق</string>
-    <string name="lbl_about_text">GT-BMS (GNUTUX BMS)\n\nتطبيق مراقبة غير رسمي لأنظمة إدارة البطاريات، مبني على مشروع VanAccess مفتوح المصدر (GPL-3.0).\nاستخدمه على مسؤوليتك. وضع القراءة فقط — لا تُغيَّر أي إعدادات في نظام الإدارة.</string>
+    <string name="lbl_about_text">تطبيق مراقبة غير رسمي لأنظمة إدارة البطاريات، مبني على مشروع VanAccess مفتوح المصدر (GPL-3.0).\nاستخدمه على مسؤوليتك. وضع القراءة فقط — لا تُغيَّر أي إعدادات في نظام الإدارة.</string>
     <string name="lbl_active_connection">الاتصال النشط</string>
     <string name="lbl_adv_key">مفتاح الإعلان (32 خانة hex)</string>
     <string name="lbl_all_off">إطفاء الكل</string>
