@@ -1,0 +1,1 @@
+1.6 beta 2: formatted What's new, in-app update banner with progress, periodic update check on by default, side swipe between battery tabs, central button blinks while charging, new settings icons, fixed settings header, About section.
