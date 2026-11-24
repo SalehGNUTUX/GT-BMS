@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.battery
 
+import com.vanaccess.bms.map.OsmAndBridge.State as MapState
 import com.vanaccess.bms.ui.AppDialog as AD
 import com.vanaccess.bms.reports.Advisor.Level as L
 import com.vanaccess.bms.reports.CapacityTest.Phase as P
@@ -181,7 +182,10 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (s.b("energy_partial")) add("⚠ " + fragment.getString(R.string.rep_energy_partial))
         else if (s.type == Session.TYPE_TRIP && s.d("gap_s") >= 30) add("ℹ " + fragment.getString(R.string.rep_gap, s.i("gap_s") / 60.0))
         if (s.b("ended_by_protection")) add("⚠ " + fragment.getString(R.string.rep_by_protection))
-        if (s.type == Session.TYPE_CHARGE && s.b("reached_full")) add("✓ " + fragment.getString(R.string.rep_full))
+        val jumped = s.data.has("soc_before_stop") && s.i("soc_after_stop") - s.i("soc_before_stop") >= 2
+        if (s.type == Session.TYPE_CHARGE && s.b("reached_full")) add(
+            if (jumped) "ℹ " + com.vanaccess.bms.ui.AdviceText.socText(ctx, s.i("soc_before_stop"), s.i("soc_after_stop"), null)
+            else "✓ " + fragment.getString(R.string.rep_full))
     }
 
     private fun confirmDelete(s: Session) {
@@ -214,6 +218,32 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             rows += R.string.rep_max_v to f("%.2f V", s.d("max_v"))
             if (s.d("max_cell_v") > 0) rows += R.string.rep_max_cell to fragment.getString(R.string.cell_at, s.d("max_cell_v"), s.i("max_cell_idx"))
             rows += R.string.rep_max_delta to "${s.i("max_delta_mv")} mV"
+            if (s.data.has("stop_reason")) {
+                val AT = com.vanaccess.bms.ui.AdviceText
+                rows += R.string.rep_stop to AT.stopText(ctx, s.data.optString("stop_reason"),
+                    s.data.optString("stop_alarm").ifBlank { null }, s.i("stop_max_idx"), s.d("stop_max_cell"))
+                rows += R.string.rep_stop_soc to AT.socText(ctx, s.i("soc_before_stop"), s.i("soc_after_stop"),
+                    if (s.data.has("soc_counted")) s.i("soc_counted") else null)
+                rows += R.string.rep_stop_v to f("%.2f V", s.d("stop_v"))
+                if (s.i("stop_max_idx") > 0) {
+                    rows += R.string.rep_stop_max to fragment.getString(R.string.cell_at, s.d("stop_max_cell"), s.i("stop_max_idx"))
+                    rows += R.string.rep_stop_min to fragment.getString(R.string.cell_at, s.d("stop_min_cell"), s.i("stop_min_idx"))
+                    rows += R.string.rep_stop_delta to "${s.i("stop_delta_mv")} mV"
+                }
+                if (s.data.has("rest_v")) rows += R.string.rep_rest to f("%.2f V  •  %d mV", s.d("rest_v"), s.i("rest_delta_mv"))
+                if (s.data.has("target_v") || s.data.has("target_soc")) {
+                    val ok = (s.d("target_v") > 0 && s.d("max_v") >= s.d("target_v")) ||
+                        (s.i("target_soc") > 0 && s.i("soc_before_stop") >= s.i("target_soc"))
+                    rows += R.string.rep_target to line(
+                        s.d("target_v").takeIf { it > 0 }?.let { f("%.1f V", it) }, s.i("target_soc").takeIf { it > 0 }?.let { "$it%" },
+                        fragment.getString(if (ok) R.string.rep_target_yes else R.string.rep_target_no))
+                }
+                if (s.data.has("eta_first_min")) {
+                    val real = (s.endMs - s.startMs) / 60000.0
+                    rows += R.string.rep_eta to fragment.getString(R.string.rep_eta_val, dur(s.d("eta_first_min") * 60), dur(real * 60),
+                        Math.round(s.d("eta_first_min") - real).toInt())
+                }
+            }
         } else {
             if (s.type == Session.TYPE_DISCHARGE) {
                 rows += R.string.rep_avg_current to f("%.1f A", s.d("avg_current"))
@@ -271,22 +301,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 setPadding(0, (14 * dp).toInt(), 0, (2 * dp).toInt())
             })
             col.addView(text(fragment.getString(R.string.map_legend), cGrey, 12f, false))
-            val route = RouteView(ctx)
-            col.addView(route, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (230 * dp).toInt())
-                .apply { topMargin = (6 * dp).toInt() })
-            val open = TextView(ctx).apply {
-                text = fragment.getString(R.string.map_open_osmand)
-                setTextColor(Color.WHITE); textSize = 14f; setTypeface(typeface, Typeface.BOLD); gravity = Gravity.CENTER
-                setPadding((16 * dp).toInt(), (9 * dp).toInt(), (16 * dp).toInt(), (9 * dp).toInt())
-                background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor("#2A6FB8")) }
-                setOnClickListener { openInMaps(s) }
-            }
-            col.addView(open, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                .apply { topMargin = (8 * dp).toInt() })
-            thread {
-                val pts = ReportStore.get(ctx).points(s.id)
-                fragment.activity?.runOnUiThread { route.setTrack(pts) }
-            }
+            addRouteMap(col, s)
         }
 
         col.addView(text(fragment.getString(R.string.rep_chart), Color.WHITE, 14f, true).apply {
@@ -347,10 +362,89 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     // ── Maps (OsmAnd) ────────────────────────────────────────────────────────
 
     /** OsmAnd (Play), OsmAnd+ / OsmAnd~ (F-Droid build, same package), OsmAnd nightly. */
-    private val OSMAND = listOf("net.osmand.plus", "net.osmand", "net.osmand.dev")
 
     /** Open one trip's GPX in OsmAnd if installed, else any GPX viewer, else suggest OsmAnd. */
-    private fun openInMaps(s: Session) {
+    /** The route on OsmAnd's map (sketch until it answers), zoom buttons, and what to do with the track. */
+    private fun addRouteMap(col: LinearLayout, s: Session) {
+        val route = RouteView(ctx)
+        val frame = android.widget.FrameLayout(ctx)
+        frame.addView(route, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val tools = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        fun tool(icon: Int, desc: Int, click: () -> Unit) = tools.addView(android.widget.ImageButton(ctx).apply {
+            setImageResource(icon); contentDescription = fragment.getString(desc)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#E61E2130")); setStroke(dp.toInt(), Color.parseColor("#3A4260")) }
+            setOnClickListener { click() }
+        }, LinearLayout.LayoutParams((42 * dp).toInt(), (42 * dp).toInt()).apply { topMargin = (6 * dp).toInt() })
+        tool(R.drawable.ic_map_plus, R.string.map_zoom_in) { route.zoomIn() }
+        tool(R.drawable.ic_map_minus, R.string.map_zoom_out) { route.zoomOut() }
+        tool(R.drawable.ic_map_fit, R.string.map_fit) { route.fit() }
+        frame.addView(tools, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.START).apply { setMargins((8 * dp).toInt(), 0, (8 * dp).toInt(), (8 * dp).toInt()) })
+        col.addView(frame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (300 * dp).toInt()).apply { topMargin = (6 * dp).toInt() })
+
+        val note = text("", cGrey, 12f, false).apply { setPadding(0, (6 * dp).toInt(), 0, 0); visibility = android.view.View.GONE }
+        col.addView(note)
+        fun say(t: Int?, click: (() -> Unit)? = null) {
+            note.visibility = if (t == null) android.view.View.GONE else android.view.View.VISIBLE
+            t?.let { note.text = fragment.getString(it) }
+            note.setTextColor(if (click != null) Color.parseColor("#4DA3FF") else cGrey)
+            note.setOnClickListener(click?.let { c -> android.view.View.OnClickListener { c() } })
+        }
+        fun load() {
+            val B = com.vanaccess.bms.map.OsmAndBridge
+            if (B.installed(ctx) == null) { say(R.string.map_osm_missing) { suggestOsmand() }; return }
+            say(R.string.map_osm_drawing)
+            B.render(ctx, route.track(), route.width, route.height, Color.parseColor("#1E88E5")) { a ->
+                fragment.activity?.runOnUiThread {
+                    if (!route.isAttachedToWindow) return@runOnUiThread
+                    when (a.state) {
+                        MapState.READY -> { route.setMap(a.shot); say(null) }
+                        // Asked once, OsmAnd lists GT-BMS among its connected apps, switched off
+                        MapState.DENIED -> say(R.string.map_osm_denied) { askOsmand { load() } }
+                        MapState.NO_MAP -> say(R.string.map_osm_nomap) { load() }
+                        MapState.UNREACHABLE -> say(R.string.map_osm_unreachable) { load() }
+                        MapState.MISSING -> say(R.string.map_osm_missing) { suggestOsmand() }
+                    }
+                }
+            }
+        }
+        thread {
+            val pts = ReportStore.get(ctx).points(s.id)
+            fragment.activity?.runOnUiThread {
+                route.setTrack(pts)
+                if (route.track().size >= 2) route.post { load() } else say(R.string.rep_no_gps)
+            }
+        }
+
+        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        fun action(t: Int, color: String, click: () -> Unit) = row.addView(TextView(ctx).apply {
+            text = fragment.getString(t)
+            setTextColor(Color.WHITE); textSize = 14f; setTypeface(typeface, Typeface.BOLD); gravity = Gravity.CENTER
+            setPadding((8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt())
+            background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor(color)) }
+            setOnClickListener { click() }
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { marginEnd = (6 * dp).toInt() })
+        action(R.string.map_open_osmand, "#2A6FB8") { openInMaps(s) }
+        action(R.string.map_share, "#3A3F55") { shareTrack(s) }
+        col.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = (8 * dp).toInt() })
+    }
+
+    /** How to allow GT-BMS inside OsmAnd, then try again. */
+    private fun askOsmand(retry: () -> Unit) {
+        AD.show(ctx, fragment.getString(R.string.map_osm_allow_title), message = fragment.getString(R.string.map_osm_allow),
+            buttons = listOf(
+                AD.Btn(fragment.getString(R.string.map_osm_open), AD.GREEN) {
+                    com.vanaccess.bms.map.OsmAndBridge.installed(ctx)?.let { pkg ->
+                        ctx.packageManager.getLaunchIntentForPackage(pkg)?.let { runCatching { ctx.startActivity(it) } } }
+                },
+                AD.Btn(fragment.getString(R.string.update_retry), Color.parseColor("#2A6FB8")) { retry() },
+                AD.Btn(fragment.getString(R.string.btn_cancel), AD.GREY)))
+    }
+
+    /** Writes the trip's GPX and hands its address over on the main thread. */
+    private fun withGpx(s: Session, use: (android.net.Uri) -> Unit) {
         val app = ctx.applicationContext
         thread {
             val gpx = com.vanaccess.bms.reports.Exporter.gpx(listOf(s to ReportStore.get(app).points(s.id)))
@@ -358,36 +452,43 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             val f = java.io.File(java.io.File(app.cacheDir, "exports").apply { mkdirs() }, "GT-BMS-trip-$stamp.gpx")
             f.writeText(gpx)
             fragment.activity?.runOnUiThread {
-                val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.fileprovider", f)
-                fun view(pkg: String?) = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/gpx+xml")
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    pkg?.let { setPackage(it) }
-                }
-                val pm = ctx.packageManager
-                val osmand = OSMAND.firstOrNull { pkg ->
-                    try { pm.getPackageInfo(pkg, 0); true } catch (_: Exception) { false }
-                }
-                try {
-                    if (osmand != null) ctx.startActivity(view(osmand))
-                    else ctx.startActivity(android.content.Intent.createChooser(view(null), fragment.getString(R.string.map_open_osmand)))
-                } catch (_: Exception) {
-                    suggestOsmand()
-                }
+                use(androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.fileprovider", f))
             }
         }
     }
 
+    private fun shareTrack(s: Session) = withGpx(s) { uri ->
+        runCatching {
+            ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/gpx+xml"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, fragment.getString(R.string.map_share)))
+        }
+    }
+
+    private fun openInMaps(s: Session) = withGpx(s) { uri ->
+        fun view(pkg: String?) = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/gpx+xml")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            pkg?.let { setPackage(it) }
+        }
+        try {
+            val osmand = com.vanaccess.bms.map.OsmAndBridge.installed(ctx)
+            if (osmand != null) ctx.startActivity(view(osmand))
+            else ctx.startActivity(android.content.Intent.createChooser(view(null), fragment.getString(R.string.map_open_osmand)))
+        } catch (_: Exception) {
+            suggestOsmand()
+        }
+    }
+
+    /** Recommend OsmAnd from its official site, in the app's language. */
     private fun suggestOsmand() {
         AD.show(ctx, fragment.getString(R.string.map_no_app_title), message = fragment.getString(R.string.map_no_app),
             buttons = listOf(
-                AD.Btn("F-Droid", AD.GREEN) {
-                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://f-droid.org/packages/net.osmand.plus/")))
-                },
-                AD.Btn("Google Play", Color.parseColor("#2A6FB8")) {
-                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=net.osmand")))
+                AD.Btn(fragment.getString(R.string.map_osm_site), AD.GREEN) {
+                    runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(fragment.getString(R.string.map_osm_url)))) }
                 },
                 AD.Btn(fragment.getString(R.string.btn_cancel), AD.GREY),
             ))
@@ -450,15 +551,15 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         thread {
             val store = ReportStore.get(ctx)
             val now = System.currentTimeMillis()
-            val levels = store.levels(now - 14 * 86_400_000L)
+            val levels = store.levels(now - 14 * 86_400_000L, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
             val charges = store.list(Session.TYPE_CHARGE, 300, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
             val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx)
             val info = com.vanaccess.bms.ble.BleService.basicInfo.value
             val fullAh = info?.fullCapacity ?: levels.lastOrNull()?.fullAh
             val health = com.vanaccess.bms.reports.Advisor.health(fullAh, lim, charges)
             val lastFull = charges.firstOrNull { it.b("reached_full") || it.b("ended_by_protection") }
-            val lowCal = (lim.socLowCalMv ?: 3050) / 1000.0
-            val allLevels = store.levels(0)
+            val lowCal = (lim.socLowCalMv ?: if (lim.lion) 3300 else if (lim.lfp) 3050 else lim.cellUvMv ?: 2500) / 1000.0
+            val allLevels = store.levels(0, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
             val lastDeep = allLevels.lastOrNull { it.soc <= 10 || (it.minCell > 0 && it.minCell <= lowCal) }
             val cycles = info?.cycleCount ?: levels.lastOrNull()?.cycles
             val prefs0 = com.vanaccess.bms.data.AppPreferences(ctx)
@@ -494,6 +595,19 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                     ?: fragment.getString(R.string.levels_never)))
                 fCard.addView(row(fragment.getString(R.string.levels_last_deep), lastDeep?.let { date(it.tMs) }
                     ?: fragment.getString(R.string.levels_never)))
+                com.vanaccess.bms.reports.ChargeStats.from(charges.take(50), trips)?.let { st ->
+                    val sCard = card(box, "🔌 " + fragment.getString(R.string.stats_title))
+                    sCard.addView(row(fragment.getString(R.string.stats_total), "${st.total}"))
+                    sCard.addView(row(fragment.getString(R.string.stats_cut), "${st.byProtection} (${st.byProtection * 100 / st.total}%)"))
+                    sCard.addView(row(fragment.getString(R.string.stats_charger), "${st.byCharger}"))
+                    sCard.addView(row(fragment.getString(R.string.stats_early), "${st.early}"))
+                    st.avgDeltaMv?.let { sCard.addView(row(fragment.getString(R.string.stats_delta), "$it mV")) }
+                    st.cutCell?.let { sCard.addView(row(fragment.getString(R.string.stats_cut_cell),
+                        fragment.getString(R.string.stats_cell_times, it, st.cutCellTimes, st.byProtection))) }
+                    st.weakCell?.let { sCard.addView(row(fragment.getString(R.string.stats_weak_cell),
+                        fragment.getString(R.string.stats_cell_times, it, st.weakCellTimes, st.trips))) }
+                    st.avgEtaErrorMin?.let { sCard.addView(row(fragment.getString(R.string.stats_eta), fragment.getString(R.string.stats_min, it))) }
+                }
                 renderUsageCard(box, trips, repeats)
                 // SOC chart
                 val cCard = card(box, fragment.getString(R.string.levels_days))

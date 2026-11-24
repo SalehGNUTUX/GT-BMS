@@ -337,12 +337,21 @@ class BatteryScreen(
             else -> null
         }
         fun dur(h: Double) = fragment.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
-        val chargeEta = if (charging) com.vanaccess.bms.reports.ChargeTime.estimate(info.soc, info.fullCapacity, info.current) else null
+        val R1 = com.vanaccess.bms.reports.SessionRecorder
+        val chargeEta = if (charging) com.vanaccess.bms.reports.ChargePredictor.predict(info.soc, info.fullCapacity, info.current,
+            R1.chargeLearn, R1.chargeWatch, info.remainCapacity, if (prefs.knownOvMv > 0) prefs.knownOvMv / 1000.0 else 99.0) else null
         b.tvTimeLeft.text = when {
-            // Charging: time to 80 % and to 100 % (the last 10 % is slower)
+            // Last minutes before the protection cuts the charge
+            chargeEta?.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.CUT_SOON ->
+                if (chargeEta.hours < 2 / 60.0) fragment.getString(R.string.eta_cut_now, chargeEta.cell)
+                else fragment.getString(R.string.eta_cut_soon, Math.ceil(chargeEta.hours * 60).toInt(), chargeEta.cell)
+            // Charging: time to 80 % and to the end
             chargeEta != null -> listOfNotNull(
                 chargeEta.to80h?.let { fragment.getString(R.string.eta_80, dur(it)) },
-                fragment.getString(R.string.eta_100, dur(chargeEta.to100h))).joinToString("  •  ")
+                if (chargeEta.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.CUT)
+                    (if (chargeEta.hours < 3 / 60.0) fragment.getString(R.string.eta_end_soon)
+                     else fragment.getString(R.string.eta_end, dur(chargeEta.hours)))
+                else fragment.getString(R.string.eta_100, dur(chargeEta.hours))).joinToString("  •  ")
             else -> hours?.takeIf { it in 0.0..500.0 }?.let { h ->
                 fragment.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur(h))
             } ?: ""
@@ -356,7 +365,7 @@ class BatteryScreen(
             if (charging) cGreen else if (discharging) cBlue else null)
         metric(b.gridMetrics, "p", R.string.m_power, fmt("%.0f W", abs(info.powerWatts)))
         metric(b.gridMetrics, "d", R.string.m_delta, delta?.let { "$it mV" } ?: "—",
-            delta?.let { if (it >= 50) cRed else if (it >= 25) cOrange else cGreen })
+            delta?.let { deltaColor(it) })
         renderVehicleTiles(info)
 
         // Capacity
@@ -451,7 +460,7 @@ class BatteryScreen(
         val cells = prefs.bmsCellCount.takeIf { it > 0 } ?: lastCells.size
         val remainAh = if (info.remainCapacity > 0) info.remainCapacity else info.soc / 100.0 * info.fullCapacity
         val r = com.vanaccess.bms.reports.RangeEstimator.estimate(
-            remainAh, info.fullCapacity, info.packVoltage, cells, limits.lfp || limits.cellOvMv == null,
+            remainAh, info.fullCapacity, info.packVoltage, cells, com.vanaccess.bms.reports.BatteryModel.nominalCell(prefs.chemistry),
             prefs.consumptionWhKm.toDouble(), learned, v.defaultWhPerKm, info.temperatures.minOrNull())
         lastRange = r
         metric(b.gridMetrics, "r", R.string.m_range_i, r?.let { fmt("≈ %.0f km", it.km) } ?: "—", cGreen)
@@ -482,9 +491,15 @@ class BatteryScreen(
     private fun refreshLearned() {
         val ctx0 = ctx
         kotlin.concurrent.thread {
-            val l = com.vanaccess.bms.reports.ReportStore.get(ctx0).learnedConsumption()
+            val l = com.vanaccess.bms.reports.ReportStore.get(ctx0).learnedConsumption(prefs.selectedDeviceAddress)
             fragment.activity?.runOnUiThread { learned = l }
         }
+    }
+
+    /** Cell difference against this battery's own alarm value. */
+    private fun deltaColor(mv: Int): Int {
+        val limit = prefs.alarmDeltaRestMv
+        return if (mv >= limit * 1.6) cRed else if (mv >= limit * 0.8) cOrange else cGreen
     }
 
     private fun renderBanner() {
@@ -496,7 +511,7 @@ class BatteryScreen(
         val (txt, col) = when {
             trip != null -> fragment.getString(R.string.live_trip,
                 "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) to cBlue
-            chg != null -> fragment.getString(R.string.live_charge,
+            chg != null -> fragment.getString(if (chg.stopped) R.string.live_charge_stopped else R.string.live_charge,
                 time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
             dis != null -> fragment.getString(R.string.live_discharge,
                 time.format(java.util.Date(dis.startMs)), dis.ah) to cOrange
@@ -542,7 +557,7 @@ class BatteryScreen(
         addTile(b.gridCellSummary, fragment.getString(R.string.cell_avg), fmt("%.3f V", avg), null)
         val delta = ((maxV - minV) * 1000).toInt()
         addTile(b.gridCellSummary, fragment.getString(R.string.cell_delta), "$delta mV",
-            if (delta >= 50) cRed else if (delta >= 25) cOrange else cGreen)
+            deltaColor(delta))
 
         b.tvCellsTitle.text = fragment.getString(R.string.cells_count, cells.size)
         val bal = lastInfo?.balanceBits ?: 0L

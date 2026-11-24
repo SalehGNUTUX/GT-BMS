@@ -53,11 +53,11 @@ object RangeEstimator {
 
     /**
      * @param cells cell count (0 if unknown → the measured pack voltage is used)
-     * @param lfp chemistry (LiFePO₄ = true)
+     * @param nominalCell nominal cell voltage of the chemistry (null if unknown → measured pack voltage)
      * @param learned (Wh/km, km covered) from trips, if any
      */
     fun estimate(
-        remainAh: Double, fullAh: Double, packV: Double, cells: Int, lfp: Boolean,
+        remainAh: Double, fullAh: Double, packV: Double, cells: Int, nominalCell: Double?,
         userWhKm: Double, learned: Pair<Double, Double>?, defaultWhKm: Double,
         tempC: Double? = null,
     ): Result? {
@@ -68,7 +68,7 @@ object RangeEstimator {
             defaultWhKm > 0 -> defaultWhKm to Basis.DEFAULT
             else -> return null
         }
-        val nominalV = if (cells > 0) cells * (if (lfp) 3.2 else 3.7) else packV
+        val nominalV = if (cells > 0 && nominalCell != null) cells * nominalCell else packV
         val reserveAh = if (fullAh > 0) fullAh * RESERVE_PCT / 100.0 else 0.0
         val factor = tempFactor(tempC)
         val usableWh = ((remainAh - reserveAh).coerceAtLeast(0.0)) * nominalV * factor

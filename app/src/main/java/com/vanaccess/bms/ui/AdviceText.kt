@@ -41,11 +41,11 @@ object AdviceText {
         Advisor.Level.OK -> "✓"
     }
 
-    fun limits(ctx: Context) = BmsLimits.fromJson(AppPreferences(ctx).bmsLimitsJson)
+    fun limits(ctx: Context): BmsLimits = AppPreferences(ctx).limits
 
     fun chargerAdviceV(ctx: Context): Double? {
         val p = AppPreferences(ctx)
-        return ChargeAdvice.from(p.bmsCellCount, p.bmsCellOvMv)?.chargerPackV
+        return ChargeAdvice.from(p.bmsCellCount, p.effectiveOvMv)?.chargerPackV
     }
 
     /** Recommendations for a saved report (computed on demand; call off the main thread). */
@@ -61,7 +61,7 @@ object AdviceText {
         } else if (s.type == Session.TYPE_DISCHARGE) {
             Advisor.afterDischarge(s, lim)
         } else {
-            val learned = store.learnedConsumption()?.first
+            val learned = store.learnedConsumption(s.battery)?.first
             val whKm = if (!s.data.isNull("wh_per_km")) s.d("wh_per_km") else null
             val design = lim.designAh
             val range = if (whKm != null && whKm > 0 && design != null)
@@ -112,6 +112,40 @@ object AdviceText {
         try { ctx.getSystemService(NotificationManager::class.java).notify(4000 + id, n) } catch (_: SecurityException) {}
     }
 
+    private const val CHANNEL_QUIET = "gt_bms_quiet"
+
+    /** "Why did the charge stop": silent, whatever the alarms are set to. */
+    fun notifyChargeStop(ctx: Context, r: com.vanaccess.bms.reports.ChargeWatch.Result) {
+        if (!AppPreferences(ctx).notifySessionSummary) return
+        ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL_QUIET, ctx.getString(R.string.chg_stop_channel), NotificationManager.IMPORTANCE_LOW))
+        val text = stopText(ctx, r.reason.name.lowercase(), r.alarm, r.maxIdx, r.maxCell) + "\n" +
+            socText(ctx, r.socBefore, r.socShown, r.socCounted) +
+            if (r.maxIdx > 0) "\n" + ctx.getString(R.string.chg_stop_cells, r.packV, r.maxIdx, r.maxCell, r.minIdx, r.minCell, r.deltaMv) else ""
+        val open = PendingIntent.getActivity(ctx, 50, Intent(ctx, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(ctx, CHANNEL_QUIET).setSmallIcon(R.drawable.ic_battery)
+            .setContentTitle(ctx.getString(R.string.chg_stop_title)).setContentText(text.substringBefore('\n'))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true).build()
+        try { ctx.getSystemService(NotificationManager::class.java).notify(4010, n) } catch (_: SecurityException) {}
+    }
+
+    fun stopText(ctx: Context, reason: String, alarm: String?, cell: Int, cellV: Double): String = when (reason) {
+        "protection" -> if (cell > 0 && (alarm == null || alarm.contains("overvoltage", true)))
+            ctx.getString(R.string.stop_protection_cell, cell, cellV)
+            else ctx.getString(R.string.stop_protection) + (alarm?.let { " (" + L10n.t(ctx, it) + ")" } ?: "")
+        "charger" -> ctx.getString(R.string.stop_charger)
+        "lost" -> ctx.getString(R.string.stop_lost)
+        else -> ctx.getString(R.string.stop_interrupted)
+    }
+
+    /** Never the jumped figure alone. */
+    fun socText(ctx: Context, before: Int, shown: Int, counted: Int?): String {
+        val jump = shown - before >= 2
+        val s = if (jump) ctx.getString(R.string.soc_jump, before, shown) else ctx.getString(R.string.soc_plain, shown)
+        return s + if (jump && counted != null) " " + ctx.getString(R.string.soc_counted, counted) else ""
+    }
+
     /** Summary after a charge or trip (background thread). */
     fun notifySession(ctx: Context, s: Session) {
         if (!AppPreferences(ctx).notifySessionSummary) return
@@ -144,7 +178,7 @@ object AdviceText {
             prefs.lastBalanceReminderMs = now
             val lim = limits(ctx)
             notify(ctx, 4, ctx.getString(R.string.balance_reminder_title),
-                listOf(Advisor.Rec(Advisor.Level.WARNING, "balance_needed", listOf(days, (lim.balanceStartMv ?: 3400) / 1000.0))))
+                listOf(Advisor.Rec(Advisor.Level.WARNING, "balance_needed", listOf(days, lim.balanceStartV))))
         }.start()
     }
 

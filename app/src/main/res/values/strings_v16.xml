@@ -23,10 +23,10 @@
     <string name="captest_done_notify">Done: real capacity %1$.2f Ah.</string>
     <string name="captest_start_q">Start the capacity test?</string>
     <string name="map_title">Route</string>
-    <string name="map_legend">Green = light load • amber • red = heavy throttle. Green dot = start, red dot = end.</string>
+    <string name="map_legend">Green = light load • amber • red = heavy throttle. Ring = start, diamond = end.</string>
     <string name="map_open_osmand">Open in OsmAnd</string>
     <string name="map_no_app_title">Install a map app</string>
-    <string name="map_no_app">To view the trip on a real map, install OsmAnd — free, works offline with downloadable maps. OsmAnd~ on F-Droid is the fully free build; GT-SPEEDOMETER can also open it through OsmAnd.</string>
+    <string name="map_no_app">To see your trips on a real map inside GT-BMS, install OsmAnd: free, open source, and its maps work offline once downloaded. GT-BMS then draws your route on its map.</string>
     <string name="cost_title">Energy cost</string>
     <string name="cost_desc" formatted="false">Shown in charge and trip reports. Includes ~15 % charger loss. Fuel fields (optional) compare with a petrol vehicle.</string>
     <string name="cost_price_hint">kWh price</string>
@@ -52,7 +52,7 @@
     <string name="backup_done">Backup saved</string>
     <string name="usage_title">Driving &amp; usage</string>
     <string name="driving_tips_title">Driving tips for lithium</string>
-    <string name="adv_drive_shocks">%1$d sudden current jumps on this trip (from almost 0 to over 15 A in two seconds). Progressive, steady throttle is gentler on the cells and wastes less energy — especially for a weak cell.</string>
+    <string name="adv_drive_shocks">%1$d sudden current jumps on this trip (from almost nothing to a high current in two seconds). Progressive, steady throttle is gentler on the cells and wastes less energy — especially for a weak cell.</string>
     <string name="adv_drive_onoff">“Press and release” %1$d times. It suited lead-acid batteries, which recover while resting; lithium needs no rest, and a steady speed is more efficient.</string>
     <string name="adv_drive_smooth">Smooth riding: no sudden current jumps.</string>
     <string name="adv_drive_high_current">%1$d %% of this trip above %2$.0f A. High speed raises current, heat and consumption; a moderate speed extends range and battery life.</string>

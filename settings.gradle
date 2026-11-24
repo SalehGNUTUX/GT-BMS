@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "GT-BMS"
 include ':app'
+include ':osmand-api'

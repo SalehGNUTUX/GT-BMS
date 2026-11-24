@@ -12,8 +12,8 @@ import kotlin.math.abs
  * crosses the cell-difference alarm). Lithium also needs no "rest" between pulls, unlike
  * lead-acid, which recovers some voltage while resting — "press and release" suited lead-acid.
  *
- *  - shocks:   current jumps from < 5 A to ≥ 15 A within ~4 s (sudden full throttle)
- *  - onOff:    full-pull → release cycles (≥ 50 % of the trip's peak, then < 2 A)
+ *  - shocks:   current jumps from < 10 % to ≥ 30 % of the battery's limit within ~4 s (sudden throttle)
+ *  - onOff:    full-pull → release cycles (≥ 50 % of the trip's peak, then almost nothing)
  *  - highPct:  share of the driving time at ≥ 60 % of the BMS over-current point
  */
 object DrivingAnalyzer {
@@ -23,18 +23,21 @@ object DrivingAnalyzer {
     fun analyze(points: List<Point>, dischargeOcA: Int?): Style {
         val dis = points.map { -it.i }                       // discharge current, positive
         if (dis.size < 5) return Style(0, 0, 0, 0.0)
+        val peak = dis.max().coerceAtLeast(1.0)
+        // What is "almost nothing" and "a lot" depends on the battery: its discharge limit, else this trip's peak
+        val ref = (dischargeOcA?.toDouble() ?: peak).coerceAtLeast(1.0)
+        val calm = ref * 0.1; val hard = ref * 0.3
         var shocks = 0; var lastShock = -10
         for (k in 2 until dis.size) {
             val before = minOf(dis[k - 1], dis[k - 2])
-            if (before < 5.0 && dis[k] >= 15.0 && k - lastShock >= 3) { shocks++; lastShock = k }
+            if (before < calm && dis[k] >= hard && k - lastShock >= 3) { shocks++; lastShock = k }
         }
-        val peak = dis.max().coerceAtLeast(1.0)
         var onOff = 0; var high = false
         dis.forEach { a ->
             if (!high && a >= peak * 0.5) high = true
-            else if (high && a < 2.0) { onOff++; high = false }
+            else if (high && a < ref * 0.04) { onOff++; high = false }
         }
-        val highA = (dischargeOcA?.let { it * 0.6 } ?: (peak * 0.8)).coerceAtLeast(10.0)
+        val highA = dischargeOcA?.let { it * 0.6 } ?: (peak * 0.8)
         val driving = dis.count { abs(it) > 1.0 }.coerceAtLeast(1)
         val highPct = dis.count { it >= highA } * 100 / driving
         return Style(shocks, onOff, highPct, highA)

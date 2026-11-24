@@ -62,7 +62,7 @@ object Advisor {
             if (iAbs >= x.loadCurrentA && delta >= x.loadDeltaMv) {
                 out += Rec(Level.CRITICAL, "delta_load", listOf(delta, iAbs, iMn))
             } else if (x.restSeconds >= 120 && x.soc in 20..90 && delta >= x.restDeltaMv) {
-                out += Rec(Level.WARNING, "delta_rest", listOf(delta, iMn, (lim.balanceStartMv ?: 3400) / 1000.0))
+                out += Rec(Level.WARNING, "delta_rest", listOf(delta, iMn, lim.balanceStartV))
             }
         }
 
@@ -103,7 +103,7 @@ object Advisor {
         if (s.b("ended_by_protection") && chargerAdviceV != null) out += Rec(Level.INFO, "charger_voltage", listOf(chargerAdviceV))
         val full = s.b("reached_full") || s.b("ended_by_protection")
         if (!full && daysSinceFull != null && daysSinceFull >= 7) {
-            out += Rec(Level.WARNING, "balance_needed", listOf(daysSinceFull, (lim.balanceStartMv ?: 3400) / 1000.0))
+            out += Rec(Level.WARNING, "balance_needed", listOf(daysSinceFull, lim.balanceStartV))
         }
         if (s.i("max_delta_mv") >= 50) out += Rec(Level.WARNING, "charge_delta", listOf(s.i("max_delta_mv")))
         val ot = lim.chargeOtC ?: DEF_CHARGE_OT
@@ -161,7 +161,7 @@ object Advisor {
         Rec(Level.INFO, "week_summary", listOf(w.charges, w.trips, w.km, w.whOut)),
         w.cycles?.let { Rec(Level.INFO, "week_cycles", listOf(it)) },
         w.sohPct?.let { Rec(Level.INFO, "week_soh", listOf(it)) },
-        Rec(Level.INFO, if (lim.lfp) "tip_lfp" else "tip_liion"),
+        if (lim.lfp) Rec(Level.INFO, "tip_lfp") else if (lim.lion) Rec(Level.INFO, "tip_liion") else null,
     )
 
     /**
@@ -178,7 +178,8 @@ object Advisor {
     fun cyclesLeft(used: Int, userRated: Int, lim: BmsLimits): Pair<Int, Int>? {
         val rated = when {
             userRated > 0 -> userRated
-            lim.cellOvMv != null -> if (lim.lfp) 3000 else 800
+            lim.lfp -> 3000
+            lim.lion -> 800
             else -> return null
         }
         return (rated - used).coerceAtLeast(0) to rated

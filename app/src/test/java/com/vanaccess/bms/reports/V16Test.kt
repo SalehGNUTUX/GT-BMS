@@ -22,8 +22,8 @@ class V16Test {
         assertEquals(1.0, RangeEstimator.tempFactor(25.0), 1e-9)
         assertEquals(0.85, RangeEstimator.tempFactor(0.0), 1e-9)
         assertEquals(0.90, RangeEstimator.tempFactor(5.0), 1e-9)
-        val warm = RangeEstimator.estimate(20.0, 30.0, 76.0, 23, true, 0.0, null, 25.0, 20.0)!!
-        val cold = RangeEstimator.estimate(20.0, 30.0, 76.0, 23, true, 0.0, null, 25.0, 0.0)!!
+        val warm = RangeEstimator.estimate(20.0, 30.0, 76.0, 23, 3.2, 0.0, null, 25.0, 20.0)!!
+        val cold = RangeEstimator.estimate(20.0, 30.0, 76.0, 23, 3.2, 0.0, null, 25.0, 0.0)!!
         assertEquals(warm.km * 0.85, cold.km, 1e-6)
     }
 

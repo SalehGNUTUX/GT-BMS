@@ -48,6 +48,10 @@ class BleService : LifecycleService() {
         val basicInfo = MutableLiveData<BmsBasicInfo?>()
         val cellVoltages = MutableLiveData<List<Double>?>()
 
+        /** The running service, if any. */
+        @Volatile var instance: BleService? = null
+            private set
+
         /**
          * After a crash / force-stop / reboot: show the last saved reading (dimmed, with its age)
          * instead of an empty screen, until the battery sends fresh data.
@@ -166,15 +170,42 @@ class BleService : LifecycleService() {
         super.onCreate()
         prefs = AppPreferences(this)
         alarmMonitor = BatteryAlarmMonitor(this, prefs)
+        instance = this
+        prefs.monitoring = true
+        log("service created")
         if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
         restoreLastReading(this)
         capacityTest.postValue(com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson))
         cellStats.postValue(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest())
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
-        if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
-        recorder.onSaved = { com.vanaccess.bms.ui.AdviceText.notifySession(this, it) }
+        if (prefs.knownOvMv > 0) recorder.cellOvLimitV = prefs.knownOvMv / 1000.0
+        recorder.onSaved = {
+            log("saved ${it.type} ${(it.endMs - it.startMs) / 1000}s ${it.i("soc_start")}-${it.i("soc_end")}%" +
+                if (it.b("energy_partial")) " partial" else "")
+            com.vanaccess.bms.ui.AdviceText.notifySession(this, it)
+            if (it.type == com.vanaccess.bms.reports.Session.TYPE_CHARGE) loadChargeLearn()
+        }
+        recorder.onChargeStop = {
+            // A cut seen on a BMS that doesn't report its limit teaches it
+            if (it.reason == com.vanaccess.bms.reports.ChargeWatch.Stop.PROTECTION && it.maxCell > 1 && prefs.bmsCellOvMv == 0 &&
+                (it.alarm?.contains("ell overvoltage") == true)) {
+                prefs.cellOvSeenMv = Math.round(it.maxCell * 1000).toInt()
+                recorder.cellOvLimitV = it.maxCell
+            }
+            com.vanaccess.bms.ui.AdviceText.notifyChargeStop(this, it)
+        }
+        recorder.log = ::log
+        loadChargeLearn()
+        keepAlive = KeepAlive(this, { connectionState.value == ConnectionState.CONNECTED }) { why ->
+            log("wake: $why, ${connectionState.value}")
+            wake(brief = true)
+        }
+        keepAlive.start()
+        androidx.core.content.ContextCompat.registerReceiver(this, btReceiver,
+            android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         handler.post(object : Runnable {
-            override fun run() { recorder.onTick(); checkLink(); handler.postDelayed(this, 10_000L) }
+            override fun run() { recorder.onTick(); checkLink(); keepAlive.tick(); handler.postDelayed(this, 10_000L) }
         })
         // Periodic background update check while the service runs (UpdateChecker throttles to 12 h)
         handler.post(object : Runnable {
@@ -516,8 +547,66 @@ class BleService : LifecycleService() {
 
     // ── Connection ────────────────────────────────────────────────────────────
 
+    private fun log(text: String) = com.vanaccess.bms.data.EventLog.add(this, text)
+
+    private lateinit var keepAlive: KeepAlive
+    /** Failed attempts in a row; after a few, Android waits for the battery by itself. */
+    private var attempts = 0
+    private var passiveLink = false
+    private var userDisconnected = false
+
+    /** Bluetooth was switched back on: pending connections are lost with it. */
+    private val btReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, i: android.content.Intent) {
+            if (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_ON)
+                handler.postDelayed({ wake() }, 1500)
+        }
+    }
+
+    fun onKeepAliveAlarm() = keepAlive.onAlarm()
+
+    /**
+     * The phone woke up or the app came to the screen: look for the battery. [brief] = it will
+     * sleep again in a moment, so leave Android waiting for the battery rather than start
+     * attempts that could not finish.
+     */
+    fun wake(brief: Boolean = false) {
+        handler.post {
+            val address = prefs.selectedDeviceAddress
+            if (address.isNullOrEmpty() || userDisconnected || isScanning) return@post
+            if (connectionState.value == ConnectionState.CONNECTED) return@post      // checkLink watches it
+            val idle = android.os.SystemClock.uptimeMillis() - linkStateAt > 15_000L
+            if (brief) {
+                if (!passiveLink) { attempts = 3; openLink(address) }
+            } else if (passiveLink || idle) {
+                attempts = 0
+                openLink(address)
+            }
+        }
+    }
+
+    /** What past charges teach (early cell alarm, time left). */
+    private fun loadChargeLearn() {
+        val ctx = applicationContext
+        Thread {
+            runCatching {
+                val store = com.vanaccess.bms.reports.ReportStore.get(ctx)
+                val charges = store.list(com.vanaccess.bms.reports.Session.TYPE_CHARGE, 30, prefs.selectedDeviceAddress)
+                com.vanaccess.bms.reports.SessionRecorder.chargeLearn =
+                    com.vanaccess.bms.reports.ChargeLearn.from(charges, prefs.bmsCellCount) { store.points(it.id) }
+            }
+        }.start()
+    }
+
+    /** Asked for: always a direct attempt. */
     fun connectToDevice(address: String) {
+        attempts = 0
+        openLink(address)
+    }
+
+    private fun openLink(address: String) {
         stopScan()
+        userDisconnected = false
         cancelReconnect()
         bluetoothGatt?.disconnect()
         bluetoothGatt?.close()
@@ -527,10 +616,18 @@ class BleService : LifecycleService() {
             clearDeviceData()
             basicInfo.postValue(null)
             cellVoltages.postValue(null)
+            if (lastConnectedAddress != null) recorder.switchBattery()
             lastConnectedAddress = address
+            cellTracker = null; capTest = null; learnedCache = null; learnedAtMs = 0L; seenMax = 0.0
+            handler.post {
+                if (prefs.knownOvMv > 0) recorder.cellOvLimitV = prefs.knownOvMv / 1000.0
+                capacityTest.value = com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson)
+                cellStats.value = com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest()
+                loadChargeLearn()
+            }
         }
         connectionState.postValue(ConnectionState.CONNECTING)
-        linkStateAt = android.os.SystemClock.elapsedRealtime()
+        linkStateAt = android.os.SystemClock.uptimeMillis()
         updateNotification(getString(R.string.st_connecting), address)
 
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: run {
@@ -546,10 +643,17 @@ class BleService : LifecycleService() {
             return
         }
 
-        bluetoothGatt = device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        // A direct attempt gives up after 30 s and needs the phone awake. Once a few failed, let
+        // Android wait for the battery (autoConnect): it also works while the phone sleeps. During
+        // a trip keep trying directly: the phone is awake and the battery is right there.
+        passiveLink = attempts >= 3 && !recorder.tripActive
+        if (attempts <= 3) log("connect #${attempts + 1}" + if (passiveLink) " (passive)" else "")
+        attempts++
+        bluetoothGatt = device.connectGatt(this, passiveLink, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun disconnect() {
+        userDisconnected = true
         cancelReconnect()
         cancelProbe()
         driverLocked = false
@@ -572,12 +676,12 @@ class BleService : LifecycleService() {
             if (connectionState.value != ConnectionState.CONNECTED) {
                 connectionState.postValue(ConnectionState.RECONNECTING)
                 updateNotification(getString(R.string.st_reconnecting), address)
-                connectToDevice(address)
+                openLink(address)
             }
         }.also { handler.postDelayed(it, 2000) }
     }
 
-    @Volatile private var lastRxAt = 0L            // elapsedRealtime of the last notification
+    @Volatile private var lastRxAt = 0L            // uptimeMillis of the last notification
     @Volatile private var linkStateAt = 0L         // …and of the last connect attempt / connection
 
     /**
@@ -587,18 +691,20 @@ class BleService : LifecycleService() {
     private fun checkLink() {
         val address = prefs.selectedDeviceAddress
         if (address.isNullOrEmpty() || linkStateAt == 0L) return
-        val now = android.os.SystemClock.elapsedRealtime()
+        val now = android.os.SystemClock.uptimeMillis()       // awake time: a sleep is not a mute link
         val dead = when (connectionState.value) {
             ConnectionState.CONNECTED -> driverLocked && !is123Bms && now - maxOf(lastRxAt, linkStateAt) > 20_000L
-            ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> now - linkStateAt > 40_000L
+            // (a passive connection may wait for hours; that is its job)
+            ConnectionState.CONNECTING, ConnectionState.RECONNECTING ->
+                now - linkStateAt > 40_000L && (!passiveLink || recorder.tripActive)
             else -> false
         }
         if (!dead) return
-        android.util.Log.w("BleService", "Link stalled (${connectionState.value}) — reconnecting")
+        log("link stalled (${connectionState.value}), restarting it")
         stopPolling()
         cancelProbe()
         driverLocked = false
-        connectToDevice(address)
+        openLink(address)
     }
 
     private fun cancelReconnect() {
@@ -610,15 +716,23 @@ class BleService : LifecycleService() {
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            // Late news from a connection that was already replaced
+            bluetoothGatt?.let { if (it !== gatt) { runCatching { gatt.close() }; return } }
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    linkStateAt = android.os.SystemClock.elapsedRealtime()
+                    linkStateAt = android.os.SystemClock.uptimeMillis()
+                    attempts = 0; passiveLink = false
+                    keepAlive.hold(60_000L)            // time for services, protocol and the first readings
+                    log("connected")
                     connectionState.postValue(ConnectionState.CONNECTED)
                     updateNotification(getString(R.string.st_connected), gatt.device.name ?: gatt.device.address)
                     // Request a larger MTU; onMtuChanged fires then we discover services
                     gatt.requestMtu(512)
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
+                    if (connectionState.value == ConnectionState.CONNECTED) log("disconnected, status $status")
+                    // Stay awake for the direct attempts and for handing over to the passive one
+                    keepAlive.hold()
                     stopPolling()
                     cancelProbe()
                     driverLocked = false
@@ -953,7 +1067,7 @@ class BleService : LifecycleService() {
     // ── Data Handling ─────────────────────────────────────────────────────────
 
     private fun handleIncomingData(data: ByteArray) {
-        lastRxAt = android.os.SystemClock.elapsedRealtime()
+        lastRxAt = android.os.SystemClock.uptimeMillis()
         // Raw packet log for debugging
         val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
         val hex = data.joinToString(" ") { b -> "%02X".format(b) }
@@ -1055,16 +1169,34 @@ class BleService : LifecycleService() {
                 }
             }
             publishLive(it, nowMs)
+            cells?.let { c -> recorder.onCells(c) }     // before the reading they belong to
             alarmMonitor.onReading(it.soc, it.packVoltage, it.current)
             recorder.onReading(it)
             stepCapacityTest(it, cells ?: cellVoltages.value)
         }
         cells?.let {
             cellVoltages.postValue(it)
-            recorder.onCells(it)
+            if (basic == null) recorder.onCells(it)
             val b = basic ?: basicInfo.value
-            b?.let { bi -> trackCells(it, bi.current); alarmMonitor.onCells(it, bi.current, bi.soc) }
+            b?.let { bi -> learnModel(bi, it); trackCells(it, bi.current); alarmMonitor.onCells(it, bi.current, bi.soc) }
         }
+    }
+
+    private var seenMax = 0.0
+    private var lastModelMs = 0L
+
+    /** Recognise the battery: cell count and chemistry, for BMSs that don't report them. */
+    private fun learnModel(info: BmsBasicInfo, cells: List<Double>) {
+        val now = System.currentTimeMillis()
+        if (now - lastModelMs < 10_000L || cells.size < 2) return
+        lastModelMs = now
+        if (prefs.bmsCellCount != cells.size) prefs.bmsCellCount = cells.size
+        if (prefs.bmsCellOvMv > 0) return
+        val avg = cells.average()
+        if (seenMax == 0.0) seenMax = prefs.cellSeenMax.toDouble()
+        if (avg > seenMax + 0.005) { seenMax = avg; prefs.cellSeenMax = avg.toFloat() }
+        com.vanaccess.bms.reports.BatteryModel.chemistry(seenMax, avg, info.soc, kotlin.math.abs(info.current) < 1.0)
+            ?.let { if (it != prefs.seenChemistry) { prefs.seenChemistry = it; log("chemistry: $it") } }
     }
 
     // ── Guided capacity test ─────────────────────────────────────────────────
@@ -1088,9 +1220,9 @@ class BleService : LifecycleService() {
     private fun stepCapacityTest(info: BmsBasicInfo, cells: List<Double>?) {
         val st = capTest ?: com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson).also { capTest = it }
         if (st.phase !in setOf(com.vanaccess.bms.reports.CapacityTest.Phase.DISCHARGE, com.vanaccess.bms.reports.CapacityTest.Phase.READY, com.vanaccess.bms.reports.CapacityTest.Phase.CHARGING)) return
-        val lim = com.vanaccess.bms.reports.BmsLimits.fromJson(prefs.bmsLimitsJson)
-        val lowV = (lim.socLowCalMv ?: if (lim.lfp || lim.cellOvMv == null) 3050 else 3300) / 1000.0
-        val ovV = (lim.cellOvMv ?: 3650) / 1000.0
+        val lim = prefs.limits
+        val lowV = (lim.socLowCalMv ?: if (lim.lion) 3300 else if (lim.lfp) 3050 else lim.cellUvMv ?: 2500) / 1000.0
+        val ovV = (lim.cellOvMv ?: 4500) / 1000.0
         val now = System.currentTimeMillis()
         val next = com.vanaccess.bms.reports.CapacityTest.update(st, now, info.soc, info.current, cells?.minOrNull() ?: 0.0, cells?.maxOrNull() ?: 0.0,
             info.chargeFetOn, lowV, ovV)
@@ -1420,8 +1552,7 @@ class BleService : LifecycleService() {
         lastCellSampleMs = now
         val addr = bluetoothGatt?.device?.address ?: return
         val t = cellTracker ?: run {
-            // Stats belong to one battery: start fresh when another one is connected
-            if (prefs.cellStatsAddress != addr) { prefs.cellStatsJson = null; prefs.cellStatsAddress = addr }
+            prefs.cellStatsAddress = addr              // (kept per battery)
             com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson)
         }.also { cellTracker = it }
         t.update(cells, current, prefs.vehicle.loadCurrentA)
@@ -1443,11 +1574,10 @@ class BleService : LifecycleService() {
         val now = System.currentTimeMillis()
         if (now - learnedAtMs > 15 * 60_000L) {
             learnedAtMs = now
-            Thread { learnedCache = try { com.vanaccess.bms.reports.ReportStore.get(this).learnedConsumption() } catch (_: Exception) { null } }.start()
+            Thread { learnedCache = try { com.vanaccess.bms.reports.ReportStore.get(this).learnedConsumption(prefs.selectedDeviceAddress) } catch (_: Exception) { null } }.start()
         }
-        val lim = com.vanaccess.bms.reports.BmsLimits.fromJson(prefs.bmsLimitsJson)
         return com.vanaccess.bms.reports.RangeEstimator.estimate(info.remainCapacity, info.fullCapacity, info.packVoltage,
-            prefs.bmsCellCount, lim.lfp || lim.cellOvMv == null, prefs.consumptionWhKm.toDouble(), learnedCache,
+            prefs.bmsCellCount, com.vanaccess.bms.reports.BatteryModel.nominalCell(prefs.chemistry), prefs.consumptionWhKm.toDouble(), learnedCache,
             v.defaultWhPerKm, info.temperatures.minOrNull())?.km
     }
 
@@ -1505,6 +1635,11 @@ class BleService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        log("service destroyed")
+        prefs.monitoring = false
+        instance = null
+        keepAlive.stop()
+        runCatching { unregisterReceiver(btReceiver) }
         cellTracker?.let { prefs.cellStatsJson = it.toJson() }
         recorder.release()
         alarmMonitor.release()

@@ -283,6 +283,7 @@ class SettingsFragment : Fragment() {
             binding.tilRatedCycles to (R.string.info_cycles_title to R.string.info_cycles),
             binding.tilDeltaRest to (R.string.info_delta_rest_title to R.string.info_delta_rest),
             binding.tilDeltaLoad to (R.string.info_delta_load_title to R.string.info_delta_load),
+            binding.tilAlarmCell to (R.string.alarm_cell_label to R.string.info_alarm_cell),
             binding.tilPriceKwh to (R.string.cost_price_hint to R.string.info_price_kwh),
             binding.tilCurrency to (R.string.cost_currency_hint to R.string.info_currency),
             binding.tilFuelPrice to (R.string.cost_fuel_price_title to R.string.info_fuel_price),
@@ -359,6 +360,7 @@ class SettingsFragment : Fragment() {
             prefs.tripsEnabled = c
             if (c) (activity as? MainActivity)?.ensureLocationPermission()
         }
+        binding.btnBackground.setOnClickListener { com.vanaccess.bms.ui.BackgroundAccess.ask(requireActivity()) }
         binding.etConsumption.setText(if (prefs.consumptionWhKm > 0) fmtV(prefs.consumptionWhKm) else "0")
         binding.etConsumption.setOnFocusChangeListener { _, f -> if (!f) saveConsumption() }
         binding.etRatedCycles.setText(prefs.ratedCycles.takeIf { it > 0 }?.toString() ?: "")
@@ -389,7 +391,7 @@ class SettingsFragment : Fragment() {
         if (_binding == null) return
         val v = prefs.vehicle
         binding.boxTripSettings.visibility = if (v.mobile) View.VISIBLE else View.GONE
-        val learned = com.vanaccess.bms.reports.ReportStore.get(requireContext()).learnedConsumption()
+        val learned = com.vanaccess.bms.reports.ReportStore.get(requireContext()).learnedConsumption(prefs.selectedDeviceAddress)
         binding.tvConsumptionLearned.text = if (learned != null)
             getString(R.string.consumption_learned, learned.first, learned.second)
         else getString(R.string.consumption_none, v.defaultWhPerKm)
@@ -505,6 +507,12 @@ class SettingsFragment : Fragment() {
 
     // ── Battery alarms ──────────────────────────────────────────────────────
 
+    override fun onResume() {
+        super.onResume()
+        _binding?.btnBackground?.visibility =
+            if (com.vanaccess.bms.ui.BackgroundAccess.granted(requireContext())) View.GONE else View.VISIBLE
+    }
+
     private fun setupAlarms() {
         binding.switchAlarmHigh.isChecked = prefs.alarmHighEnabled
         binding.switchAlarmLow.isChecked = prefs.alarmLowEnabled
@@ -535,6 +543,12 @@ class SettingsFragment : Fragment() {
         binding.switchBalanceReminder.setOnCheckedChangeListener { _, c -> prefs.balanceReminder = c }
         binding.switchSumWeekly.isChecked = prefs.notifyWeekly
         binding.switchSumWeekly.setOnCheckedChangeListener { _, c -> prefs.notifyWeekly = c }
+        binding.switchAlarmCell.isChecked = prefs.alarmCellEnabled
+        binding.switchAlarmCell.setOnCheckedChangeListener { _, c -> prefs.alarmCellEnabled = c }
+        binding.etAlarmCell.setText(prefs.alarmCellVoltage.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.3f", it) } ?: "")
+        binding.etAlarmCell.setOnFocusChangeListener { _, f -> if (!f) saveAlarmFields(false) }
+        binding.tvAlarmCellDesc.text = if (prefs.effectiveOvMv > 0) getString(R.string.alarm_cell_desc,
+            com.vanaccess.bms.reports.SessionRecorder.chargeLearn.alarmCellV(prefs.effectiveOvMv / 1000.0)) else getString(R.string.alarm_cell_desc_unknown)
         binding.switchAlarmDelta.isChecked = prefs.alarmDeltaEnabled
         binding.switchAlarmDelta.setOnCheckedChangeListener { _, c -> prefs.alarmDeltaEnabled = c }
         binding.etAlarmDeltaRest.setText(prefs.alarmDeltaRestMv.toString())
@@ -580,6 +594,7 @@ class SettingsFragment : Fragment() {
             com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.HIGH to R.string.tone_high,
             com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.LOW to R.string.tone_low,
             com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.DELTA_LOAD to R.string.tone_delta,
+            com.vanaccess.bms.alarm.BatteryAlarmMonitor.Kind.CELL to R.string.tone_cell,
         ).forEach { (kind, label) ->
             val saved = prefs.alarmTone(T.toneKey(kind))
             val uri = if (saved.isNotBlank()) Uri.parse(saved) else T.defaultTone(requireContext(), kind)
@@ -633,7 +648,7 @@ class SettingsFragment : Fragment() {
     private fun renderAdvice() {
         if (_binding == null) return
         val cells = prefs.bmsCellCount.takeIf { it > 0 } ?: BleService.cellVoltages.value?.size ?: 0
-        val advice = com.vanaccess.bms.reports.ChargeAdvice.from(cells, prefs.bmsCellOvMv)
+        val advice = com.vanaccess.bms.reports.ChargeAdvice.from(cells, prefs.effectiveOvMv)
         if (advice == null) {
             binding.tvAdvice.text = getString(R.string.advice_unknown)
             binding.tvAdviceWarning.visibility = View.GONE
@@ -668,11 +683,29 @@ class SettingsFragment : Fragment() {
 
     private fun saveAlarmFields(showToast: Boolean) {
         if (_binding == null) return
-        parseNum(binding.etAlarmHighSoc.text)?.let { prefs.alarmHighSoc = it.toInt().coerceIn(0, 100) }
-        parseNum(binding.etAlarmHighV.text)?.let { prefs.alarmHighVoltage = it.toFloat().coerceIn(0f, 1000f) }
+        val chk = com.vanaccess.bms.alarm.AlarmCheck
+        val cells = prefs.bmsCellCount; val ov = prefs.effectiveOvMv
+        // A value that is impossible for this battery is marked and not saved; the previous one stays
+        fun field(et: android.widget.EditText, problem: String?, save: () -> Unit) {
+            (et.parent.parent as? com.google.android.material.textfield.TextInputLayout)?.apply {
+                error = problem; isErrorEnabled = problem != null
+            }
+            if (problem == null) save()
+        }
+        fun range(r: Pair<Double, Double>?, digits: Int) = r?.let {
+            getString(R.string.alarm_bad_value, String.format(java.util.Locale.US, "%.${digits}f – %.${digits}f V", it.first, it.second)) }
+        parseNum(binding.etAlarmHighSoc.text)?.toInt()?.let { v ->
+            field(binding.etAlarmHighSoc, if (chk.highSoc(v)) null else getString(R.string.alarm_bad_value, "10 – 100 %")) { prefs.alarmHighSoc = v } }
+        parseNum(binding.etAlarmHighV.text)?.let { v ->
+            field(binding.etAlarmHighV, range(chk.highVoltage(v, cells, ov), 1)) { prefs.alarmHighVoltage = v.toFloat().coerceIn(0f, 1000f) } }
         renderAdvice()
-        parseNum(binding.etAlarmLowSoc.text)?.let { prefs.alarmLowSoc = it.toInt().coerceIn(0, 100) }
-        parseNum(binding.etAlarmLowV.text)?.let { prefs.alarmLowVoltage = it.toFloat().coerceIn(0f, 1000f) }
+        parseNum(binding.etAlarmLowSoc.text)?.toInt()?.let { v ->
+            field(binding.etAlarmLowSoc, if (chk.lowSoc(v)) null else getString(R.string.alarm_bad_value, "5 – 80 %")) { prefs.alarmLowSoc = v } }
+        parseNum(binding.etAlarmLowV.text)?.let { v ->
+            val uv = com.vanaccess.bms.ui.AdviceText.limits(requireContext()).cellUvMv
+            field(binding.etAlarmLowV, range(chk.lowVoltage(v, cells, ov, uv), 1)) { prefs.alarmLowVoltage = v.toFloat().coerceIn(0f, 1000f) } }
+        (parseNum(binding.etAlarmCell.text) ?: 0.0).let { v ->
+            field(binding.etAlarmCell, range(chk.cellVoltage(v, ov), 2)) { prefs.alarmCellVoltage = v.toFloat() } }
         parseNum(binding.etAlarmCooldown.text)?.let { prefs.alarmCooldownMinutes = it.toInt().coerceIn(1, 1440) }
         parseNum(binding.etAlarmDeltaRest.text)?.let { prefs.alarmDeltaRestMv = it.toInt().coerceIn(5, 1000) }
         parseNum(binding.etAlarmDeltaLoad.text)?.let { prefs.alarmDeltaLoadMv = it.toInt().coerceIn(10, 2000) }
@@ -1139,9 +1172,9 @@ class SettingsFragment : Fragment() {
         com.vanaccess.bms.ui.AppDialog.show(requireContext(), getString(R.string.role_assign, device.name), items = options, onItem = { which ->
             when {
                 which < vehicles.size -> {
+                    selectBattery(device)                      // first: the vehicle is saved per battery
                     prefs.vehicleType = vehicles[which].id
                     if (vehicles[which].mobile) (activity as? MainActivity)?.ensureLocationPermission()
-                    selectBattery(device)
                     setupVehicle()
                 }
                 which == vehicles.size -> selectOrion(device)

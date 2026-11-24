@@ -47,6 +47,8 @@
     </queries>
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Trips and alarms with the screen off: asked once, the user decides -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="true"
@@ -98,7 +100,8 @@
                 android:name="autoStoreLocales"
                 android:value="true" />
         </service>
-        <!-- Home-screen battery widget -->
+        <!-- Wakes monitoring every ~15 min while the phone sleeps -->
+        <receiver android:name=".ble.KeepAliveReceiver" android:exported="false" />
         <!-- Periodic update check while the app is closed; re-armed after reboot / app update -->
         <receiver
             android:name=".update.UpdateAlarmReceiver"
@@ -109,6 +112,7 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home-screen battery widget -->
         <receiver
             android:name=".widget.BatteryWidget"
             android:exported="false">

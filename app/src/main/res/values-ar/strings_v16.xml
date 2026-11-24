@@ -23,10 +23,10 @@
     <string name="captest_done_notify">انتهى: السعة الحقيقية %1$.2f أمبير·ساعة.</string>
     <string name="captest_start_q">بدء اختبار السعة؟</string>
     <string name="map_title">المسار</string>
-    <string name="map_legend">أخضر = حمل خفيف • برتقالي • أحمر = تسارع قوي. النقطة الخضراء = البداية، الحمراء = النهاية.</string>
+    <string name="map_legend">أخضر = حمل خفيف • برتقالي • أحمر = تسارع قوي. الدائرة = البداية، المعيّن = النهاية.</string>
     <string name="map_open_osmand">فتح في OsmAnd</string>
     <string name="map_no_app_title">ثبّت تطبيق خرائط</string>
-    <string name="map_no_app">لعرض الرحلة على خريطة حقيقية ثبّت OsmAnd — مجاني ويعمل دون إنترنت بخرائط قابلة للتنزيل. نسخة OsmAnd~ على F-Droid هي النسخة الحرة بالكامل، ويمكن لـ GT-SPEEDOMETER أيضاً فتحها عبر OsmAnd.</string>
+    <string name="map_no_app">لترى رحلاتك على خريطة حقيقية داخل GT-BMS ثبّت OsmAnd: مجاني ومفتوح المصدر، وخرائطه تعمل دون إنترنت بعد تنزيلها. عندها يرسم GT-BMS مسارك على خريطته.</string>
     <string name="cost_title">تكلفة الطاقة</string>
     <string name="cost_desc">تظهر في تقارير الشحن والرحلات، وتشمل نحو 15٪ فقد الشاحن. خانتا الوقود (اختياريتان) للمقارنة بمركبة بنزين.</string>
     <string name="cost_price_hint">سعر kWh</string>
@@ -52,7 +52,7 @@
     <string name="backup_done">حُفظت النسخة</string>
     <string name="usage_title">القيادة والاستعمال</string>
     <string name="driving_tips_title">نصائح القيادة مع الليثيوم</string>
-    <string name="adv_drive_shocks">%1$d قفزة تيار مفاجئة في هذه الرحلة (من شبه الصفر إلى أكثر من 15 أمبير في ثانيتين). الضغط المتدرج والثابت على المقبض أرفق بالخلايا وأقل هدراً للطاقة — خاصة للخلية الضعيفة.</string>
+    <string name="adv_drive_shocks">%1$d قفزة تيار مفاجئة في هذه الرحلة (من شبه الصفر إلى تيار عالٍ في ثانيتين). الضغط المتدرج والثابت على المقبض أرفق بالخلايا وأقل هدراً للطاقة — خاصة للخلية الضعيفة.</string>
     <string name="adv_drive_onoff">أسلوب «اضغط وأفلت» %1$d مرة. كان يناسب بطاريات الرصاص التي تستعيد شيئاً من جهدها في الراحة؛ الليثيوم لا يحتاج راحة، والسرعة الثابتة أكفأ.</string>
     <string name="adv_drive_smooth">قيادة سلسة: لا قفزات تيار مفاجئة.</string>
     <string name="adv_drive_high_current">%1$d٪ من الرحلة فوق %2$.0f أمبير. السرعة العالية ترفع التيار والحرارة والاستهلاك؛ السرعة المعتدلة تطيل المدى وعمر البطارية.</string>

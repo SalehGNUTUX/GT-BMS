@@ -176,6 +176,13 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        BackgroundAccess.askOnce(this)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // On screen: look for the battery now, and GPS may be declared again for the service
+        BleService.instance?.let { it.wake(); it.refreshForegroundType() }
     }
 
     private lateinit var prefs: AppPreferences

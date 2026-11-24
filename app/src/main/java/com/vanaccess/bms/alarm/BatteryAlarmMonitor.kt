@@ -38,7 +38,7 @@ import com.vanaccess.bms.ui.MainActivity
  */
 class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPreferences) {
 
-    enum class Kind { HIGH, LOW, DELTA_LOAD }
+    enum class Kind { HIGH, LOW, DELTA_LOAD, CELL }
 
     private class State {
         var armed = true
@@ -58,7 +58,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State(), Kind.DELTA_LOAD to State())
+    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State(), Kind.DELTA_LOAD to State(), Kind.CELL to State())
     private var ringing: Kind? = null
     private var player: MediaPlayer? = null
     private var ringtone: Ringtone? = null
@@ -79,7 +79,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
         // ── High charge ──
         val hSoc = prefs.alarmHighSoc
-        val hV = prefs.alarmHighVoltage.toDouble()
+        // A value the protection would never let the battery reach is replaced by the advised one
+        val hV = AlarmCheck.effectiveHighVoltage(prefs.alarmHighVoltage.toDouble(), prefs.bmsCellCount, prefs.effectiveOvMv)
         val highHit = (hSoc > 0 && soc >= hSoc) || (hV > 0 && validV && voltage >= hV)
         val highClear = (hSoc <= 0 || soc < hSoc - SOC_HYSTERESIS) &&
                 (hV <= 0 || !validV || voltage < hV - VOLT_HYSTERESIS)
@@ -111,6 +112,22 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         }
     }
 
+    /**
+     * Early warning while charging: the highest cell gets close to the protection. With the
+     * automatic value it only rings for chargers known (or not yet known) to be cut by the BMS.
+     */
+    private fun checkCell(cells: List<Double>, current: Double) {
+        val ov = prefs.effectiveOvMv / 1000.0
+        val manual = prefs.alarmCellVoltage.toDouble()
+        val learn = com.vanaccess.bms.reports.SessionRecorder.chargeLearn
+        if (!prefs.alarmCellEnabled || (manual <= 0 && (ov <= 0 || learn.cutByProtection == false))) return
+        val limit = if (manual > 0) manual else learn.alarmCellV(ov)
+        val mx = cells.max()
+        check(Kind.CELL, current > CHARGE_THRESHOLD_A && mx >= limit, mx < limit - 0.05, System.currentTimeMillis()) {
+            context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx)
+        }
+    }
+
     private var restSince = 0L
     private var lastRestNoticeAt = 0L
 
@@ -123,6 +140,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     fun onCells(cells: List<Double>, current: Double, soc: Int) {
         if (cells.size < 2) return
         main.post {
+            checkCell(cells, current)
             if (!prefs.alarmDeltaEnabled) return@post
             val now = System.currentTimeMillis()
             val mx = cells.max(); val mn = cells.min()
@@ -218,11 +236,11 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     object Tones {
-        fun toneKey(kind: Kind) = when (kind) { Kind.HIGH -> "high"; Kind.LOW -> "low"; Kind.DELTA_LOAD -> "delta" }
+        fun toneKey(kind: Kind) = when (kind) { Kind.HIGH -> "high"; Kind.LOW -> "low"; Kind.DELTA_LOAD -> "delta"; Kind.CELL -> "cell" }
 
         fun defaultTone(context: Context, kind: Kind): Uri? {
             val type = when (kind) {
-                Kind.HIGH -> RingtoneManager.TYPE_NOTIFICATION
+                Kind.HIGH, Kind.CELL -> RingtoneManager.TYPE_NOTIFICATION
                 Kind.LOW -> RingtoneManager.TYPE_ALARM
                 Kind.DELTA_LOAD -> RingtoneManager.TYPE_RINGTONE
             }
@@ -304,6 +322,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             Kind.HIGH -> R.string.alarm_high_title
             Kind.LOW -> R.string.alarm_low_title
             Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
+            Kind.CELL -> R.string.alarm_cell_title
         })
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_battery)

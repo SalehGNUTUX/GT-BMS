@@ -1,0 +1,24 @@
+// OsmAnd's external (AIDL) interface, copied verbatim: see NOTICE-OsmAnd-API.md
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'net.osmand.aidlapi'
+    compileSdk 34
+
+    defaultConfig { minSdk 26 }
+
+    buildFeatures { aidl true }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint { abortOnError false }
+}
+
+dependencies {
+    implementation 'androidx.annotation:annotation:1.6.0'
+}

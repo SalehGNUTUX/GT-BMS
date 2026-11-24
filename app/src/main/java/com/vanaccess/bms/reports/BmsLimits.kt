@@ -25,7 +25,12 @@ data class BmsLimits(
     val cells: Int? = null,
     val chargeOcA: Int? = null,         // charge over-current activation
 ) {
-    val lfp: Boolean get() = (cellOvMv ?: 0) in 1..3800
+    val lfp: Boolean get() = (cellOvMv ?: 0) in 3300..3800
+    /** Chemistry known (from the limit) and Li-ion NMC/NCA. */
+    val lion: Boolean get() = (cellOvMv ?: 0) in 3900..4500
+
+    /** Where balancing starts, reported or usual for the chemistry (V). */
+    val balanceStartV: Double get() = (balanceStartMv ?: if (lion) 4100 else if (lfp) 3400 else (cellOvMv ?: 3600) - 200) / 1000.0
 
     fun toJson(): String = JSONObject().apply {
         fun p(k: String, v: Any?) { if (v != null) put(k, v) }

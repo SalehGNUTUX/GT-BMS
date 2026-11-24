@@ -83,10 +83,10 @@ class ReportStore private constructor(ctx: Context) :
     }
 
     @Synchronized
-    fun levels(sinceMs: Long): List<Level> {
+    fun levels(sinceMs: Long, battery: String? = null): List<Level> {
         readableDatabase.rawQuery(
-            "SELECT t_ms, soc, v, remain_ah, full_ah, cycles, min_cell, max_cell FROM levels WHERE t_ms >= ? ORDER BY t_ms",
-            arrayOf(sinceMs.toString())
+            "SELECT t_ms, soc, v, remain_ah, full_ah, cycles, min_cell, max_cell FROM levels WHERE t_ms >= ? AND (? = '' OR battery = ? OR battery = '') ORDER BY t_ms",
+            arrayOf(sinceMs.toString(), battery ?: "", battery ?: "")
         ).use { c ->
             val out = mutableListOf<Level>()
             while (c.moveToNext()) out += Level(c.getLong(0), c.getInt(1), c.getDouble(2), c.getDouble(3),
@@ -184,8 +184,8 @@ class ReportStore private constructor(ctx: Context) :
      * Consumption learned from recent trips with GPS distance: (Wh/km, km covered).
      * Null until at least 2 km have been recorded.
      */
-    fun learnedConsumption(maxTrips: Int = 20): Pair<Double, Double>? {
-        val trips = list(Session.TYPE_TRIP, maxTrips).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 && energyComplete(it) }
+    fun learnedConsumption(battery: String?, maxTrips: Int = 20): Pair<Double, Double>? {
+        val trips = list(Session.TYPE_TRIP, maxTrips, battery).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 && energyComplete(it) }
         val km = trips.sumOf { it.d("distance_km") }
         if (km < 2.0) return null
         return trips.sumOf { it.d("wh") } / km to km

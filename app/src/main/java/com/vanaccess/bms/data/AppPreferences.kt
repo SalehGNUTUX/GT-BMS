@@ -6,6 +6,34 @@ import android.content.Context
 class AppPreferences(context: Context) {
     private val prefs = context.getSharedPreferences("gt_bms_prefs", Context.MODE_PRIVATE)
 
+    companion object {
+        /** Everything that describes one battery, what it powers, or its own thresholds. */
+        private val BATTERY_KEYS = listOf("vehicle_type", "trips_enabled", "consumption_wh_km", "bms_cell_ov_mv", "bms_cell_count", "bms_limits", "rated_cycles", "cell_stats", "capacity_test", "alarm_high_soc", "alarm_high_voltage", "alarm_low_soc", "alarm_low_voltage", "alarm_cell_voltage", "alarm_delta_rest_mv", "alarm_delta_load_mv")
+    }
+
+    init { moveToBattery() }
+
+    /** Key of a value that belongs to the selected battery. */
+    private fun k(key: String): String = prefs.getString("selected_device_address", null)
+        ?.takeIf { it.isNotBlank() }?.let { "$key@$it" } ?: key
+
+    /** Before 1.7 these values were shared by all batteries: they belong to the one selected then. */
+    private fun moveToBattery() {
+        if (prefs.getBoolean("per_battery_v17", false)) return
+        val addr = prefs.getString("selected_device_address", null)
+        val ed = prefs.edit().putBoolean("per_battery_v17", true)
+        if (!addr.isNullOrBlank()) BATTERY_KEYS.forEach { key ->
+            when (val v = prefs.all[key]) {
+                is Int -> ed.putInt("$key@$addr", v)
+                is Float -> ed.putFloat("$key@$addr", v)
+                is Boolean -> ed.putBoolean("$key@$addr", v)
+                is String -> ed.putString("$key@$addr", v)
+            }
+        }
+        BATTERY_KEYS.forEach { ed.remove(it) }
+        ed.apply()
+    }
+
     fun registerListener(l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) =
         prefs.registerOnSharedPreferenceChangeListener(l)
 
@@ -106,39 +134,70 @@ class AppPreferences(context: Context) {
     // ── Vehicle & trips ──────────────────────────────────────────────────────
     /** One of [VehicleProfile.ids]. */
     var vehicleType: String
-        get() = prefs.getString("vehicle_type", VehicleProfile.STORAGE) ?: VehicleProfile.STORAGE
-        set(value) = prefs.edit().putString("vehicle_type", value).apply()
+        get() = prefs.getString(k("vehicle_type"), VehicleProfile.STORAGE) ?: VehicleProfile.STORAGE
+        set(value) = prefs.edit().putString(k("vehicle_type"), value).apply()
 
     val vehicle: VehicleProfile get() = VehicleProfile.byId(vehicleType)
 
     /** Record trips automatically (needs a mobile vehicle profile and location permission). */
     var tripsEnabled: Boolean
-        get() = prefs.getBoolean("trips_enabled", true)
-        set(value) = prefs.edit().putBoolean("trips_enabled", value).apply()
+        get() = prefs.getBoolean(k("trips_enabled"), true)
+        set(value) = prefs.edit().putBoolean(k("trips_enabled"), value).apply()
 
     /** User's own consumption estimate in Wh/km; 0 = use the profile default. */
     var consumptionWhKm: Float
-        get() = prefs.getFloat("consumption_wh_km", 0f)
-        set(value) = prefs.edit().putFloat("consumption_wh_km", value).apply()
+        get() = prefs.getFloat(k("consumption_wh_km"), 0f)
+        set(value) = prefs.edit().putFloat(k("consumption_wh_km"), value).apply()
+
+    /** Highest average cell voltage seen, and the chemistry recognised from the cells (reports.BatteryModel). */
+    var cellSeenMax: Float
+        get() = prefs.getFloat(k("cell_seen_max"), 0f)
+        set(value) = prefs.edit().putFloat(k("cell_seen_max"), value).apply()
+
+    var seenChemistry: String?
+        get() = prefs.getString(k("bms_chem"), null)
+        set(value) = prefs.edit().putString(k("bms_chem"), value).apply()
+
+    /** Cell voltage at which this BMS was seen cutting a charge (mV), when it doesn't report its limit. */
+    var cellOvSeenMv: Int
+        get() = prefs.getInt(k("bms_cell_ov_seen"), 0)
+        set(value) = prefs.edit().putInt(k("bms_cell_ov_seen"), value).apply()
+
+    /** Chemistry of the selected battery: from its own limit, else recognised, else null (unknown). */
+    val chemistry: String?
+        get() = com.vanaccess.bms.reports.BatteryModel.chemistryOf(bmsCellOvMv)
+            ?: com.vanaccess.bms.reports.BatteryModel.chemistryOf(cellOvSeenMv) ?: seenChemistry
+
+    /** Cell protection that is really known (reported or observed), mV; 0 = not known. */
+    val knownOvMv: Int get() = bmsCellOvMv.takeIf { it > 0 } ?: cellOvSeenMv
+
+    /** The known protection, else the usual one of the chemistry; 0 = chemistry unknown. */
+    val effectiveOvMv: Int get() = knownOvMv.takeIf { it > 0 } ?: com.vanaccess.bms.reports.BatteryModel.typicalOvMv(chemistry)
+
+    /** Limits of the selected battery; what its BMS doesn't report is completed as above. */
+    val limits: com.vanaccess.bms.reports.BmsLimits
+        get() = com.vanaccess.bms.reports.BmsLimits.fromJson(bmsLimitsJson).let { l ->
+            l.copy(cellOvMv = l.cellOvMv ?: effectiveOvMv.takeIf { it > 0 }, cells = l.cells ?: bmsCellCount.takeIf { it > 0 })
+        }
 
     /** Last known BMS cell over-voltage protection (mV) and cell count, for charge advice. */
     var bmsCellOvMv: Int
-        get() = prefs.getInt("bms_cell_ov_mv", 0)
-        set(value) = prefs.edit().putInt("bms_cell_ov_mv", value).apply()
+        get() = prefs.getInt(k("bms_cell_ov_mv"), 0)
+        set(value) = prefs.edit().putInt(k("bms_cell_ov_mv"), value).apply()
 
     var bmsCellCount: Int
-        get() = prefs.getInt("bms_cell_count", 0)
-        set(value) = prefs.edit().putInt("bms_cell_count", value).apply()
+        get() = prefs.getInt(k("bms_cell_count"), 0)
+        set(value) = prefs.edit().putInt(k("bms_cell_count"), value).apply()
 
     /** Full BMS limits (JSON of reports.BmsLimits), for recommendations while offline. */
     var bmsLimitsJson: String?
-        get() = prefs.getString("bms_limits", null)
-        set(value) = prefs.edit().putString("bms_limits", value).apply()
+        get() = prefs.getString(k("bms_limits"), null)
+        set(value) = prefs.edit().putString(k("bms_limits"), value).apply()
 
     /** Rated cycle life from the datasheet; 0 = default by chemistry (LFP 3000, Li-ion 800). */
     var ratedCycles: Int
-        get() = prefs.getInt("rated_cycles", 0)
-        set(value) = prefs.edit().putInt("rated_cycles", value).apply()
+        get() = prefs.getInt(k("rated_cycles"), 0)
+        set(value) = prefs.edit().putInt(k("rated_cycles"), value).apply()
 
     /** Per-alarm tone URI ("" = default for that alarm). Keys: high, low, delta. */
     fun alarmTone(kind: String): String = prefs.getString("alarm_tone_$kind", "") ?: ""
@@ -183,8 +242,8 @@ class AppPreferences(context: Context) {
 
     /** Per-cell long-term stats (reports.CellTracker JSON) and the battery they belong to. */
     var cellStatsJson: String?
-        get() = prefs.getString("cell_stats", null)
-        set(value) = prefs.edit().putString("cell_stats", value).apply()
+        get() = prefs.getString(k("cell_stats"), null)
+        set(value) = prefs.edit().putString(k("cell_stats"), value).apply()
 
     var cellStatsAddress: String?
         get() = prefs.getString("cell_stats_addr", null)
@@ -205,8 +264,8 @@ class AppPreferences(context: Context) {
 
     /** Guided capacity test state (reports.CapacityTest JSON). */
     var capacityTestJson: String?
-        get() = prefs.getString("capacity_test", null)
-        set(value) = prefs.edit().putString("capacity_test", value).apply()
+        get() = prefs.getString(k("capacity_test"), null)
+        set(value) = prefs.edit().putString(k("capacity_test"), value).apply()
 
     // ── Energy cost ──────────────────────────────────────────────────────────
     /** Electricity price per kWh (0 = cost not shown). */
@@ -247,13 +306,32 @@ class AppPreferences(context: Context) {
 
     /** Max cell difference at rest (mV), judged only between 20 % and 90 % SOC. */
     var alarmDeltaRestMv: Int
-        get() = prefs.getInt("alarm_delta_rest_mv", 30)
-        set(value) = prefs.edit().putInt("alarm_delta_rest_mv", value).apply()
+        get() = prefs.getInt(k("alarm_delta_rest_mv"), 30)
+        set(value) = prefs.edit().putInt(k("alarm_delta_rest_mv"), value).apply()
 
     /** Max cell difference under load (mV). */
     var alarmDeltaLoadMv: Int
-        get() = prefs.getInt("alarm_delta_load_mv", 150)
-        set(value) = prefs.edit().putInt("alarm_delta_load_mv", value).apply()
+        get() = prefs.getInt(k("alarm_delta_load_mv"), 150)
+        set(value) = prefs.edit().putInt(k("alarm_delta_load_mv"), value).apply()
+
+    /** Early warning on the highest cell while charging; on by default with the full-charge alarm. */
+    var alarmCellEnabled: Boolean
+        get() = prefs.getBoolean("alarm_cell_enabled", alarmHighEnabled)
+        set(value) = prefs.edit().putBoolean("alarm_cell_enabled", value).apply()
+
+    /** Cell voltage for that warning; 0 = learned from past charges. */
+    var alarmCellVoltage: Float
+        get() = prefs.getFloat(k("alarm_cell_voltage"), 0f)
+        set(value) = prefs.edit().putFloat(k("alarm_cell_voltage"), value).apply()
+
+    /** The monitoring service runs (false only when it was stopped on purpose). */
+    var monitoring: Boolean
+        get() = prefs.getBoolean("monitoring", false)
+        set(value) = prefs.edit().putBoolean("monitoring", value).apply()
+
+    var askedBackground: Boolean
+        get() = prefs.getBoolean("asked_background", false)
+        set(value) = prefs.edit().putBoolean("asked_background", value).apply()
 
     // ── Battery alarms ───────────────────────────────────────────────────────
     var alarmHighEnabled: Boolean
@@ -262,13 +340,15 @@ class AppPreferences(context: Context) {
 
     /** SOC % at or above which the full-charge alarm fires (0 = SOC check off). */
     var alarmHighSoc: Int
-        get() = prefs.getInt("alarm_high_soc", 100)
-        set(value) = prefs.edit().putInt("alarm_high_soc", value).apply()
+        get() = prefs.getInt(k("alarm_high_soc"), 100)
+        set(value) = prefs.edit().putInt(k("alarm_high_soc"), value).apply()
 
     /** Pack voltage at or above which the full-charge alarm fires (0 = voltage check off). */
     var alarmHighVoltage: Float
-        get() = prefs.getFloat("alarm_high_voltage", 83.8f)
-        set(value) = prefs.edit().putFloat("alarm_high_voltage", value).apply()
+        // Not set yet: the voltage advised for this battery, or off while the battery is unknown
+        get() = prefs.getFloat(k("alarm_high_voltage"),
+            com.vanaccess.bms.reports.ChargeAdvice.from(bmsCellCount, effectiveOvMv)?.alarmPackV?.toFloat() ?: 0f)
+        set(value) = prefs.edit().putFloat(k("alarm_high_voltage"), value).apply()
 
     var alarmLowEnabled: Boolean
         get() = prefs.getBoolean("alarm_low_enabled", false)
@@ -276,13 +356,18 @@ class AppPreferences(context: Context) {
 
     /** SOC % at or below which the low-battery alarm fires (0 = SOC check off). */
     var alarmLowSoc: Int
-        get() = prefs.getInt("alarm_low_soc", 25)
-        set(value) = prefs.edit().putInt("alarm_low_soc", value).apply()
+        get() = prefs.getInt(k("alarm_low_soc"), 25)
+        set(value) = prefs.edit().putInt(k("alarm_low_soc"), value).apply()
 
     /** Pack voltage at or below which the low-battery alarm fires (0 = voltage check off). */
     var alarmLowVoltage: Float
-        get() = prefs.getFloat("alarm_low_voltage", 68.0f)
-        set(value) = prefs.edit().putFloat("alarm_low_voltage", value).apply()
+        get() = prefs.getFloat(k("alarm_low_voltage"),
+            when (chemistry) {
+                com.vanaccess.bms.reports.BatteryModel.LFP -> Math.round(bmsCellCount * 29.5f) / 10f
+                com.vanaccess.bms.reports.BatteryModel.LION -> Math.round(bmsCellCount * 33f) / 10f
+                else -> 0f
+            })
+        set(value) = prefs.edit().putFloat(k("alarm_low_voltage"), value).apply()
 
     /** Minutes before a dismissed alarm may ring again while the condition persists. */
     var alarmCooldownMinutes: Int

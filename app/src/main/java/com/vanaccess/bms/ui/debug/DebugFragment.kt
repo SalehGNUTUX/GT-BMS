@@ -133,9 +133,14 @@ class DebugFragment : Fragment() {
             appendLine("Protocol setting: ${prefs.bmsProtocol}  detected: ${BleService.activeDriverName.value ?: "-"}")
             appendLine("Service: ${BleService.activeServiceUuid.value ?: "-"}")
             appendLine("Write: ${BleService.activeWriteUuid.value ?: "-"}  Notify: ${BleService.activeNotifyUuid.value ?: "-"}")
+            appendLine("Phone: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}  background unrestricted: " +
+                ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName))
             appendLine()
             appendLine("== GATT ==")
             appendLine(BleService.gattDump.value ?: "(none)")
+            appendLine()
+            appendLine("== Background events (oldest first) ==")
+            com.vanaccess.bms.data.EventLog.tail(ctx, 250).forEach { appendLine(it) }
             appendLine()
             appendLine("== Last packets (newest first) ==")
             (BleService.rawPacketLog.value ?: emptyList()).take(150).forEach { appendLine(it) }

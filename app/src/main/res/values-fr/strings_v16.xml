@@ -23,10 +23,10 @@
     <string name="captest_done_notify">Terminé : capacité réelle %1$.2f Ah.</string>
     <string name="captest_start_q">Lancer le test de capacité ?</string>
     <string name="map_title">Itinéraire</string>
-    <string name="map_legend">Vert = faible charge • orange • rouge = forte accélération. Point vert = départ, point rouge = arrivée.</string>
+    <string name="map_legend">Vert = charge légère • orange • rouge = forte accélération. Anneau = départ, losange = arrivée.</string>
     <string name="map_open_osmand">Ouvrir dans OsmAnd</string>
     <string name="map_no_app_title">Installer une application de cartes</string>
-    <string name="map_no_app">Pour voir le trajet sur une vraie carte, installez OsmAnd — gratuit, fonctionne hors ligne avec des cartes téléchargeables. OsmAnd~ sur F-Droid est la version entièrement libre ; GT-SPEEDOMETER peut aussi l\'ouvrir via OsmAnd.</string>
+    <string name="map_no_app">Pour voir vos trajets sur une vraie carte dans GT-BMS, installez OsmAnd : gratuit, libre, cartes hors ligne une fois téléchargées. GT-BMS dessine alors votre trajet sur sa carte.</string>
     <string name="cost_title">Coût de l\'énergie</string>
     <string name="cost_desc" formatted="false">Affiché dans les rapports de recharge et de trajet. Inclut ~15 % de pertes du chargeur. Les champs carburant (facultatifs) comparent avec un véhicule à essence.</string>
     <string name="cost_price_hint">Prix kWh</string>

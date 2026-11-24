@@ -30,6 +30,9 @@ import kotlin.math.min
 class SessionRecorder(private val context: Context, private val prefs: AppPreferences) {
 
     companion object {
+        /** No protection known for this battery: nothing is judged against it. */
+        const val UNKNOWN_OV = 99.0
+        // Currents for a 30 Ah battery; scaled to the capacity of the connected one (see [scale])
         const val CHG_START_A = 0.3
         const val CHG_END_A = 0.1
         const val TRIP_START_A = 1.0
@@ -50,12 +53,18 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         val activeTrip = MutableLiveData<TripLive?>(null)
         val activeDischarge = MutableLiveData<ChargeLive?>(null)
         val activeCharge = MutableLiveData<ChargeLive?>(null)
+        /** The charge being followed (time left, next cut). */
+        @Volatile var chargeWatch: ChargeWatch? = null
+        @Volatile var chargeLearn = ChargeLearn()
+        /** A charge that has been without current this long has stopped. */
+        private const val CHG_STOP_MS = 30_000L
+        private const val REST_MS = 10 * 60_000L
         /** Bumped whenever a report is saved, so lists refresh. */
         val savedCount = MutableLiveData(0)
     }
 
     data class TripLive(val startMs: Long, val distanceKm: Double, val wh: Double, val maxSpeed: Double)
-    data class ChargeLive(val startMs: Long, val socStart: Int, val ah: Double, val wh: Double)
+    data class ChargeLive(val startMs: Long, val socStart: Int, val ah: Double, val wh: Double, val stopped: Boolean = false)
 
     private val main = Handler(Looper.getMainLooper())
     private val store = ReportStore.get(context)
@@ -66,7 +75,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private var lastCells: List<Double> = emptyList()
     private var battery = ""
     /** Cell over-voltage protection limit (V) from the BMS parameters, if known. */
-    @Volatile var cellOvLimitV: Double = 3.65
+    @Volatile var cellOvLimitV: Double = UNKNOWN_OV
 
     // ── Charge accumulator ──
     private var chgCandidateSince = 0L
@@ -98,11 +107,31 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         var lastFix: LocationTracker.Fix? = null; var lastAccelMs = 0L
         val points = mutableListOf<Point>()
         var lastPointMs = 0L
+        // charge-only
+        var watch: ChargeWatch? = null
+        var stop: ChargeWatch.Result? = null
+        var stopMs = 0L
+        var etaFirstMin: Double? = null
         /** Riding time without battery data (Bluetooth lost). */
         var gapMs = 0L
     }
 
-    fun onBattery(address: String?) { battery = address ?: "" }
+    /** A 10 Ah scooter and a 300 Ah store don't idle or start at the same current. */
+    private fun scale(fullAh: Double) = if (fullAh > 0) (fullAh / 30.0).coerceIn(0.5, 5.0) else 1.0
+
+    fun onBattery(address: String?) { main.post { battery = address ?: "" } }
+
+    /** Another battery is about to be connected: close what belongs to the previous one. */
+    fun switchBattery() {
+        main.post {
+            chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
+            dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
+            trip?.let { endTrip(it) }
+            rest = null; late = null; lastInfo = null; lastCells = emptyList(); lastSampleMs = 0L
+            chargeLearn = ChargeLearn()
+            cellOvLimitV = UNKNOWN_OV
+        }
+    }
 
     fun onCells(cells: List<Double>) { main.post { lastCells = cells } }
 
@@ -114,8 +143,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val now = System.currentTimeMillis()
             val silent = lastSampleMs > 0 && now - lastSampleMs > 10 * 60_000L
             if (silent) {
-                chg?.let { finishCharge(it) }; chg = null
-                dis?.let { finishDischarge(it) }; dis = null
+                // Forget when they began too, or the next one would be dated back to them
+                chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
+                dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             }
             // Battery silent during a trip: parked → the rider left, end it at the last moment it
             // was moving or under load; riding → GPS decides.
@@ -142,6 +172,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     /** Renewed every tick; the timeout frees it by itself if the app is killed or stuck. */
     private fun updateWakeLock() {
+        tripActive = trip != null || (gps.running && tripCandidateSince != 0L)
         val need = trip != null || chg != null || gps.running
         runCatching { if (need) wakeLock.acquire(60_000L) else if (wakeLock.isHeld) wakeLock.release() }
     }
@@ -168,8 +199,36 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     private fun endTrip(t: Acc) {
         if (lastTripActiveMs > t.startMs) t.endMs = lastTripActiveMs
+        log("trip ended, battery silent ${(System.currentTimeMillis() - lastSampleMs) / 1000}s, ${"%.2f".format(java.util.Locale.US, t.distanceKm)} km")
         finishTrip(t); trip = null; tripCandidateSince = 0L
         gpsStopAt = System.currentTimeMillis() + 60_000
+    }
+
+    /** A charge stopped (or resumed and stopped again): why, and at which SOC. */
+    var onChargeStop: ((ChargeWatch.Result) -> Unit)? = null
+    var log: (String) -> Unit = {}
+
+    /** Riding, or just started: the phone is kept awake. */
+    @Volatile var tripActive = false
+        private set
+
+    /** Saved charge waiting for its resting voltage. */
+    private class Rest(val session: Session, val stopMs: Long)
+    private var rest: Rest? = null
+
+    private fun stepRest(info: BmsBasicInfo, now: Long) {
+        val r = rest ?: return
+        val age = now - r.stopMs
+        if (abs(info.current) > CHG_START_A || age > 3 * REST_MS || r.session.battery != battery) { rest = null; return }
+        if (age < REST_MS) return
+        rest = null
+        val cells = lastCells
+        r.session.data.put("rest_v", info.packVoltage).put("rest_min", age / 60_000)
+        if (cells.size > 1) r.session.data.put("rest_delta_mv", Math.round((cells.max() - cells.min()) * 1000))
+        Thread {
+            try { store.updateData(r.session.id, r.session.data) } catch (_: Exception) {}
+            main.post { savedCount.value = (savedCount.value ?: 0) + 1 }
+        }.start()
     }
 
     /** Called with every saved report (on the main thread). */
@@ -199,26 +258,45 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             t.gapMs += silentMs
         }
         val i = info.current
+        val k = scale(info.fullCapacity)
         val fix = gps.current
         liveSpeedKmh.value = fix?.speedKmh
 
+        stepRest(info, now)
         // ── Charge ──
         if (chg == null) {
-            if (i > CHG_START_A) {
+            if (i > CHG_START_A * k) {
                 if (chgCandidateSince == 0L) chgCandidateSince = now
                 if (now - chgCandidateSince >= 20_000) {
-                    chg = Acc(chgCandidateSince, info.soc, lastCells.minOrNull() ?: 0.0); chgQuietSince = 0L
+                    chg = Acc(chgCandidateSince, info.soc, lastCells.minOrNull() ?: 0.0).apply {
+                        watch = ChargeWatch(startMs, info.soc, info.remainCapacity)
+                    }
+                    chargeWatch = chg?.watch; chgQuietSince = 0L; rest = null
+                    updateWakeLock()
+                    log("charge started ${info.soc}%")
                 }
             } else chgCandidateSince = 0L
         }
         chg?.let { c ->
-            if (i > CHG_END_A) { accumulate(c, info, dtS, now, charging = true); chgQuietSince = 0L }
-            else {
+            if (i > CHG_END_A * k) {
+                accumulate(c, info, dtS, now, charging = true); chgQuietSince = 0L; c.stop = null
+                c.watch?.charging(now, info.soc, info.remainCapacity, info.fullCapacity, i, info.packVoltage,
+                    lastCells, info.chargeFetOn, c.ah)
+                if (c.etaFirstMin == null && now - c.startMs >= 120_000) c.etaFirstMin = predict(info)?.let {
+                    (now - c.startMs) / 60_000.0 + it.hours * 60 }
+            } else {
                 if (chgQuietSince == 0L) chgQuietSince = now
+                if (c.stop == null && now - chgQuietSince >= CHG_STOP_MS) {
+                    c.stopMs = chgQuietSince
+                    c.stop = c.watch?.stopped(now, info.soc, info.remainCapacity, info.fullCapacity,
+                        info.chargeFetOn, info.protectionFlags.map { it.name }, cellOvLimitV)
+                    c.stop?.let { r -> if (c.activeS >= 180) { log("charge stopped ${r.reason} ${r.socBefore}/${r.socShown}%"); onChargeStop?.invoke(r) } }
+                    if (c.stop?.reason == ChargeWatch.Stop.PROTECTION) c.endedByProtection = true
+                }
                 if (!info.chargeFetOn && c.maxCellV >= cellOvLimitV - 0.01) c.endedByProtection = true
-                if (now - chgQuietSince >= 120_000) { finishCharge(c); chg = null; chgCandidateSince = 0L }
+                if (now - chgQuietSince >= 120_000) { c.socEnd = info.soc; finishCharge(c); chg = null; chgCandidateSince = 0L }
             }
-            if (chg != null) activeCharge.value = ChargeLive(c.startMs, c.socStart, c.ah, c.wh)
+            if (chg != null) activeCharge.value = ChargeLive(c.startMs, c.socStart, c.ah, c.wh, c.stop != null)
         }
 
         // ── Trip ──
@@ -226,21 +304,26 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         if (!tripsOn) {
             if (trip != null) endTrip(trip!!)
             if (gps.running) stopGps()
-            processDischarge(info, i, dtS, now)
+            processDischarge(info, i / k, dtS, now)
             return
         }
         dis?.let { finishDischarge(it); dis = null }
         if (manualHold) {
-            val idleNow = i >= -TRIP_IDLE_A && (fix?.speedKmh ?: 0.0) < MOVING_KMH
+            val idleNow = i >= -TRIP_IDLE_A * k && (fix?.speedKmh ?: 0.0) < MOVING_KMH
             if (idleNow) { if (holdIdleSince == 0L) holdIdleSince = now } else holdIdleSince = 0L
             if (holdIdleSince != 0L && now - holdIdleSince >= 30_000) manualHold = false
         }
         if (trip == null && !manualHold) {
-            if (i < -TRIP_START_A) {
-                if (tripCandidateSince == 0L) { tripCandidateSince = now; gpsStopAt = now + 5 * 60_000L; startGps(); updateWakeLock() }
+            if (i < -TRIP_START_A * k) {
+                if (tripCandidateSince == 0L) {
+                    tripCandidateSince = now; gpsStopAt = now + 5 * 60_000L
+                    if (!startGps()) log("gps refused")
+                    updateWakeLock()
+                }
                 if (now - tripCandidateSince >= 10_000) {
                     trip = Acc(tripCandidateSince, info.soc); tripIdleSince = 0L; lastTripActiveMs = now
                     lastRidingMs = now; ridingAtLossMs = now
+                    log("trip started ${info.soc}%")
                 }
             } else if (tripCandidateSince != 0L && now - tripCandidateSince > 60_000) {
                 tripCandidateSince = 0L
@@ -250,7 +333,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         trip?.let { t ->
             accumulate(t, info, dtS, now, charging = false)
             val moving = (fix?.speedKmh ?: 0.0) >= MOVING_KMH
-            val loaded = i < -TRIP_IDLE_A
+            val loaded = i < -TRIP_IDLE_A * k
             if (loaded || (fix?.speedKmh ?: 0.0) >= TripGap.RIDING_KMH) lastRidingMs = now
             ridingAtLossMs = lastRidingMs
             if (moving || loaded) { tripIdleSince = 0L; lastTripActiveMs = now } else {
@@ -260,6 +343,10 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             if (trip != null) activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed)
         }
     }
+
+    /** Time left of the running charge, for the screen and the report. */
+    private fun predict(info: BmsBasicInfo) = ChargePredictor.predict(info.soc, info.fullCapacity, info.current,
+        chargeLearn, chargeWatch, info.remainCapacity, cellOvLimitV)
 
     /** Discharge without trip tracking: starts after 60 s below −0.5 A, ends 2 min after the load stops. */
     private fun processDischarge(info: BmsBasicInfo, i: Double, dtS: Double, now: Long) {
@@ -326,9 +413,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     // ── GPS ──
 
-    private fun startGps() {
-        gps.start { fix -> main.post { onFix(fix) } }
-    }
+    private fun startGps() = gps.start { fix -> main.post { onFix(fix) } }
 
     private fun stopGps() {
         gps.stop()
@@ -388,15 +473,31 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     private fun finishCharge(c: Acc) {
         activeCharge.value = null
+        chargeWatch = null
         if (c.activeS < 180 || c.ah < 0.05) return
+        val stop = c.stop ?: c.watch?.lost()
         val data = common(c).apply {
             put("avg_current", if (c.activeS > 0) c.ah * 3600 / c.activeS else 0.0)
             put("balancing_seen", c.balancingSeen)
             put("ended_by_protection", c.endedByProtection || c.maxCellV >= cellOvLimitV - 0.005)
             put("cell_ov_limit", cellOvLimitV)
             put("reached_full", c.socEnd >= 99)
+            stop?.let { r ->
+                put("stop_reason", r.reason.name.lowercase())
+                r.alarm?.let { put("stop_alarm", it) }
+                put("soc_before_stop", r.socBefore); put("soc_after_stop", r.socShown)
+                r.socCounted?.let { put("soc_counted", it) }
+                put("stop_v", r.packV); put("stop_max_cell", r.maxCell); put("stop_max_idx", r.maxIdx)
+                put("stop_min_cell", r.minCell); put("stop_min_idx", r.minIdx); put("stop_delta_mv", r.deltaMv)
+                r.earlyCell?.let { put("stop_early_cell", it) }
+            }
+            c.etaFirstMin?.let { put("eta_first_min", it) }
+            val hv = com.vanaccess.bms.alarm.AlarmCheck.effectiveHighVoltage(prefs.alarmHighVoltage.toDouble(),
+                prefs.bmsCellCount, prefs.effectiveOvMv)
+            if (hv > 0) put("target_v", hv)
+            if (prefs.alarmHighSoc > 0) put("target_soc", prefs.alarmHighSoc)
         }
-        save(Session.TYPE_CHARGE, c, data)
+        save(Session.TYPE_CHARGE, c, data) { s -> if (c.stopMs > 0) rest = Rest(s, c.stopMs) }
     }
 
     private fun finishTrip(t: Acc) {
@@ -418,7 +519,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             put("vehicle", prefs.vehicleType)
             put("gps", t.distanceKm > 0 || t.maxSpeed > 0)
             // Driving style from the current curve (throttle shocks, press-and-release, time at high current)
-            val style = DrivingAnalyzer.analyze(t.points.filter { it.v > 0 }, BmsLimits.fromJson(prefs.bmsLimitsJson).dischargeOcA)
+            val style = DrivingAnalyzer.analyze(t.points.filter { it.v > 0 }, prefs.limits.dischargeOcA)
             put("throttle_shocks", style.shocks)
             put("onoff_cycles", style.onOff)
             put("high_current_pct", style.highPct)
