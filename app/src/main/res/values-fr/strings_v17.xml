@@ -66,4 +66,21 @@
     <string name="map_osm_open">Ouvrir OsmAnd</string>
     <string name="map_osm_site">Site d\'OsmAnd</string>
     <string name="map_osm_url">https://osmand.net/</string>
+    <string name="rep_daily">Par jour</string>
+    <string name="day_title">Rapport du jour</string>
+    <string name="day_notify">Rapport du %1$s</string>
+    <string name="day_soc">Batterie de %1$d %% à %2$d %%</string>
+    <string name="day_switch">Rapport quotidien après minuit (silencieux)</string>
+    <string name="day_so_far">Aujourd\'hui, jusqu\'ici</string>
+    <string name="day_24h">De minuit à minuit</string>
+    <string name="day_soc_row">Batterie : début – fin</string>
+    <string name="day_used">Charge utilisée</string>
+    <string name="day_charged">Recharges</string>
+    <string name="day_shocks">À-coups de courant</string>
+    <string name="day_partial">L\'énergie d\'un trajet est incomplète</string>
+    <string name="day_routes">Trajets du jour</string>
+    <string name="day_list">Trajets et recharges</string>
+    <string name="day_share">Partager</string>
+    <plurals name="day_trips"><item quantity="one">%1$d trajet</item><item quantity="many">%1$d trajets</item><item quantity="other">%1$d trajets</item></plurals>
+    <plurals name="day_charges"><item quantity="one">%1$d recharge</item><item quantity="many">%1$d recharges</item><item quantity="other">%1$d recharges</item></plurals>
 </resources>

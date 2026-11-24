@@ -195,6 +195,7 @@ class BleService : LifecycleService() {
             com.vanaccess.bms.ui.AdviceText.notifyChargeStop(this, it)
         }
         recorder.log = ::log
+        recorder.restore()
         loadChargeLearn()
         keepAlive = KeepAlive(this, { connectionState.value == ConnectionState.CONNECTED }) { why ->
             log("wake: $why, ${connectionState.value}")
@@ -205,7 +206,7 @@ class BleService : LifecycleService() {
             android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         handler.post(object : Runnable {
-            override fun run() { recorder.onTick(); checkLink(); keepAlive.tick(); handler.postDelayed(this, 10_000L) }
+            override fun run() { recorder.onTick(); checkLink(); keepAlive.tick(); com.vanaccess.bms.ui.AdviceText.maybeDaily(this@BleService, recorder.tripActive); handler.postDelayed(this, 10_000L) }
         })
         // Periodic background update check while the service runs (UpdateChecker throttles to 12 h)
         handler.post(object : Runnable {
@@ -613,10 +614,13 @@ class BleService : LifecycleService() {
         bluetoothGatt = null
 
         if (address != lastConnectedAddress) {
-            clearDeviceData()
-            basicInfo.postValue(null)
-            cellVoltages.postValue(null)
-            if (lastConnectedAddress != null) recorder.switchBattery()
+            // (right after a start the values are this battery's own last reading: keep them)
+            if (lastConnectedAddress != null) {
+                clearDeviceData()
+                basicInfo.postValue(null)
+                cellVoltages.postValue(null)
+                recorder.switchBattery()
+            }
             lastConnectedAddress = address
             cellTracker = null; capTest = null; learnedCache = null; learnedAtMs = 0L; seenMax = 0.0
             handler.post {
@@ -1102,6 +1106,9 @@ class BleService : LifecycleService() {
             prefs.upsertSavedBattery(bluetoothGatt?.device?.address, bluetoothGatt?.device?.name ?: prefs.selectedDeviceName, driver.id)
             recorder.onBattery(bluetoothGatt?.device?.address)
             android.util.Log.i("BleService", "Protocol locked: ${driver.id}")
+            // Fast parameters were for the connection; one short poll a second needs no more, and
+            // leaves the radio to headsets and watches
+            bluetoothGatt?.let { runCatching { it.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED) } }
         }
         publishReading(out.basic, out.cells)
         out.hardware?.let { hardwareInfo.postValue(it) }
@@ -1142,6 +1149,7 @@ class BleService : LifecycleService() {
         synchronized(detailsLock) { historyBuf.clear() }
         bmsHistory.postValue(emptyList())
         historyLoading.postValue(true)
+        bluetoothGatt?.let { runCatching { it.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH) } }
         d.historyCommands()
         handler.postDelayed({
             if (historyLoading.value == true) { historyLoading.postValue(false); saveHistoryCache() }

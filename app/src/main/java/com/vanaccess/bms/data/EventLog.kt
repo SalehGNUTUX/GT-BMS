@@ -28,6 +28,13 @@ object EventLog {
         }
     }
 
+    /** Written at once: the process is about to end. */
+    fun crash(ctx: Context, thread: String, e: Throwable) {
+        val trace = generateSequence(e) { it.cause }.take(3).joinToString("\n  caused by ") { c ->
+            c.toString().take(300) + c.stackTrace.take(12).joinToString("") { "\n    at $it" } }
+        File(ctx.filesDir, FILE).appendText(SimpleDateFormat("MM-dd HH:mm:ss", Locale.US).format(Date()) + " CRASH [$thread] $trace\n")
+    }
+
     fun tail(ctx: Context, lines: Int): List<String> =
         runCatching { File(ctx.filesDir, FILE).readLines().takeLast(lines) }.getOrDefault(emptyList())
 }

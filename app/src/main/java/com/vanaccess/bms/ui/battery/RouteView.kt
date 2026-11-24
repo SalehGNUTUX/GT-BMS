@@ -53,13 +53,22 @@ class RouteView @JvmOverloads constructor(context: Context, attrs: AttributeSet?
 
     val hasMap get() = shot != null
 
-    fun setTrack(points: List<Point>) {
-        pts = points.filter { it.lat != null && it.lon != null }
+    /** Index of the first point of each piece (a day has one piece per trip). */
+    private var starts: Set<Int> = emptySet()
+
+    fun setTracks(tracks: List<List<Point>>) {
+        val pieces = tracks.map { t -> t.filter { it.lat != null && it.lon != null } }.filter { it.size > 1 }
+        pts = pieces.flatten()
+        var n = 0
+        starts = pieces.map { p -> n.also { n += p.size } }.toSet()
         maxA = max(1.0, pts.maxOfOrNull { abs(it.i) } ?: 1.0)
         project(); invalidate()
     }
 
     fun track(): List<Pair<Double, Double>> = pts.map { it.lat!! to it.lon!! }
+
+    fun pieces(): List<List<Pair<Double, Double>>> = starts.sorted().let { st ->
+        st.mapIndexed { k, from -> track().subList(from, st.getOrElse(k + 1) { pts.size }) } }
 
     fun setMap(s: OsmAndBridge.Shot?) { shot = s; fit(); project(); invalidate() }
 
@@ -153,9 +162,10 @@ class RouteView @JvmOverloads constructor(context: Context, attrs: AttributeSet?
             // Points closer than a pixel and a half add nothing but work
             val keep = ArrayList<Int>(xs.size); keep += 0
             for (i in 1 until xs.size) { val k = keep.last()
-                if (i == xs.size - 1 || hypot(x(i) - x(k), y(i) - y(k)) >= 1.5f * d) keep += i }
-            if (shot != null) for (j in 1 until keep.size) canvas.drawLine(x(keep[j - 1]), y(keep[j - 1]), x(keep[j]), y(keep[j]), casing)
+                if (i == xs.size - 1 || i in starts || i + 1 in starts || hypot(x(i) - x(k), y(i) - y(k)) >= 1.5f * d) keep += i }
+            if (shot != null) for (j in 1 until keep.size) if (keep[j] !in starts) canvas.drawLine(x(keep[j - 1]), y(keep[j - 1]), x(keep[j]), y(keep[j]), casing)
             for (j in 1 until keep.size) {
+                if (keep[j] in starts) continue
                 line.color = colorFor(pts[keep[j]].i)
                 canvas.drawLine(x(keep[j - 1]), y(keep[j - 1]), x(keep[j]), y(keep[j]), line)
             }

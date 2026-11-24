@@ -1,0 +1,1 @@
+1.7 beta 2: fixes the crash 30 s after leaving with Back, running trips resume after a sudden stop, daily report midnight to midnight with routes.

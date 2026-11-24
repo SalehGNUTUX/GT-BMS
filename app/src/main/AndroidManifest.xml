@@ -51,6 +51,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
+        android:name=".GtBmsApp"
         android:allowBackup="true"
         android:localeConfig="@xml/locales_config"
         android:icon="@mipmap/ic_launcher"

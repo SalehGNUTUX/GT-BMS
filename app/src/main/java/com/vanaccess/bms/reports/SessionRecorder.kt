@@ -58,6 +58,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         @Volatile var chargeLearn = ChargeLearn()
         /** A charge that has been without current this long has stopped. */
         private const val CHG_STOP_MS = 30_000L
+        /** A session younger than this is continued after a restart. */
+        private const val RESUME_MS = 15 * 60_000L
         private const val REST_MS = 10 * 60_000L
         /** Bumped whenever a report is saved, so lists refresh. */
         val savedCount = MutableLiveData(0)
@@ -72,6 +74,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     private var lastSampleMs = 0L
     private var lastInfo: BmsBasicInfo? = null
+    private var lastRemainAh = 0.0
+    private var lastPackV = 0.0
     private var lastCells: List<Double> = emptyList()
     private var battery = ""
     /** Cell over-voltage protection limit (V) from the BMS parameters, if known. */
@@ -111,9 +115,95 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         var watch: ChargeWatch? = null
         var stop: ChargeWatch.Result? = null
         var stopMs = 0L
+        var remainStart = 0.0
         var etaFirstMin: Double? = null
         /** Riding time without battery data (Bluetooth lost). */
         var gapMs = 0L
+
+        fun toJson() = JSONObject().apply {
+            put("start", startMs); put("soc0", socStart); put("cell0", startMinCell); put("end", endMs); put("soc1", socEnd)
+            put("ah", ah); put("wh", wh); put("act", activeS); put("maxV", maxV); if (minV < 1e6) put("minV", minV)
+            put("mxC", maxCellV); put("mxI", maxCellIdx); if (minCellV < 1e6) put("mnC", minCellV); put("mnI", minCellIdx)
+            put("dmv", maxDeltaMv); put("di", currentAtMaxDelta); put("temp", maxTemp); put("maxI", maxCurrent)
+            put("bal", balancingSeen); put("prot", endedByProtection); put("km", distanceKm); put("vmax", maxSpeed)
+            put("mov", movingS); put("acc", hardAccel); put("gap", gapMs); etaFirstMin?.let { put("eta", it) }
+            put("pts", org.json.JSONArray().also { a -> points.forEach { p ->
+                a.put(org.json.JSONArray().put(p.tMs).put(p.v).put(p.i).put(p.soc).put(p.speedKmh ?: JSONObject.NULL)
+                    .put(p.lat ?: JSONObject.NULL).put(p.lon ?: JSONObject.NULL)) } })
+        }
+
+        companion object {
+            fun fromJson(o: JSONObject) = Acc(o.getLong("start"), o.getInt("soc0"), o.optDouble("cell0", 0.0)).apply {
+                endMs = o.getLong("end"); socEnd = o.getInt("soc1"); ah = o.getDouble("ah"); wh = o.getDouble("wh"); activeS = o.getDouble("act")
+                maxV = o.getDouble("maxV"); minV = o.optDouble("minV", Double.MAX_VALUE)
+                maxCellV = o.getDouble("mxC"); maxCellIdx = o.getInt("mxI"); minCellV = o.optDouble("mnC", Double.MAX_VALUE); minCellIdx = o.getInt("mnI")
+                maxDeltaMv = o.getInt("dmv"); currentAtMaxDelta = o.getDouble("di"); maxTemp = o.getDouble("temp"); maxCurrent = o.getDouble("maxI")
+                balancingSeen = o.getBoolean("bal"); endedByProtection = o.getBoolean("prot"); distanceKm = o.getDouble("km")
+                maxSpeed = o.getDouble("vmax"); movingS = o.getDouble("mov"); hardAccel = o.getInt("acc"); gapMs = o.getLong("gap")
+                if (o.has("eta")) etaFirstMin = o.getDouble("eta")
+                val a = o.getJSONArray("pts")
+                for (k in 0 until a.length()) a.getJSONArray(k).let { p ->
+                    fun d(n: Int) = if (p.isNull(n)) null else p.getDouble(n)
+                    points += Point(p.getLong(0), p.getDouble(1), p.getDouble(2), p.getInt(3), d(4), d(5), d(6)) }
+            }
+        }
+    }
+
+    // ── A running trip or charge survives a crash or a kill ──
+
+    private val stateFile = java.io.File(context.filesDir, "active_session.json")
+    private val disk = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var lastCheckpoint = 0L
+
+    private fun checkpoint(now: Long) {
+        val t = trip; val c = chg
+        if (t == null && c == null) {
+            if (lastCheckpoint != 0L) { lastCheckpoint = 0L; disk.execute { stateFile.delete() } }
+            return
+        }
+        if (now - lastCheckpoint < 20_000) return
+        lastCheckpoint = now
+        val json = JSONObject().put("battery", battery).put("saved", now).put("sample", lastSampleMs).put("remain", lastRemainAh)
+            .put("pack", lastPackV).put("active", lastTripActiveMs).put("riding", lastRidingMs).put("loss", ridingAtLossMs)
+        t?.let { json.put("trip", it.toJson()) }
+        c?.let { json.put("charge", it.toJson()).put("charge_remain0", it.remainStart) }
+        val text = json.toString()
+        disk.execute { runCatching {
+            val tmp = java.io.File(stateFile.path + ".tmp")
+            tmp.writeText(text)
+            if (!tmp.renameTo(stateFile)) { stateFile.delete(); tmp.renameTo(stateFile) }
+        } }
+    }
+
+    /** After the process ended unexpectedly: go on with the session, or save it if it is too old. */
+    fun restore() {
+        if (!stateFile.exists()) return
+        runCatching {
+            val o = JSONObject(stateFile.readText())
+            val age = System.currentTimeMillis() - o.getLong("saved")
+            val same = o.optString("battery") == (prefs.selectedDeviceAddress ?: "")
+            battery = o.optString("battery")
+            lastSampleMs = o.getLong("sample"); lastRemainAh = o.getDouble("remain"); lastPackV = o.getDouble("pack")
+            lastTripActiveMs = o.getLong("active"); lastRidingMs = o.getLong("riding"); ridingAtLossMs = o.getLong("loss")
+            lastCheckpoint = 1L
+            val go = same && age in 0..RESUME_MS
+            o.optJSONObject("trip")?.let { Acc.fromJson(it) }?.let { t ->
+                log("trip restored after ${age / 1000}s, ${if (go) "continues" else "saved"}")
+                if (go) {
+                    trip = t; gpsStopAt = System.currentTimeMillis() + 5 * 60_000L
+                    lastRidingMs = System.currentTimeMillis()       // time for GPS to find itself before judging
+                    if (!startGps()) log("gps refused")
+                } else { t.endMs = maxOf(t.endMs, minOf(lastTripActiveMs, o.getLong("saved"))); finishTrip(t) }
+            }
+            o.optJSONObject("charge")?.let { Acc.fromJson(it) }?.let { c ->
+                c.remainStart = o.optDouble("charge_remain0", 0.0)
+                c.watch = ChargeWatch(c.startMs, c.socStart, c.remainStart)
+                log("charge restored after ${age / 1000}s, ${if (go) "continues" else "saved"}")
+                if (go) { chg = c; chgCandidateSince = c.startMs; chargeWatch = c.watch } else finishCharge(c)
+            }
+            updateWakeLock()
+        }.onFailure { log("restore failed: $it") }
+        if (trip == null && chg == null) stateFile.delete()
     }
 
     /** A 10 Ah scooter and a 300 Ah store don't idle or start at the same current. */
@@ -127,6 +217,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
             dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             trip?.let { endTrip(it) }
+            lastRemainAh = 0.0; lastPackV = 0.0
             rest = null; late = null; lastInfo = null; lastCells = emptyList(); lastSampleMs = 0L
             chargeLearn = ChargeLearn()
             cellOvLimitV = UNKNOWN_OV
@@ -152,6 +243,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             if (trip != null && lastSampleMs > 0 &&
                 TripGap.shouldEnd(now, lastSampleMs, ridingAtLossMs, lastRidingMs)) endTrip(trip!!)
             updateWakeLock()
+            checkpoint(now)
             if (trip == null && tripCandidateSince == 0L && gps.running && now > gpsStopAt) stopGps()
         }
     }
@@ -246,21 +338,22 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         }
         val silentMs = if (lastSampleMs == 0L) 0L else now - lastSampleMs
         val dtS = min(silentMs / 1000.0, MAX_DT_S)
-        val prevInfo = lastInfo
+        val remainBefore = lastRemainAh; val packBefore = lastPackV
         lastSampleMs = now
         lastInfo = info
+        lastRemainAh = info.remainCapacity; lastPackV = info.packVoltage
         late?.let { completeLate(it, info, now) }
         if (silentMs > MAX_DT_S * 1000) trip?.let { t ->
             // Back after a gap: add what the BMS counted meanwhile, minus the part accumulate() adds
-            val ah = TripGap.missingAh(prevInfo?.remainCapacity ?: 0.0, info.remainCapacity, info.fullCapacity) -
+            val ah = TripGap.missingAh(remainBefore, info.remainCapacity, info.fullCapacity) -
                 max(0.0, -info.current) * dtS / 3600.0
-            if (ah > 0) { t.ah += ah; t.wh += ah * (prevInfo!!.packVoltage + info.packVoltage) / 2 }
+            if (ah > 0) { t.ah += ah; t.wh += ah * (packBefore + info.packVoltage) / 2 }
             t.gapMs += silentMs
         }
         val i = info.current
         val k = scale(info.fullCapacity)
         val fix = gps.current
-        liveSpeedKmh.value = fix?.speedKmh
+        liveSpeedKmh.value = fix?.speedKmh.takeIf { trip != null }      // not the rider on foot
 
         stepRest(info, now)
         // ── Charge ──
@@ -269,7 +362,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 if (chgCandidateSince == 0L) chgCandidateSince = now
                 if (now - chgCandidateSince >= 20_000) {
                     chg = Acc(chgCandidateSince, info.soc, lastCells.minOrNull() ?: 0.0).apply {
-                        watch = ChargeWatch(startMs, info.soc, info.remainCapacity)
+                        watch = ChargeWatch(startMs, info.soc, info.remainCapacity); remainStart = info.remainCapacity
                     }
                     chargeWatch = chg?.watch; chgQuietSince = 0L; rest = null
                     updateWakeLock()
@@ -421,8 +514,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     }
 
     private fun onFix(fix: LocationTracker.Fix) {
-        liveSpeedKmh.value = fix.speedKmh
         val t = trip ?: return
+        liveSpeedKmh.value = fix.speedKmh
         val now = System.currentTimeMillis()
         val silent = lastSampleMs > 0 && now - lastSampleMs > MAX_DT_S * 1000
         // Without battery data only riding counts, so walking away adds nothing to the trip
@@ -525,10 +618,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             put("high_current_pct", style.highPct)
             put("high_current_a", style.highA)
         }
-        val before = lastInfo
+        val remain = lastRemainAh; val pack = lastPackV
         save(Session.TYPE_TRIP, t, data) { s ->
-            if (partial && before != null && before.remainCapacity > 0)
-                late = Late(s, t, before.remainCapacity, before.packVoltage)
+            if (partial && remain > 0) late = Late(s, t, remain, pack)
         }
     }
 
@@ -536,8 +628,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private fun completeLate(l: Late, info: BmsBasicInfo, now: Long) {
         late = null
         if (l.session.battery != battery || now - l.session.endMs > LATE_ENERGY_MS) return
+        // Nothing drawn meanwhile (walked off with the phone): the report was complete after all
+        if (!TripGap.known(l.remainAh, info.remainCapacity, info.fullCapacity)) return
         val ah = TripGap.missingAh(l.remainAh, info.remainCapacity, info.fullCapacity)
-        if (ah <= 0) return
         val d = l.session.data; val t = l.acc
         val totalAh = t.ah + ah; val totalWh = t.wh + ah * (l.packV + info.packVoltage) / 2
         d.put("ah", totalAh).put("wh", totalWh).put("soc_end", info.soc).put("energy_partial", false)
@@ -565,6 +658,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         dis?.let { finishDischarge(it) }; dis = null
         trip?.let { finishTrip(it) }; trip = null
         stopGps()
+        stateFile.delete()
         runCatching { if (wakeLock.isHeld) wakeLock.release() }
     }
 }

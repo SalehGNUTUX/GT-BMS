@@ -38,6 +38,10 @@ object TripGap {
         return if (remainBefore > 0 && remainAfter > 0 && d > 0 && d <= fullAh) d else 0.0
     }
 
+    /** Can the counter be trusted across the silence (not charged or recalibrated meanwhile)? */
+    fun known(remainBefore: Double, remainAfter: Double, fullAh: Double) =
+        remainBefore > 0 && remainAfter > 0 && remainBefore - remainAfter in -0.11..fullAh
+
     /** Is the distance between two fixes [dtS] apart believable for these speeds? */
     fun plausible(distM: Double, dtS: Double, kmhA: Double, kmhB: Double): Boolean =
         dtS > 0 && dtS <= 120 && distM / dtS * 3.6 <= maxOf(kmhA, kmhB) * 1.5 + 10

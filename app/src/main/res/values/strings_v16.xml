@@ -78,5 +78,5 @@
     <string name="about_speedometer_open">🛵  Open GT-SPEEDOMETER</string>
     <string name="about_speedometer">Our sister project: a phone speedometer that records speed, distance and the route over a live camera view. GT-BMS took several of its features from it (GPS speed and distance on trips, track recording, opening routes in OsmAnd).</string>
     <string name="rep_energy_partial">Bluetooth was lost: the energy covers only part of the trip</string>
-    <string name="rep_gap">Bluetooth was lost for %1$.1f min; energy completed from the BMS counter where possible</string>
+    <string name="rep_gap">Bluetooth lost %1$.1f min</string>
 </resources>

@@ -182,6 +182,45 @@ object AdviceText {
         }.start()
     }
 
+    private const val CHANNEL_DAILY = "gt_bms_daily"
+
+    /** One line for a day: trips, distance, energy, charge. */
+    fun dayLine(ctx: Context, d: com.vanaccess.bms.reports.DayReport): String {
+        fun f(p: String, v: Double) = String.format(java.util.Locale.US, p, v)
+        return listOfNotNull(
+            if (d.tripCount > 0) ctx.resources.getQuantityString(R.plurals.day_trips, d.tripCount, d.tripCount) else null,
+            if (d.km > 0) f("%.2f km", d.km) else null,
+            if (d.wh > 0) f("%.0f Wh", d.wh) else null,
+            if (d.chargeCount > 0) ctx.resources.getQuantityString(R.plurals.day_charges, d.chargeCount, d.chargeCount) else null,
+        ).joinToString("  •  ")
+    }
+
+    /** After midnight: the finished day, silently. Waits for a trip that crosses midnight. */
+    fun maybeDaily(ctx: Context, tripActive: Boolean) {
+        val prefs = AppPreferences(ctx)
+        val today = com.vanaccess.bms.reports.DayReport.dayStart(System.currentTimeMillis())
+        val last = prefs.lastDailyMs
+        if (last == today || tripActive) return
+        prefs.lastDailyMs = today
+        if (last == 0L || !prefs.notifyDaily) return            // first run: today is still open
+        Thread {
+            runCatching {
+                val yesterday = com.vanaccess.bms.reports.DayReport.dayStart(today - 1)
+                val d = com.vanaccess.bms.reports.DayReport.of(ReportStore.get(ctx).list(null, 300, prefs.selectedDeviceAddress), yesterday) ?: return@Thread
+                ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(
+                    NotificationChannel(CHANNEL_DAILY, ctx.getString(R.string.day_title), NotificationManager.IMPORTANCE_LOW))
+                val text = dayLine(ctx, d) + if (d.socStart != null && d.socEnd != null) "\n" + ctx.getString(R.string.day_soc, d.socStart, d.socEnd) else ""
+                val open = PendingIntent.getActivity(ctx, 60, Intent(ctx, MainActivity::class.java),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                val n = NotificationCompat.Builder(ctx, CHANNEL_DAILY).setSmallIcon(R.drawable.ic_battery)
+                    .setContentTitle(ctx.getString(R.string.day_notify, java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(yesterday))))
+                    .setContentText(text.substringBefore('\n')).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                    .setContentIntent(open).setAutoCancel(true).build()
+                ctx.getSystemService(NotificationManager::class.java).notify(4011, n)
+            }
+        }.start()
+    }
+
     /** Weekly summary, at most once every 7 days (background thread). */
     fun maybeWeekly(ctx: Context, fullAh: Double?, cycles: Int?) {
         val prefs = AppPreferences(ctx)

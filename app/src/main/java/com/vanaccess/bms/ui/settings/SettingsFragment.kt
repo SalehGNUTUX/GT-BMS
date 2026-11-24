@@ -537,6 +537,8 @@ class SettingsFragment : Fragment() {
                 }
             })
         }
+        binding.switchDaily.isChecked = prefs.notifyDaily
+        binding.switchDaily.setOnCheckedChangeListener { _, c -> prefs.notifyDaily = c }
         binding.switchSumNotify.isChecked = prefs.notifySessionSummary
         binding.switchSumNotify.setOnCheckedChangeListener { _, c -> prefs.notifySessionSummary = c }
         binding.switchBalanceReminder.isChecked = prefs.balanceReminder

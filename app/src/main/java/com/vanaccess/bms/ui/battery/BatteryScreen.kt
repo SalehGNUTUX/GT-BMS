@@ -46,8 +46,9 @@ class BatteryScreen(
     private val b: FragmentBatteryBinding,
     private val prefs: AppPreferences
 ) {
-    private val ctx: Context get() = fragment.requireContext()
-    private val dp = fragment.resources.displayMetrics.density
+    /** Fixed: background work and timers may outlive the fragment, which then has no context. */
+    private val ctx: Context = fragment.requireContext()
+    private val dp = ctx.resources.displayMetrics.density
 
     private val cGreen = Color.parseColor("#43D17A")
     private val cBlue = Color.parseColor("#4DA3FF")
@@ -66,7 +67,7 @@ class BatteryScreen(
     private var lastRange: com.vanaccess.bms.reports.RangeEstimator.Result? = null
 
     fun setup() {
-        b.tvDeviceName.text = prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)
+        b.tvDeviceName.text = prefs.selectedDeviceName ?: ctx.getString(R.string.lbl_battery)
         setupBatterySwitcher()
         // Side swipe between Cells / Reports / Info / History (not on Live, which has no tabs)
         b.pageContainer.onSwipe = { next ->
@@ -143,10 +144,10 @@ class BatteryScreen(
     private fun setupBatterySwitcher() {
         val saved = prefs.savedBatteries
         if (saved.size < 2) { b.tvDeviceName.setCompoundDrawables(null, null, null, null); return }
-        b.tvDeviceName.text = (prefs.selectedDeviceName ?: fragment.getString(R.string.lbl_battery)) + "  ⇅"
+        b.tvDeviceName.text = (prefs.selectedDeviceName ?: ctx.getString(R.string.lbl_battery)) + "  ⇅"
         b.tvDeviceName.setOnClickListener {
             val current = saved.indexOfFirst { it.address == prefs.selectedDeviceAddress }
-            com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.switch_battery),
+            com.vanaccess.bms.ui.AppDialog.show(ctx, ctx.getString(R.string.switch_battery),
                 items = saved.map { sb ->
                     sb.name + "  •  " + (com.vanaccess.bms.ble.drivers.BmsDrivers.byId(sb.protocol)?.displayName ?: sb.protocol)
                 },
@@ -162,7 +163,7 @@ class BatteryScreen(
                     b.tvDeviceName.text = sb.name + "  ⇅"
                     reports.reload()
                 },
-                buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
+                buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
         }
     }
 
@@ -229,10 +230,10 @@ class BatteryScreen(
         MainActivity.batteryMode.observe(owner) { m ->
             if (m == MainActivity.MODE_TABS) enterTabs() else enterLive()
         }
-        b.root.post(ticker)
+        handler.post(ticker)
         owner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
             override fun onDestroy(o: androidx.lifecycle.LifecycleOwner) {
-                b.root.removeCallbacks(ticker)
+                handler.removeCallbacks(ticker)
                 fragment.activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         })
@@ -279,7 +280,7 @@ class BatteryScreen(
         val driver = BleService.activeDriverName.value?.takeIf { connected }
         // While the battery is out of reach, say how old the shown data is
         val age = BleService.lastDataMs.takeIf { !connected && it > 0 }?.let { lastUpdateText(it) }
-        b.tvConnLine.text = "● " + fragment.getString(txt) + (driver?.let { "  •  $it" } ?: "") +
+        b.tvConnLine.text = "● " + ctx.getString(txt) + (driver?.let { "  •  $it" } ?: "") +
             (age?.let { "  •  $it" } ?: "")
         b.tvConnLine.setTextColor(col)
         // Stale data is dimmed until live readings resume
@@ -291,16 +292,19 @@ class BatteryScreen(
     private fun lastUpdateText(ms: Long): String {
         val min = ((System.currentTimeMillis() - ms) / 60_000L).coerceAtLeast(0)
         val ago = when {
-            min < 1 -> fragment.getString(R.string.ago_now)
-            min < 60 -> fragment.getString(R.string.ago_min, min.toInt())
-            min < 48 * 60 -> fragment.getString(R.string.ago_hours, (min / 60).toInt())
-            else -> fragment.getString(R.string.ago_days, (min / 1440).toInt())
+            min < 1 -> ctx.getString(R.string.ago_now)
+            min < 60 -> ctx.getString(R.string.ago_min, min.toInt())
+            min < 48 * 60 -> ctx.getString(R.string.ago_hours, (min / 60).toInt())
+            else -> ctx.getString(R.string.ago_days, (min / 1440).toInt())
         }
-        return fragment.getString(R.string.last_update, ago)
+        return ctx.getString(R.string.last_update, ago)
     }
 
+    // A handler of its own: the view is already detached when the fragment's view is destroyed, and
+    // View.removeCallbacks then no longer reaches the main queue (this stopped the app 30 s after leaving it)
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val ticker = object : Runnable {
-        override fun run() { updateHeader(); b.root.postDelayed(this, 30_000L) }
+        override fun run() { updateHeader(); handler.postDelayed(this, 30_000L) }
     }
 
     // ── Live ─────────────────────────────────────────────────────────────────
@@ -327,7 +331,7 @@ class BatteryScreen(
             discharging -> R.string.st_discharging to cBlue
             else -> R.string.st_idle to cGrey
         }
-        b.tvState.text = fragment.getString(stateTxt)
+        b.tvState.text = ctx.getString(stateTxt)
         b.tvState.background = pill(stateCol)
 
         // Time estimate from capacity and current
@@ -336,24 +340,24 @@ class BatteryScreen(
             discharging && info.remainCapacity > 0 -> info.remainCapacity / abs(info.current)
             else -> null
         }
-        fun dur(h: Double) = fragment.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
+        fun dur(h: Double) = ctx.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
         val R1 = com.vanaccess.bms.reports.SessionRecorder
         val chargeEta = if (charging) com.vanaccess.bms.reports.ChargePredictor.predict(info.soc, info.fullCapacity, info.current,
             R1.chargeLearn, R1.chargeWatch, info.remainCapacity, if (prefs.knownOvMv > 0) prefs.knownOvMv / 1000.0 else 99.0) else null
         b.tvTimeLeft.text = when {
             // Last minutes before the protection cuts the charge
             chargeEta?.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.CUT_SOON ->
-                if (chargeEta.hours < 2 / 60.0) fragment.getString(R.string.eta_cut_now, chargeEta.cell)
-                else fragment.getString(R.string.eta_cut_soon, Math.ceil(chargeEta.hours * 60).toInt(), chargeEta.cell)
+                if (chargeEta.hours < 2 / 60.0) ctx.getString(R.string.eta_cut_now, chargeEta.cell)
+                else ctx.getString(R.string.eta_cut_soon, Math.ceil(chargeEta.hours * 60).toInt(), chargeEta.cell)
             // Charging: time to 80 % and to the end
             chargeEta != null -> listOfNotNull(
-                chargeEta.to80h?.let { fragment.getString(R.string.eta_80, dur(it)) },
+                chargeEta.to80h?.let { ctx.getString(R.string.eta_80, dur(it)) },
                 if (chargeEta.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.CUT)
-                    (if (chargeEta.hours < 3 / 60.0) fragment.getString(R.string.eta_end_soon)
-                     else fragment.getString(R.string.eta_end, dur(chargeEta.hours)))
-                else fragment.getString(R.string.eta_100, dur(chargeEta.hours))).joinToString("  •  ")
+                    (if (chargeEta.hours < 3 / 60.0) ctx.getString(R.string.eta_end_soon)
+                     else ctx.getString(R.string.eta_end, dur(chargeEta.hours)))
+                else ctx.getString(R.string.eta_100, dur(chargeEta.hours))).joinToString("  •  ")
             else -> hours?.takeIf { it in 0.0..500.0 }?.let { h ->
-                fragment.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur(h))
+                ctx.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur(h))
             } ?: ""
         }
 
@@ -373,23 +377,23 @@ class BatteryScreen(
         b.progressCapacity.progress = info.soc
         b.rowsCapacity.removeAllViews()
         if (info.fullCapacity > 0) {
-            row(b.rowsCapacity, fragment.getString(R.string.cap_remaining), fmt("%.1f Ah", info.remainCapacity))
-            row(b.rowsCapacity, fragment.getString(R.string.cap_full), fmt("%.1f Ah", info.fullCapacity))
+            row(b.rowsCapacity, ctx.getString(R.string.cap_remaining), fmt("%.1f Ah", info.remainCapacity))
+            row(b.rowsCapacity, ctx.getString(R.string.cap_full), fmt("%.1f Ah", info.fullCapacity))
         }
-        row(b.rowsCapacity, fragment.getString(R.string.cap_cycles), "${info.cycleCount}")
+        row(b.rowsCapacity, ctx.getString(R.string.cap_cycles), "${info.cycleCount}")
         com.vanaccess.bms.reports.Advisor.cyclesLeft(info.cycleCount, prefs.ratedCycles, limits)?.let { (left, rated) ->
-            row(b.rowsCapacity, fragment.getString(R.string.cycles_left), fragment.getString(R.string.cycles_left_val, left, rated))
+            row(b.rowsCapacity, ctx.getString(R.string.cycles_left), ctx.getString(R.string.cycles_left_val, left, rated))
         }
-        info.sohReported?.let { row(b.rowsCapacity, fragment.getString(R.string.cap_soh), "$it%") }
+        info.sohReported?.let { row(b.rowsCapacity, ctx.getString(R.string.cap_soh), "$it%") }
 
         // Temperatures: cell probes then MOS probes
         b.gridTemps.removeAllViews()
         val mos = info.mosTemperatures
         info.temperatures.forEachIndexed { i, t ->
-            addTile(b.gridTemps, fragment.getString(R.string.t_cell, i + 1), temp(t), tempColor(t), small = true)
+            addTile(b.gridTemps, ctx.getString(R.string.t_cell, i + 1), temp(t), tempColor(t), small = true)
         }
         mos.forEachIndexed { i, t ->
-            addTile(b.gridTemps, fragment.getString(R.string.t_mos, i + 1), temp(t), tempColor(t), small = true)
+            addTile(b.gridTemps, ctx.getString(R.string.t_mos, i + 1), temp(t), tempColor(t), small = true)
         }
 
         // Status pills
@@ -406,7 +410,7 @@ class BatteryScreen(
         b.boxAlerts.removeAllViews()
         val alerts = info.protectionFlags.map { L10n.t(ctx, it.name) }
         if (alerts.isEmpty()) {
-            b.boxAlerts.addView(label(fragment.getString(R.string.no_alerts), cGreen, 14f, bold = true))
+            b.boxAlerts.addView(label(ctx.getString(R.string.no_alerts), cGreen, 14f, bold = true))
         } else alerts.forEach { a ->
             b.boxAlerts.addView(label("⚠ $a", cRed, 14f, bold = true).apply { setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) })
         }
@@ -472,20 +476,20 @@ class BatteryScreen(
 
     private fun showRangeInfo() {
         val r = lastRange
-        val msg = if (r == null) fragment.getString(R.string.range_info_none) else {
+        val msg = if (r == null) ctx.getString(R.string.range_info_none) else {
             val basis = when (r.basis) {
-                com.vanaccess.bms.reports.RangeEstimator.Basis.USER -> fragment.getString(R.string.range_basis_user)
-                com.vanaccess.bms.reports.RangeEstimator.Basis.LEARNED -> fragment.getString(R.string.range_basis_learned_km, r.learnedKm)
-                com.vanaccess.bms.reports.RangeEstimator.Basis.DEFAULT -> fragment.getString(R.string.range_basis_type,
-                    fragment.getString(prefs.vehicle.labelRes), com.vanaccess.bms.reports.RangeEstimator.MIN_LEARN_KM)
+                com.vanaccess.bms.reports.RangeEstimator.Basis.USER -> ctx.getString(R.string.range_basis_user)
+                com.vanaccess.bms.reports.RangeEstimator.Basis.LEARNED -> ctx.getString(R.string.range_basis_learned_km, r.learnedKm)
+                com.vanaccess.bms.reports.RangeEstimator.Basis.DEFAULT -> ctx.getString(R.string.range_basis_type,
+                    ctx.getString(prefs.vehicle.labelRes), com.vanaccess.bms.reports.RangeEstimator.MIN_LEARN_KM)
             }
-            fragment.getString(R.string.range_info_body,
+            ctx.getString(R.string.range_info_body,
                 r.remainAh, r.reserveAh, com.vanaccess.bms.reports.RangeEstimator.RESERVE_PCT, r.nominalV,
                 r.usableWh, r.whPerKm, basis, r.km)
         }
         val cold = r?.takeIf { it.tempFactor < 0.999 && it.tempC != null }
-            ?.let { fragment.getString(R.string.range_cold, it.tempC, (it.tempFactor * 100).toInt()) } ?: ""
-        com.vanaccess.bms.ui.AppDialog.info(ctx, fragment.getString(R.string.range_info_title), msg + cold)
+            ?.let { ctx.getString(R.string.range_cold, it.tempC, (it.tempFactor * 100).toInt()) } ?: ""
+        com.vanaccess.bms.ui.AppDialog.info(ctx, ctx.getString(R.string.range_info_title), msg + cold)
     }
 
     private fun refreshLearned() {
@@ -509,11 +513,11 @@ class BatteryScreen(
         val dis = R0.activeDischarge.value
         val time = java.text.SimpleDateFormat("HH:mm", Locale.US)
         val (txt, col) = when {
-            trip != null -> fragment.getString(R.string.live_trip,
+            trip != null -> ctx.getString(R.string.live_trip,
                 "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) to cBlue
-            chg != null -> fragment.getString(if (chg.stopped) R.string.live_charge_stopped else R.string.live_charge,
+            chg != null -> ctx.getString(if (chg.stopped) R.string.live_charge_stopped else R.string.live_charge,
                 time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
-            dis != null -> fragment.getString(R.string.live_discharge,
+            dis != null -> ctx.getString(R.string.live_discharge,
                 time.format(java.util.Date(dis.startMs)), dis.ah) to cOrange
             else -> null to cGrey
         }
@@ -521,10 +525,10 @@ class BatteryScreen(
         b.tvSessionBanner.text = txt
         b.btnEndTrip.visibility = if (trip != null) View.VISIBLE else View.GONE
         b.btnEndTrip.setOnClickListener {
-            com.vanaccess.bms.ui.AppDialog.show(ctx, fragment.getString(R.string.end_trip_q), message = fragment.getString(R.string.end_trip_msg),
+            com.vanaccess.bms.ui.AppDialog.show(ctx, ctx.getString(R.string.end_trip_q), message = ctx.getString(R.string.end_trip_msg),
                 buttons = listOf(
-                    com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
-                    com.vanaccess.bms.ui.AppDialog.Btn(fragment.getString(R.string.end_trip), com.vanaccess.bms.ui.AppDialog.RED) {
+                    com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
+                    com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.end_trip), com.vanaccess.bms.ui.AppDialog.RED) {
                         (fragment.activity as? MainActivity)?.getBleService()?.endTripNow()
                     },
                 ))
@@ -541,8 +545,8 @@ class BatteryScreen(
     }
 
     private fun statusTile(labelRes: Int, on: Boolean) {
-        addTile(b.gridStatus, fragment.getString(labelRes),
-            fragment.getString(if (on) R.string.on else R.string.off), if (on) cGreen else cGrey, small = true)
+        addTile(b.gridStatus, ctx.getString(labelRes),
+            ctx.getString(if (on) R.string.on else R.string.off), if (on) cGreen else cGrey, small = true)
     }
 
     // ── Cells ────────────────────────────────────────────────────────────────
@@ -552,14 +556,14 @@ class BatteryScreen(
         val iMax = cells.indexOf(maxV); val iMin = cells.indexOf(minV)
         val avg = cells.average()
         b.gridCellSummary.removeAllViews()
-        addTile(b.gridCellSummary, fragment.getString(R.string.cell_max) + " #${iMax + 1}", fmt("%.3f V", maxV), cRed)
-        addTile(b.gridCellSummary, fragment.getString(R.string.cell_min) + " #${iMin + 1}", fmt("%.3f V", minV), cBlue)
-        addTile(b.gridCellSummary, fragment.getString(R.string.cell_avg), fmt("%.3f V", avg), null)
+        addTile(b.gridCellSummary, ctx.getString(R.string.cell_max) + " #${iMax + 1}", fmt("%.3f V", maxV), cRed)
+        addTile(b.gridCellSummary, ctx.getString(R.string.cell_min) + " #${iMin + 1}", fmt("%.3f V", minV), cBlue)
+        addTile(b.gridCellSummary, ctx.getString(R.string.cell_avg), fmt("%.3f V", avg), null)
         val delta = ((maxV - minV) * 1000).toInt()
-        addTile(b.gridCellSummary, fragment.getString(R.string.cell_delta), "$delta mV",
+        addTile(b.gridCellSummary, ctx.getString(R.string.cell_delta), "$delta mV",
             deltaColor(delta))
 
-        b.tvCellsTitle.text = fragment.getString(R.string.cells_count, cells.size)
+        b.tvCellsTitle.text = ctx.getString(R.string.cells_count, cells.size)
         val bal = lastInfo?.balanceBits ?: 0L
         b.gridCells.removeAllViews()
         cells.forEachIndexed { i, v ->
@@ -576,20 +580,20 @@ class BatteryScreen(
         val box = b.boxCellTrend
         box.removeAllViews()
         if (weak.isEmpty()) {   // fewer than 10 samples so far
-            box.addView(label(fragment.getString(R.string.cell_trend_none), cGrey, 13f))
+            box.addView(label(ctx.getString(R.string.cell_trend_none), cGrey, 13f))
             return
         }
         weak.forEach { w ->
-            val dev = w.loadMv?.let { fragment.getString(R.string.cell_trend_load, it) }
-                ?: w.restMv?.let { fragment.getString(R.string.cell_trend_rest, it) } ?: "—"
-            box.addView(label(fragment.getString(R.string.cell_trend_row, w.cell, dev, w.lowestPct),
+            val dev = w.loadMv?.let { ctx.getString(R.string.cell_trend_load, it) }
+                ?: w.restMv?.let { ctx.getString(R.string.cell_trend_rest, it) } ?: "—"
+            box.addView(label(ctx.getString(R.string.cell_trend_row, w.cell, dev, w.lowestPct),
                 if (w.concerning) cOrange else Color.WHITE, 13f, bold = w.concerning).apply {
                 setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt())
             })
         }
         val watch = weak.firstOrNull { it.concerning }
-        box.addView(label(if (watch != null) fragment.getString(R.string.cell_trend_watch, watch.cell)
-            else fragment.getString(R.string.cell_trend_ok), if (watch != null) cOrange else cGreen, 13f).apply {
+        box.addView(label(if (watch != null) ctx.getString(R.string.cell_trend_watch, watch.cell)
+            else ctx.getString(R.string.cell_trend_ok), if (watch != null) cOrange else cGreen, 13f).apply {
             setPadding(0, (6 * dp).toInt(), 0, 0)
         })
     }
@@ -627,7 +631,7 @@ class BatteryScreen(
             xAxis.textSize = 9f
             xAxis.setDrawGridLines(false)
             xAxis.granularity = 1f
-            setNoDataText(fragment.getString(R.string.chart_no_data))
+            setNoDataText(ctx.getString(R.string.chart_no_data))
             setNoDataTextColor(cGrey)
         }
     }
@@ -671,17 +675,17 @@ class BatteryScreen(
         val proto = prefs.batteryType?.let { BmsDrivers.byId(it)?.displayName } ?: BleService.activeDriverName.value
         proto?.let { rows += R.string.info_protocol to it }
 
-        val dev = card(box, fragment.getString(R.string.info_device))
-        rows.forEach { (k, v) -> row(dev, fragment.getString(k), v, selectable = true) }
+        val dev = card(box, ctx.getString(R.string.info_device))
+        rows.forEach { (k, v) -> row(dev, ctx.getString(k), v, selectable = true) }
 
         val features = BleService.activeFeatures.value ?: emptySet()
         if (Feature.PARAMS in features) {
             val params: List<ParamItem>? = BleService.bmsParams.value
-            box.addView(label(fragment.getString(R.string.params_title), Color.WHITE, 15f, bold = true).apply {
+            box.addView(label(ctx.getString(R.string.params_title), Color.WHITE, 15f, bold = true).apply {
                 setPadding((4 * dp).toInt(), (8 * dp).toInt(), 0, (8 * dp).toInt())
             })
             if (params == null) {
-                box.addView(label(fragment.getString(R.string.params_loading), cGrey, 13f))
+                box.addView(label(ctx.getString(R.string.params_loading), cGrey, 13f))
             } else params.groupBy { it.group }.forEach { (g, items) ->
                 val c = card(box, L10n.t(ctx, g))
                 items.forEach { row(c, L10n.t(ctx, it.label), L10n.t(ctx, it.value)) }
@@ -710,7 +714,7 @@ class BatteryScreen(
         val list = live ?: cached?.records
         b.progressHistory.visibility = if (loading) View.VISIBLE else View.GONE
         b.btnHistory.isEnabled = true
-        b.btnHistory.text = fragment.getString(when {
+        b.btnHistory.text = ctx.getString(when {
             loading -> R.string.history_stop
             cached != null || live != null -> R.string.history_reload
             else -> R.string.history_load
@@ -722,11 +726,11 @@ class BatteryScreen(
             java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(java.util.Date(it.savedMs))
         }
         b.tvHistoryStatus.text = when {
-            loading -> fragment.getString(R.string.history_loading, live?.size ?: 0)
-            list == null -> fragment.getString(R.string.history_hint)
-            list.isEmpty() -> fragment.getString(R.string.history_empty)
-            live == null && savedAt != null -> fragment.getString(R.string.history_cached, list.size, "\u2066$savedAt\u2069")
-            else -> fragment.getString(R.string.history_done, list.size)
+            loading -> ctx.getString(R.string.history_loading, live?.size ?: 0)
+            list == null -> ctx.getString(R.string.history_hint)
+            list.isEmpty() -> ctx.getString(R.string.history_empty)
+            live == null && savedAt != null -> ctx.getString(R.string.history_cached, list.size, "\u2066$savedAt\u2069")
+            else -> ctx.getString(R.string.history_done, list.size)
         }
         // Newest first by the record's own timestamp (the BMS order is not guaranteed);
         // "yyyy-MM-dd HH:mm:ss" sorts correctly as text, and 2000-01-01 records sink to the bottom.
@@ -752,20 +756,20 @@ class BatteryScreen(
             val r = items[pos]
             h.box.removeAllViews()
             val clockUnset = r.time.startsWith("2000-")
-            h.box.addView(label(r.time + if (clockUnset) "  " + fragment.getString(R.string.history_clock_unset) else "", cGrey, 12f))
+            h.box.addView(label(r.time + if (clockUnset) "  " + ctx.getString(R.string.history_clock_unset) else "", cGrey, 12f))
             // Charging/Discharging are the state at the moment of the event, not events themselves
             val states = r.events.filter { it == "Charging" || it == "Discharging" }
             val events = r.events - states.toSet()
             if (events.isEmpty()) {
                 // The BMS logs an empty record when every protection flag has cleared again
-                h.box.addView(label(fragment.getString(R.string.history_cleared), cGreen, 14f, bold = true))
+                h.box.addView(label(ctx.getString(R.string.history_cleared), cGreen, 14f, bold = true))
             }
             events.forEach { e ->
                 val col = if (e == "Cell overvoltage protection") cOrange else cRed
                 h.box.addView(label("⚠ " + L10n.t(ctx, e), col, 14f, bold = true))
             }
             if (states.isNotEmpty()) h.box.addView(label(
-                fragment.getString(R.string.history_state, states.joinToString(" • ") { L10n.t(ctx, it) }), cBlue, 12f))
+                ctx.getString(R.string.history_state, states.joinToString(" • ") { L10n.t(ctx, it) }), cBlue, 12f))
             // Isolate the LTR "82.45 V • 100%" so RTL layout does not reorder it
             if (r.extra.isNotBlank()) h.box.addView(label("\u2066" + r.extra + "\u2069", cGrey, 12f))
         }
@@ -814,7 +818,7 @@ class BatteryScreen(
         b.tvSoc.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSocLabel.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSoc.textSize = when (d) { "compact" -> 38f; "ride" -> 84f; else -> 52f }
-        val landscape = fragment.resources.configuration.orientation ==
+        val landscape = ctx.resources.configuration.orientation ==
             android.content.res.Configuration.ORIENTATION_LANDSCAPE
         b.gridMetrics.columnCount = when {
             d == "compact" -> 3
@@ -843,7 +847,7 @@ class BatteryScreen(
                 orientation = LinearLayout.VERTICAL
                 setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
             }
-            col.addView(label(fragment.getString(labelRes), cGrey, 12f))
+            col.addView(label(ctx.getString(labelRes), cGrey, 12f))
             val v = label(value, Color.WHITE, metricSize(), bold = true)
             col.addView(v)
             card.addView(col)

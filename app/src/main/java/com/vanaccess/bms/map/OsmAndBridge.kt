@@ -52,8 +52,8 @@ object OsmAndBridge {
         runCatching { ctx.packageManager.getPackageInfo(it, 0) }.isSuccess
     }
 
-    /** Draw [track] for a frame of this size; [done] runs on a background thread. */
-    fun render(ctx: Context, track: List<Pair<Double, Double>>, frameW: Int, frameH: Int, color: Int, done: (Answer) -> Unit) {
+    /** Draw the pieces of [track] for a frame of this size; [done] runs on a background thread. */
+    fun render(ctx: Context, track: List<List<Pair<Double, Double>>>, frameW: Int, frameH: Int, color: Int, done: (Answer) -> Unit) {
         val app = ctx.applicationContext
         io.execute {
             val a = try { draw(app, track, frameW, frameH, color) } catch (_: Throwable) { Answer(State.UNREACHABLE) }
@@ -61,9 +61,9 @@ object OsmAndBridge {
         }
     }
 
-    private fun draw(app: Context, track: List<Pair<Double, Double>>, frameW: Int, frameH: Int, color: Int): Answer {
+    private fun draw(app: Context, track: List<List<Pair<Double, Double>>>, frameW: Int, frameH: Int, color: Int): Answer {
         val pkg = installed(app) ?: return Answer(State.MISSING)
-        if (track.size < 2 || frameW <= 0 || frameH <= 0) return Answer(State.NO_MAP)
+        if (track.sumOf { it.size } < 2 || frameW <= 0 || frameH <= 0) return Answer(State.NO_MAP)
         // Larger than the frame, with the density raised alike: same content, more detail to zoom into
         var detail = 3
         while (detail > 1 && frameW.toLong() * detail * frameH * detail * 4 > MAX_BYTES) detail--
@@ -121,12 +121,16 @@ object OsmAndBridge {
         }
     }
 
-    private fun gpx(track: List<Pair<Double, Double>>, color: Int) = buildString {
+    private fun gpx(track: List<List<Pair<Double, Double>>>, color: Int) = buildString {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"GT-BMS\"")
         append(" xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:osmand=\"https://osmand.net\">\n  <trk>\n")
-        append("    <extensions><osmand:color>").append(String.format(Locale.US, "#%08X", color)).append("</osmand:color></extensions>\n    <trkseg>\n")
-        track.forEach { (lat, lon) -> append(String.format(Locale.US, "      <trkpt lat=\"%.6f\" lon=\"%.6f\" />\n", lat, lon)) }
-        append("    </trkseg>\n  </trk>\n</gpx>\n")
+        append("    <extensions><osmand:color>").append(String.format(Locale.US, "#%08X", color)).append("</osmand:color></extensions>\n")
+        track.forEach { seg ->
+            append("    <trkseg>\n")
+            seg.forEach { (lat, lon) -> append(String.format(Locale.US, "      <trkpt lat=\"%.6f\" lon=\"%.6f\" />\n", lat, lon)) }
+            append("    </trkseg>\n")
+        }
+        append("  </trk>\n</gpx>\n")
     }
 
     private open class Callback : IOsmAndAidlCallback.Stub() {

@@ -70,11 +70,14 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
 - **Export** reports as CSV and trip tracks as GPX, **cell tracking over time** to catch a weak cell, and a **balance reminder**.
 - **Guided capacity test**: empty to full to measure the real capacity and health, with a notification at each step.
 - **Charging time** to 80 % and 100 %, and **range adjusted for the cold**.
-- **Trip map** offline, coloured by current, and **Open in OsmAnd** (or OsmAnd~ from F-Droid).
+- **Trip map** from **OsmAnd**'s offline maps inside the report (a sketch without it), coloured by current, with zoom and sharing.
 - **Energy cost** per charge, trip and kilometre, with an optional fuel comparison.
 - **Driving style**: sudden current jumps, press-and-release, time at high current, your most economical speed, and
   repeated protection cuts while charging, with lithium riding tips.
-- **Several batteries**: switch from the screen header, with per-battery reports.
+- **Several batteries**: switch from the screen header, with reports, limits, alarms and vehicle per battery; chemistry recognised from the cells.
+- **Daily report**: all trips from midnight to midnight, with routes and cost, and a silent notification.
+- **Honest charge reports**: why it stopped and which cell, SOC before the BMS jump, time left learned from your charger, early cell alarm, statistics.
+- **Trips that don't get lost**: GPS carries them through Bluetooth loss, they start while the phone sleeps and resume after a sudden stop.
 - **Last reading kept on the phone**, shown after a crash or force-stop until the battery reconnects.
 - **Full backup** (reports, tracks, settings) to move to another phone.
 - **Device report** in the diagnostics screen to add support for new BMSs (share or open a GitHub issue).

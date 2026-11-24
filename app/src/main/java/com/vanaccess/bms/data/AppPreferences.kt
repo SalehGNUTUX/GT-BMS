@@ -295,6 +295,15 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean("notify_weekly", true)
         set(value) = prefs.edit().putBoolean("notify_weekly", value).apply()
 
+    var notifyDaily: Boolean
+        get() = prefs.getBoolean("notify_daily", true)
+        set(value) = prefs.edit().putBoolean("notify_daily", value).apply()
+
+    /** Midnight of the day already reported (start of the current day). */
+    var lastDailyMs: Long
+        get() = prefs.getLong("last_daily_ms", 0L)
+        set(value) = prefs.edit().putLong("last_daily_ms", value).apply()
+
     var lastWeeklyMs: Long
         get() = prefs.getLong("last_weekly_ms", 0L)
         set(value) = prefs.edit().putLong("last_weekly_ms", value).apply()

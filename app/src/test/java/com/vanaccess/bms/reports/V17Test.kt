@@ -144,4 +144,34 @@ class V17Test {
         assertEquals(750f, (p.x(-6.86) + p.x(-6.85)) / 2, 1f)
         assertNull(com.vanaccess.bms.map.OsmAndProjection.of(emptyList(), 10, 10, 1f))
     }
+
+    private val tz = java.util.TimeZone.getTimeZone("Africa/Casablanca")
+    private fun at(d: Int, h: Int, m: Int = 0) = java.util.Calendar.getInstance(tz).apply { clear(); set(2026, 10, d, h, m) }.timeInMillis
+    private fun trip(from: Long, to: Long, s0: Int, s1: Int, km: Double, wh: Double, perKm: Boolean = true) = Session(1, Session.TYPE_TRIP, from, to, "",
+        JSONObject().put("soc_start", s0).put("soc_end", s1).put("distance_km", km).put("wh", wh).put("ah", wh / 75)
+            .put("moving_s", (to - from) / 1000.0).put("max_speed", 45.0).put("avg_speed", 20.0).apply { if (perKm) put("wh_per_km", wh / km) else put("wh_per_km", JSONObject.NULL) })
+
+    @Test fun dailyReportRunsMidnightToMidnight() {
+        val night = trip(at(24, 23, 30), at(25, 0, 30), 60, 50, 10.0, 200.0)
+        val all = listOf(trip(at(24, 0, 0), at(24, 0, 20), 80, 78, 2.0, 40.0), trip(at(24, 10), at(24, 11), 78, 64, 12.8, 272.0),
+            trip(at(24, 12), at(24, 12, 10), 64, 63, 1.0, 5.0, perKm = false), night, trip(at(25, 8), at(25, 9), 50, 45, 5.0, 100.0),
+            trip(at(23, 22), at(23, 23, 59), 90, 80, 8.0, 170.0))
+        val days = DayReport.all(all, tz)
+        assertEquals(listOf(at(25, 0), at(24, 0), at(23, 0)), days.map { it.startMs })
+        val d = days[1]
+        assertEquals(at(25, 0), d.endMs)
+        assertEquals(4, d.tripCount)                                   // the night trip counts where it began…
+        assertEquals(2.0 + 12.8 + 1.0 + 5.0, d.km, 1e-6)               // …and half of it belongs to each day
+        assertEquals(40.0 + 272 + 5 + 100, d.wh, 1e-6)
+        assertEquals(80, d.socStart); assertEquals(55, d.socEnd)
+        assertEquals((40 + 272 + 100) / (2 + 12.8 + 5), d.whPerKm!!, 1e-6)   // incomplete energy left out
+        assertEquals(1, days[0].tripCount); assertEquals(10.0, days[0].km, 1e-6); assertEquals(55, days[0].socStart)
+        assertEquals(1, days[2].tripCount)
+        assertNull(DayReport.of(all, at(20, 0), tz))
+    }
+
+    @Test fun nothingDrawnWhileSilentMeansComplete() {
+        assertTrue(TripGap.known(18.2, 18.2, 29.9)); assertTrue(TripGap.known(18.2, 18.3, 29.9)); assertTrue(TripGap.known(18.2, 17.0, 29.9))
+        assertTrue(!TripGap.known(18.2, 25.0, 29.9)); assertTrue(!TripGap.known(0.0, 18.0, 29.9))
+    }
 }

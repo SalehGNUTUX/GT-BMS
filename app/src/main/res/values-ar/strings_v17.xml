@@ -66,4 +66,21 @@
     <string name="map_osm_open">فتح OsmAnd</string>
     <string name="map_osm_site">موقع OsmAnd الرسمي</string>
     <string name="map_osm_url">https://osmand.net/ar/</string>
+    <string name="rep_daily">يومي</string>
+    <string name="day_title">التقرير اليومي</string>
+    <string name="day_notify">التقرير اليومي %1$s</string>
+    <string name="day_soc">البطارية من %1$d٪ إلى %2$d٪</string>
+    <string name="day_switch">تقرير يومي بعد منتصف الليل (صامت)</string>
+    <string name="day_so_far">اليوم حتى الآن</string>
+    <string name="day_24h">من منتصف الليل إلى منتصف الليل</string>
+    <string name="day_soc_row">البطارية: البداية – النهاية</string>
+    <string name="day_used">الشحن المستهلك</string>
+    <string name="day_charged">الشحن</string>
+    <string name="day_shocks">قفزات التيار المفاجئة</string>
+    <string name="day_partial">طاقة إحدى الرحلات غير مكتملة</string>
+    <string name="day_routes">مسارات اليوم</string>
+    <string name="day_list">الرحلات والشحنات</string>
+    <string name="day_share">مشاركة</string>
+    <plurals name="day_trips"><item quantity="zero">لا رحلات</item><item quantity="one">رحلة واحدة</item><item quantity="two">رحلتان</item><item quantity="few">%1$d رحلات</item><item quantity="many">%1$d رحلة</item><item quantity="other">%1$d رحلة</item></plurals>
+    <plurals name="day_charges"><item quantity="zero">لا شحنات</item><item quantity="one">شحنة واحدة</item><item quantity="two">شحنتان</item><item quantity="few">%1$d شحنات</item><item quantity="many">%1$d شحنة</item><item quantity="other">%1$d شحنة</item></plurals>
 </resources>
