@@ -193,4 +193,14 @@ class V17Test {
         assertEquals(7, d.unrecorded); assertEquals(11.0, d.socUsed, 1e-9); assertEquals(21, d.socCharged); assertTrue(d.partial)
         assertEquals((195.8 + 9.8) / (9.34 + 0.65), d.whPerKm!!, 1e-6)
     }
+
+    /** Filmed 2026-11-23: 82.75 V at 5.1 A, then one reading at 1.3 A with the cells already falling. */
+    @Test fun cellThatCausedTheCutNotTheOneAfterIt() {
+        val w = filmed()
+        w.charging(last + 1000, 100, 29.9, 29.9, 5.1, 82.75, cells(3.635), true, 6.92)
+        val falling = List(23) { if (it == 5) 3.602 else if (it == 8) 3.600 else if (it == 11) 3.525 else 3.575 }
+        w.charging(last + 2000, 100, 29.9, 29.9, 1.3, 82.26, falling, false, 6.92)
+        val r = w.stopped(last + 32_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
+        assertEquals(9, r.maxIdx); assertEquals(3.635, r.maxCell, 1e-9); assertEquals(82.75, r.packV, 1e-9)
+    }
 }

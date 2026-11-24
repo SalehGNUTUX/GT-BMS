@@ -33,10 +33,15 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
     companion object {
         const val EARLY_MS = 5 * 60_000L
         private const val KEEP_MS = 8 * 60_000L
+        private const val PEAK_MS = 20_000L
         private const val SLOPE_MS = 12_000L
         /** Only this close to the protection does the slope predict anything. */
         private const val NEAR_V = 0.10
     }
+
+    /** The reading with the highest cell in the last seconds: the one that made the protection act. */
+    private class Peak(val t: Long, val packV: Double, val max: Double, val maxIdx: Int, val min: Double, val minIdx: Int)
+    private val recent = ArrayDeque<Peak>()
 
     private val buf = ArrayDeque<S>()
     private var lastT = 0L
@@ -67,6 +72,8 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
         if (cells.size > 1) {
             maxCell = cells.max(); maxIdx = cells.indexOf(maxCell) + 1
             minCell = cells.min(); minIdx = cells.indexOf(minCell) + 1
+            recent += Peak(now, pack, maxCell, maxIdx, minCell, minIdx)
+            while (now - recent.first().t > PEAK_MS) recent.removeFirst()
             buf += S(now, maxCell)
             while (buf.isNotEmpty() && now - buf.first().t > KEEP_MS) buf.removeFirst()
         }
@@ -109,7 +116,7 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
         val alarm = alarms.firstOrNull { it.contains("overvoltage", true) || it.contains("charge", true) && !it.contains("discharge", true) }
         val tail = tailI.map { it.second }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
         val reason = when {
-            (maxCell > 0 && maxCell >= ovV - 0.015) || alarm != null || (fetWasOn && !chargeFetOn) -> Stop.PROTECTION
+            (recent.maxOfOrNull { it.max } ?: 0.0).let { it > 0 && it >= ovV - 0.015 } || alarm != null || (fetWasOn && !chargeFetOn) -> Stop.PROTECTION
             tail <= peakI * 0.5 || socNow >= 99 -> Stop.CHARGER
             else -> Stop.INTERRUPTED
         }
@@ -119,8 +126,12 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
     /** The battery went silent during the charge. */
     fun lost() = result(Stop.LOST, null, soc, full)
 
-    private fun result(r: Stop, alarm: String?, socNow: Int, fullAh: Double) = Result(r, alarm,
-        socBeforeJump ?: soc, socNow, counted(fullAh), packV, maxCell, maxIdx, minCell, minIdx,
-        Math.round((maxCell - minCell) * 1000).toInt(),
-        buf.lastOrNull { lastT - it.t >= EARLY_MS - 5_000 }?.takeIf { lastT - it.t <= EARLY_MS + 60_000 }?.maxCell)
+    private fun result(r: Stop, alarm: String?, socNow: Int, fullAh: Double): Result {
+        // The last reading may already be after the cut, with the cells falling and another one on top
+        val p = recent.maxByOrNull { it.max }
+        return Result(r, alarm, socBeforeJump ?: soc, socNow, counted(fullAh), p?.packV ?: packV,
+            p?.max ?: 0.0, p?.maxIdx ?: 0, p?.min ?: 0.0, p?.minIdx ?: 0,
+            Math.round(((p?.max ?: 0.0) - (p?.min ?: 0.0)) * 1000).toInt(),
+            buf.lastOrNull { lastT - it.t >= EARLY_MS - 5_000 }?.takeIf { lastT - it.t <= EARLY_MS + 60_000 }?.maxCell)
+    }
 }
