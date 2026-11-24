@@ -182,4 +182,15 @@ class V17Test {
         assertEquals(5.1 * 60 / 3600 * 1.05, TripGap.chargedAh(28.4, 29.9, 5.1, 60.0), 1e-9)
         assertEquals(0.0, TripGap.chargedAh(28.0, 27.0, 5.1, 600.0), 0.0); assertEquals(0.0, TripGap.chargedAh(0.0, 27.0, 5.1, 600.0), 0.0)
     }
+
+    @Test fun dayShowsWhatWasNotRecorded() {
+        // 2026-11-24: 97 % at 06:52, 90 % at 07:28; trip 32 has more distance than its time allows
+        val bad = trip(at(24, 6, 50), at(24, 6, 52), 98, 97, 2.02, 31.4).also { it.data.put("avg_speed", 53.4).put("max_speed", 42.9) }
+        val good = trip(at(24, 7, 28), at(24, 7, 52), 90, 81, 9.34, 195.8)
+        val next = trip(at(24, 7, 59), at(24, 8, 3), 80, 79, 0.65, 9.8)
+        val chg = Session(1, Session.TYPE_CHARGE, at(24, 14), at(24, 16), "", JSONObject().put("soc_start", 79).put("soc_end", 100).put("ah", 6.0))
+        val d = DayReport.of(listOf(bad, good, next, chg), at(24, 0), tz)!!
+        assertEquals(7, d.unrecorded); assertEquals(11.0, d.socUsed, 1e-9); assertEquals(21, d.socCharged); assertTrue(d.partial)
+        assertEquals((195.8 + 9.8) / (9.34 + 0.65), d.whPerKm!!, 1e-6)
+    }
 }

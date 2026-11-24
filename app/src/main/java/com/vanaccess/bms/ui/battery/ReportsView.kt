@@ -242,7 +242,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         override fun onBindViewHolder(h: VH, pos: Int) {
             val d = items[pos]
             h.box.removeAllViews()
-            h.box.addView(text("📅 " + dayName(d.startMs), cBlue, 15f, true))
+            h.box.addView(text(dayName(d.startMs), cBlue, 15f, true))
             if (isToday(d)) h.box.addView(text(ctx.getString(R.string.day_so_far), cOrange, 12f, false))
             val r = ctx.resources
             h.box.addView(text(line(
@@ -251,7 +251,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 if (d.chargeCount > 0) r.getQuantityString(R.plurals.day_charges, d.chargeCount, d.chargeCount) else null), Color.WHITE, 13f, false)
                 .apply { setPadding(0, (3 * dp).toInt(), 0, 0) })
             h.box.addView(text(line(if (d.wh > 0) iso(f("%.0f Wh", d.wh)) else null, d.whPerKm?.let { iso(f("%.1f Wh/km", it)) },
-                if (d.socStart != null && d.socEnd != null) iso("${d.socStart}% – ${d.socEnd}%") else null), cGrey, 13f, false)
+                if (d.socUsed >= 0.5) iso(f("−%.0f%%", d.socUsed)) else null, if (d.socCharged > 0) iso("+${d.socCharged}%") else null), cGrey, 13f, false)
                 .apply { setPadding(0, (3 * dp).toInt(), 0, 0) })
             h.box.setOnClickListener { showDay(d) }
         }
@@ -273,6 +273,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         d.whPerKm?.let { rows += R.string.rep_consumption to f("%.1f Wh/km", it) }
         if (d.socStart != null && d.socEnd != null) rows += R.string.day_soc_row to "${d.socStart}% – ${d.socEnd}%"
         if (d.socUsed >= 0.5) rows += R.string.day_used to f("%.0f%%", d.socUsed)
+        if (d.unrecorded > 0) rows += R.string.day_unrecorded to "${d.unrecorded}%"
+        if (d.socCharged > 0) rows += R.string.day_soc_charged to "${d.socCharged}%"
         if (d.chargeCount > 0 || d.chargedAh > 0) rows += R.string.day_charged to "${d.chargeCount}  •  " + f("%.2f Ah  •  %.0f Wh", d.chargedAh, d.chargedWh)
         if (d.trips.isNotEmpty()) {
             rows += R.string.rep_hard_accel to "${d.hardAccel}"
@@ -319,7 +321,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 setOnClickListener { showDetail(s) }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (6 * dp).toInt() })
         }
-        com.vanaccess.bms.ui.AppDialog.show(ctx, "📅 " + dayName(d.startMs), body = col, tall = true, buttons = listOf(
+        com.vanaccess.bms.ui.AppDialog.show(ctx, dayName(d.startMs), body = col, tall = true, buttons = listOf(
             com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(android.R.string.ok), com.vanaccess.bms.ui.AppDialog.GREEN),
             com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.day_share), Color.parseColor("#2A6FB8")) {
                 val txt = "GT-BMS — " + dayName(d.startMs) + "\n" + rows.joinToString("\n") { (k, v) -> ctx.getString(k) + ": " + v }

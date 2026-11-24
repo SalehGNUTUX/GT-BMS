@@ -83,4 +83,6 @@
     <string name="day_share">مشاركة</string>
     <plurals name="day_trips"><item quantity="zero">لا رحلات</item><item quantity="one">رحلة واحدة</item><item quantity="two">رحلتان</item><item quantity="few">%1$d رحلات</item><item quantity="many">%1$d رحلة</item><item quantity="other">%1$d رحلة</item></plurals>
     <plurals name="day_charges"><item quantity="zero">لا شحنات</item><item quantity="one">شحنة واحدة</item><item quantity="two">شحنتان</item><item quantity="few">%1$d شحنات</item><item quantity="many">%1$d شحنة</item><item quantity="other">%1$d شحنة</item></plurals>
+    <string name="day_unrecorded">نزول غير مسجل</string>
+    <string name="day_soc_charged">الشحن المضاف</string>
 </resources>

@@ -83,4 +83,6 @@
     <string name="day_share">Share</string>
     <plurals name="day_trips"><item quantity="one">%1$d trip</item><item quantity="other">%1$d trips</item></plurals>
     <plurals name="day_charges"><item quantity="one">%1$d charge</item><item quantity="other">%1$d charges</item></plurals>
+    <string name="day_unrecorded">Charge used, not recorded</string>
+    <string name="day_soc_charged">Charged</string>
 </resources>

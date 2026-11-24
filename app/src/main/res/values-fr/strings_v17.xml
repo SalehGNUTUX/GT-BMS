@@ -83,4 +83,6 @@
     <string name="day_share">Partager</string>
     <plurals name="day_trips"><item quantity="one">%1$d trajet</item><item quantity="many">%1$d trajets</item><item quantity="other">%1$d trajets</item></plurals>
     <plurals name="day_charges"><item quantity="one">%1$d recharge</item><item quantity="many">%1$d recharges</item><item quantity="other">%1$d recharges</item></plurals>
+    <string name="day_unrecorded">Charge utilisée non enregistrée</string>
+    <string name="day_soc_charged">Charge ajoutée</string>
 </resources>

@@ -21,6 +21,10 @@ data class DayReport(
     val chargedAh: Double, val chargedWh: Double,
     val hardAccel: Int, val shocks: Int, val maxCurrent: Double,
     val minCellV: Double, val minCellIdx: Int, val maxTemp: Double?, val partial: Boolean,
+    /** Charge that went down between two sessions: use that nothing recorded (%). */
+    val unrecorded: Int,
+    /** Charge put in during the day as the BMS shows it (%). */
+    val socCharged: Int,
 ) {
     val avgSpeed get() = if (ridingS > 0) km / (ridingS / 3600.0) else 0.0
 
@@ -57,17 +61,22 @@ data class DayReport(
                 val a = s.i("soc_start"); val b = s.i("soc_end"); val len = s.endMs - s.startMs
                 return if (len <= 0) b else Math.round(a + (b - a) * ((t - s.startMs).toDouble() / len)).toInt()
             }
+            fun impossible(s: Session) = s.d("max_speed") > 0 && s.d("avg_speed") > s.d("max_speed")
+            // One point can be rounding; the session before may be from the day before
+            val ordered = sessions.filter { it.startMs < end }.sortedBy { it.startMs }
+            val lost = ordered.zipWithNext().filter { (_, b) -> b.startMs >= start }
+                .sumOf { (a, b) -> (a.i("soc_end") - b.i("soc_start")).let { if (it >= 2) it else 0 } }
             fun begun(s: Session) = s.startMs >= start
             val out = inDay.filter { it.type != Session.TYPE_CHARGE }
             val trips = out.filter { it.type == Session.TYPE_TRIP }
             val charges = inDay.filter { it.type == Session.TYPE_CHARGE }
             fun riding(s: Session): Double {
                 // Reports before 1.7 could hold less moving time than the distance needs
-                val bad = s.d("max_speed") > 0 && s.d("avg_speed") > s.d("max_speed")
-                return if (bad || s.d("moving_s") <= 0) (s.endMs - s.startMs) / 1000.0 else s.d("moving_s")
+                return if (impossible(s) || s.d("moving_s") <= 0) (s.endMs - s.startMs) / 1000.0 else s.d("moving_s")
             }
             val withKm = trips.filter { it.d("distance_km") > 0 }
-            val complete = withKm.filter { !it.data.isNull("wh_per_km") }
+            // Distance without its energy (before 1.7) would make the consumption look better than it was
+            val complete = withKm.filter { !it.data.isNull("wh_per_km") && !impossible(it) }
             val ckm = complete.sumOf { it.d("distance_km") * part(it) }
             val low = out.filter { it.d("min_cell_v") > 0 }.minByOrNull { it.d("min_cell_v") }
             return DayReport(start, end, trips, charges,
@@ -83,7 +92,8 @@ data class DayReport(
                 trips.filter { begun(it) }.sumOf { it.i("hard_accel") }, trips.filter { begun(it) }.sumOf { it.i("throttle_shocks") },
                 out.maxOfOrNull { it.d("max_current") } ?: 0.0, low?.d("min_cell_v") ?: 0.0, low?.i("min_cell_idx") ?: 0,
                 inDay.filter { !it.data.isNull("max_temp") && it.data.has("max_temp") }.maxOfOrNull { it.d("max_temp") },
-                trips.any { it.b("energy_partial") })
+                trips.any { it.b("energy_partial") || impossible(it) }, lost,
+                Math.round(charges.sumOf { (it.i("soc_end") - it.i("soc_start")).coerceAtLeast(0) * part(it) }).toInt())
         }
     }
 }
