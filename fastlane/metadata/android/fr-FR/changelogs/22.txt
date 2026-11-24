@@ -1,0 +1,1 @@
+1.7.0 : les trajets survivent à la perte du Bluetooth et à la veille ; plantage après Retour corrigé ; rapport quotidien ; carte OsmAnd dans les rapports ; rapports de charge honnêtes et temps restant appris ; alerte cellule anticipée ; verdict clair sur les cellules ; réglages et limites par batterie.

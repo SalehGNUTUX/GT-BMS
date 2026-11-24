@@ -1,0 +1,1 @@
+1.7.0: trips survive Bluetooth loss and phone sleep; fixes the crash after leaving with Back; daily report; OsmAnd map inside reports; honest charge reports and learned time left; early cell alarm; plain cell verdict; settings and limits per battery.
