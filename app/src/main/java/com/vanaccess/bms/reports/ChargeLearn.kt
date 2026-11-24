@@ -7,6 +7,8 @@ data class ChargeLearn(
     val cutByProtection: Boolean? = null,
     /** Highest cell about 5 minutes before past cuts, V. */
     val earlyCellV: Double? = null,
+    /** Ah still missing to "full" by our count when past charges were cut: they end that much earlier. */
+    val leftAh: Double? = null,
 ) {
     /** Cell voltage for the early alarm, always below the protection. */
     fun alarmCellV(ovV: Double): Double {
@@ -27,7 +29,8 @@ data class ChargeLearn(
             val early = cuts.mapNotNull { s ->
                 if (s.d("stop_early_cell") > 0) s.d("stop_early_cell") else if (cells > 0) packBefore(points(s))?.let { it / cells } else null
             }.sorted()
-            return ChargeLearn(cuts.size * 2 > done.size, early.getOrNull(early.size / 2))
+            val left = charges.filter { it.data.has("cut_left_ah") }.take(5).map { it.d("cut_left_ah") }.sorted()
+            return ChargeLearn(cuts.size * 2 > done.size, early.getOrNull(early.size / 2), left.getOrNull(left.size / 2))
         }
 
         /** Charges that say something about the charger: ended by it or by the protection. */
@@ -61,14 +64,17 @@ object ChargePredictor {
         val cutSec = watch?.secondsToCut(ovV)
         if (cutSec != null && cutSec <= 300) return P(Kind.CUT_SOON, cutSec / 3600, null, watch.nearestCell)
         if (learn.cutByProtection == true) {
+            val amps = watch?.avgCurrent() ?: current
             val bmsMissing = (fullAh - remainAh).coerceAtLeast(0.0)
             val missing = watch?.let {
-                val needed = fullAh * (100 - it.socStart) / 100.0
+                // From the counter (0.1 Ah) rather than the whole percent, less what past cuts left out
+                val needed = (if (it.remainStart > 0) fullAh - it.remainStart else fullAh * (100 - it.socStart) / 100.0) -
+                    (learn.leftAh ?: 0.0).coerceIn(0.0, fullAh * 0.05)
                 // readings lost on the way make our count too low: never above what the BMS still wants
                 minOf(needed - it.ah, bmsMissing)
             } ?: bmsMissing
-            val to80 = if (soc < 80) (80 - soc) / 100.0 * fullAh / current else null
-            return P(Kind.CUT, missing.coerceAtLeast(0.0) / current, to80, watch?.nearestCell ?: 0)
+            val to80 = if (soc < 80) (80 - soc) / 100.0 * fullAh / amps else null
+            return P(Kind.CUT, missing.coerceAtLeast(0.0) / amps, to80, watch?.nearestCell ?: 0)
         }
         val t = ChargeTime.estimate(soc, fullAh, current) ?: return null
         return P(Kind.FULL, t.to100h, t.to80h, 0)

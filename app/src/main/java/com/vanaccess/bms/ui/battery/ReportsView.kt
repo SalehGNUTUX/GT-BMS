@@ -197,7 +197,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private fun badges(s: Session) = buildList {
         if (s.b("energy_partial")) add("⚠ " + ctx.getString(R.string.rep_energy_partial))
-        else if (s.type == Session.TYPE_TRIP && s.d("gap_s") >= 30) add("ℹ " + ctx.getString(R.string.rep_gap, s.i("gap_s") / 60.0))
+        else if (s.d("gap_s") >= 30) add("ℹ " + ctx.getString(R.string.rep_gap, s.i("gap_s") / 60.0))
         if (s.b("ended_by_protection")) add("⚠ " + ctx.getString(R.string.rep_by_protection))
         val jumped = s.data.has("soc_before_stop") && s.i("soc_after_stop") - s.i("soc_before_stop") >= 2
         if (s.type == Session.TYPE_CHARGE && s.b("reached_full")) add(
@@ -360,6 +360,9 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                     rows += R.string.rep_stop_min to ctx.getString(R.string.cell_at, s.d("stop_min_cell"), s.i("stop_min_idx"))
                     rows += R.string.rep_stop_delta to "${s.i("stop_delta_mv")} mV"
                 }
+                if (s.i("top_main") > 0) rows += R.string.rep_top to ctx.getString(R.string.rep_top_val,
+                    s.i("top_start"), s.i("top_main"), s.i("top_main_pct"), s.i("stop_max_idx"))
+                if (s.d("gap_s") >= 30) rows += R.string.rep_gap_row to ctx.getString(R.string.stats_min, Math.round(s.d("gap_s") / 60).toInt().coerceAtLeast(1))
                 if (s.data.has("rest_v")) rows += R.string.rep_rest to f("%.2f V  •  %d mV", s.d("rest_v"), s.i("rest_delta_mv"))
                 if (s.data.has("target_v") || s.data.has("target_soc")) {
                     val ok = (s.d("target_v") > 0 && s.d("max_v") >= s.d("target_v")) ||

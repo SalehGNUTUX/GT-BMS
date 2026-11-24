@@ -1,0 +1,1 @@
+1.7 beta 4: fast Bluetooth link restored, charges no longer split, the cell that caused the cut, highest cells over the charge, better time left, clearer daily report.

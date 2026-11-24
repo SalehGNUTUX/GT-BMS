@@ -12,7 +12,7 @@ import kotlin.math.max
  * charge actually put in points to ≈ 99 %, and the cells rise slowly for an hour and then by
  * > 100 mV per minute in the last one. Pure, unit-tested.
  */
-class ChargeWatch(private val startMs: Long, val socStart: Int, private val remainStart: Double) {
+class ChargeWatch(private val startMs: Long, val socStart: Int, val remainStart: Double) {
 
     enum class Stop { PROTECTION, CHARGER, INTERRUPTED, LOST }
 
@@ -26,6 +26,9 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
         val maxCell: Double, val maxIdx: Int, val minCell: Double, val minIdx: Int,
         val deltaMv: Int,
         val earlyCell: Double?,         // highest cell EARLY_MS before the stop
+        val topStart: Int,              // highest cell when the charge began
+        val topMain: Int,               // the one that was highest longest, and for how much of the time
+        val topMainPct: Int,
     )
 
     private class S(val t: Long, val maxCell: Double)
@@ -55,6 +58,9 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
     private var minCell = 0.0; private var minIdx = 0
     private var socBeforeJump: Int? = null
     private var fetWasOn = false
+    private var topStart = 0
+    /** Seconds each cell was the highest. */
+    private val topSeconds = HashMap<Int, Double>()
     var ah = 0.0; private set
 
     val nearestCell get() = maxIdx
@@ -64,6 +70,7 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
     fun charging(now: Long, socNow: Int, remainNow: Double, fullAh: Double, current: Double, pack: Double,
                  cells: List<Double>, chargeFetOn: Boolean, ahSoFar: Double) {
         noteJump(now, socNow, remainNow, fullAh)
+        val dtS = if (lastT == 0L) 0.0 else ((now - lastT) / 1000.0).coerceAtMost(10.0)
         full = fullAh; ah = ahSoFar; packV = pack; lastT = now
         peakI = max(peakI, current)
         tailI += now to current
@@ -72,6 +79,8 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
         if (cells.size > 1) {
             maxCell = cells.max(); maxIdx = cells.indexOf(maxCell) + 1
             minCell = cells.min(); minIdx = cells.indexOf(minCell) + 1
+            if (topStart == 0) topStart = maxIdx
+            topSeconds[maxIdx] = (topSeconds[maxIdx] ?: 0.0) + dtS
             recent += Peak(now, pack, maxCell, maxIdx, minCell, minIdx)
             while (now - recent.first().t > PEAK_MS) recent.removeFirst()
             buf += S(now, maxCell)
@@ -106,6 +115,13 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
         return (ovV - maxCell) / s
     }
 
+    /** Charge current averaged over the last minute: the reading flickers between two steps. */
+    fun avgCurrent(): Double? {
+        val last = tailI.lastOrNull()?.first ?: return null
+        val l = tailI.filter { last - it.first <= 60_000 }
+        return if (l.size >= 5) l.sumOf { it.second } / l.size else null
+    }
+
     fun counted(fullAh: Double): Int? =
         if (fullAh > 0) (socStart + ah / fullAh * 100).toInt().coerceIn(0, 100) else null
 
@@ -129,9 +145,11 @@ class ChargeWatch(private val startMs: Long, val socStart: Int, private val rema
     private fun result(r: Stop, alarm: String?, socNow: Int, fullAh: Double): Result {
         // The last reading may already be after the cut, with the cells falling and another one on top
         val p = recent.maxByOrNull { it.max }
+        val top = topSeconds.maxByOrNull { it.value }
         return Result(r, alarm, socBeforeJump ?: soc, socNow, counted(fullAh), p?.packV ?: packV,
             p?.max ?: 0.0, p?.maxIdx ?: 0, p?.min ?: 0.0, p?.minIdx ?: 0,
             Math.round(((p?.max ?: 0.0) - (p?.min ?: 0.0)) * 1000).toInt(),
-            buf.lastOrNull { lastT - it.t >= EARLY_MS - 5_000 }?.takeIf { lastT - it.t <= EARLY_MS + 60_000 }?.maxCell)
+            buf.lastOrNull { lastT - it.t >= EARLY_MS - 5_000 }?.takeIf { lastT - it.t <= EARLY_MS + 60_000 }?.maxCell,
+            topStart, top?.key ?: 0, if (top != null) Math.round(top.value * 100 / topSeconds.values.sum().coerceAtLeast(1.0)).toInt() else 0)
     }
 }

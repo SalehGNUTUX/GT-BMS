@@ -85,4 +85,7 @@
     <plurals name="day_charges"><item quantity="zero">لا شحنات</item><item quantity="one">شحنة واحدة</item><item quantity="two">شحنتان</item><item quantity="few">%1$d شحنات</item><item quantity="many">%1$d شحنة</item><item quantity="other">%1$d شحنة</item></plurals>
     <string name="day_unrecorded">نزول غير مسجل</string>
     <string name="day_soc_charged">الشحن المضاف</string>
+    <string name="rep_top">الخلايا الأعلى</string>
+    <string name="rep_top_val">البداية: %1$d • الأطول: %2$d (%3$d٪) • النهاية: %4$d</string>
+    <string name="rep_gap_row">بلا بلوتوث</string>
 </resources>

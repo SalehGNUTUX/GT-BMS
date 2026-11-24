@@ -85,4 +85,7 @@
     <plurals name="day_charges"><item quantity="one">%1$d charge</item><item quantity="other">%1$d charges</item></plurals>
     <string name="day_unrecorded">Charge used, not recorded</string>
     <string name="day_soc_charged">Charged</string>
+    <string name="rep_top">Highest cells</string>
+    <string name="rep_top_val">Start: %1$d • longest: %2$d (%3$d%%) • end: %4$d</string>
+    <string name="rep_gap_row">Without Bluetooth</string>
 </resources>

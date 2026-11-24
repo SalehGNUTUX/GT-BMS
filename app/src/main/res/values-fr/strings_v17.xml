@@ -85,4 +85,7 @@
     <plurals name="day_charges"><item quantity="one">%1$d recharge</item><item quantity="many">%1$d recharges</item><item quantity="other">%1$d recharges</item></plurals>
     <string name="day_unrecorded">Charge utilisée non enregistrée</string>
     <string name="day_soc_charged">Charge ajoutée</string>
+    <string name="rep_top">Cellules les plus hautes</string>
+    <string name="rep_top_val">Début : %1$d • plus longtemps : %2$d (%3$d %%) • fin : %4$d</string>
+    <string name="rep_gap_row">Sans Bluetooth</string>
 </resources>

@@ -15,7 +15,7 @@ object Exporter {
         "distance_km", "max_speed", "avg_speed", "wh_per_km", "ah_per_km", "hard_accel",
         "ended_by_protection", "reached_full", "energy_partial", "gap_s", "stop_reason", "soc_before_stop",
         "soc_counted", "stop_v", "stop_max_cell", "stop_max_idx", "stop_min_cell", "stop_min_idx", "stop_delta_mv",
-        "stop_early_cell", "rest_v", "rest_delta_mv", "eta_first_min",
+        "stop_early_cell", "top_start", "top_main", "top_main_pct", "cut_left_ah", "rest_v", "rest_delta_mv", "eta_first_min",
     )
 
     private fun local(ms: Long) = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(ms))

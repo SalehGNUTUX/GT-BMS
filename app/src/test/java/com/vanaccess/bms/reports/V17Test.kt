@@ -46,7 +46,7 @@ class V17Test {
         w.charging(60_000, 90, 27.0, 29.9, 5.1, 79.0, cells(3.43), true, 5.5)
         val p = ChargePredictor.predict(90, 29.9, 5.1, ChargeLearn(true), w, 27.0, 3.63)!!
         assertEquals(Kind.CUT, p.kind)
-        assertEquals((29.9 * 0.24 - 5.5) / 5.1, p.hours, 1e-6)          // 20 min, the taper formula said 70
+        assertEquals((29.9 - 22.8 - 5.5) / 5.1, p.hours, 1e-6)          // 19 min, the taper formula said 70
         // a charger that tapers keeps the old estimate
         assertEquals(Kind.FULL, ChargePredictor.predict(90, 29.9, 5.1, ChargeLearn(false), w, 27.0, 3.63)!!.kind)
         assertNull(ChargePredictor.predict(90, 29.9, 0.0, ChargeLearn(true), w, 27.0, 3.63))
@@ -202,5 +202,26 @@ class V17Test {
         w.charging(last + 2000, 100, 29.9, 29.9, 1.3, 82.26, falling, false, 6.92)
         val r = w.stopped(last + 32_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
         assertEquals(9, r.maxIdx); assertEquals(3.635, r.maxCell, 1e-9); assertEquals(82.75, r.packV, 1e-9)
+    }
+
+    /** Filmed 2026-11-24: 2.53 Ah in, 5 min announced, the cut came after 1.5 min (2.65 Ah). */
+    @Test fun timeLeftLearnsWhatCutsLeaveOut() {
+        val w = ChargeWatch(0, 90, 27.0)
+        for (k in 0..120) w.charging(k * 1000L, 94, 28.4, 29.9, if (k % 3 == 0) 5.0 else 5.1, 80.56, cells(3.505), true, 2.53)
+        assertEquals(5.07, w.avgCurrent()!!, 0.02)
+        val before = ChargePredictor.predict(94, 29.9, 5.0, ChargeLearn(true), w, 28.4, 3.63)!!
+        val after = ChargePredictor.predict(94, 29.9, 5.0, ChargeLearn(true, null, 0.25), w, 28.4, 3.63)!!
+        assertEquals(4.4, before.hours * 60, 0.1); assertEquals(1.4, after.hours * 60, 0.1)
+        // a wild value can't hide a whole charge
+        assertTrue(ChargePredictor.predict(50, 29.9, 5.0, ChargeLearn(true, null, 20.0), ChargeWatch(0, 50, 15.0), 15.0, 3.63)!!.hours > 2)
+    }
+
+    @Test fun highestCellsOverTheCharge() {
+        val w = ChargeWatch(0, 42, 12.5)
+        var t = 0L
+        fun run(n: Int, idx: Int, v: Double) = repeat(n) { t += 1000; w.charging(t, 60, 18.0, 29.9, 5.1, 78.0, List(23) { if (it == idx - 1) v else v - 0.02 }, true, 1.0) }
+        run(100, 20, 3.345); run(600, 21, 3.45); run(200, 17, 3.54); run(60, 9, 3.632)
+        val r = w.stopped(t + 30_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
+        assertEquals(20, r.topStart); assertEquals(21, r.topMain); assertEquals(9, r.maxIdx); assertEquals(63, r.topMainPct)
     }
 }

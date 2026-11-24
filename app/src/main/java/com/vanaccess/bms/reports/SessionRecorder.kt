@@ -599,6 +599,11 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 put("stop_v", r.packV); put("stop_max_cell", r.maxCell); put("stop_max_idx", r.maxIdx)
                 put("stop_min_cell", r.minCell); put("stop_min_idx", r.minIdx); put("stop_delta_mv", r.deltaMv)
                 r.earlyCell?.let { put("stop_early_cell", it) }
+                if (r.topMain > 0) { put("top_start", r.topStart); put("top_main", r.topMain); put("top_main_pct", r.topMainPct) }
+                // Only from a charge seen whole: what it lacked to full, by our count, when it was cut
+                val full = lastInfo?.fullCapacity ?: 0.0
+                if (r.reason == ChargeWatch.Stop.PROTECTION && c.gapMs == 0L && c.remainStart > 0 && full > 0)
+                    put("cut_left_ah", full - c.remainStart - c.ah)
             }
             c.etaFirstMin?.let { put("eta_first_min", it) }
             val hv = com.vanaccess.bms.alarm.AlarmCheck.effectiveHighVoltage(prefs.alarmHighVoltage.toDouble(),
