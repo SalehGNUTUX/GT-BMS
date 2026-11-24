@@ -1,0 +1,1 @@
+1.7 beta 1: trips survive Bluetooth loss and phone sleep, honest charge reports and learned time left, early cell alarm, OsmAnd map inside trip reports, settings per battery.
