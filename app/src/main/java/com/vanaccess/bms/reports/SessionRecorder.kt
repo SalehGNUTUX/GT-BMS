@@ -19,7 +19,9 @@ import kotlin.math.min
  * stays below [CHG_END_A] for 2 min (or the battery is gone for 10 min).
  *
  * Trip (vehicle profiles only): starts after discharging below −[TRIP_START_A] for 10 s;
- * GPS runs from that moment. Ends after 3 min without load and without movement.
+ * GPS runs from that moment. Ends after 2 min without load and without movement. If Bluetooth
+ * drops while riding, GPS keeps the trip going (see [TripGap]) and the energy of the gap is
+ * taken from the BMS's own capacity counter when the battery answers again.
  *
  * Energy is integrated from the BMS current and pack voltage (dt capped at 10 s so a
  * Bluetooth gap is not counted as a long constant draw). All work runs on the main
@@ -34,8 +36,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         const val TRIP_IDLE_A = 0.5
         /** A trip ends after this long with no load and no movement. */
         const val TRIP_IDLE_END_MS = 120_000L
-        /** …or after this long without any BMS reading (you walked away from the vehicle). */
-        const val TRIP_SILENCE_END_MS = 60_000L
+        /** A saved trip may still get its missing energy from a reading this soon after its end. */
+        private const val LATE_ENERGY_MS = 60 * 60_000L
         const val DIS_START_A = 0.5
         const val DIS_END_A = 0.2
         const val MOVING_KMH = 2.0
@@ -96,6 +98,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         var lastFix: LocationTracker.Fix? = null; var lastAccelMs = 0L
         val points = mutableListOf<Point>()
         var lastPointMs = 0L
+        /** Riding time without battery data (Bluetooth lost). */
+        var gapMs = 0L
     }
 
     fun onBattery(address: String?) { battery = address ?: "" }
@@ -113,13 +117,33 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 chg?.let { finishCharge(it) }; chg = null
                 dis?.let { finishDischarge(it) }; dis = null
             }
-            // Out of Bluetooth range during a trip = the rider left the vehicle: end it at the
-            // last moment it was moving or under load, not when we noticed.
-            if (trip != null && lastSampleMs > 0 && now - lastSampleMs > TRIP_SILENCE_END_MS) {
-                endTrip(trip!!)
-            }
+            // Battery silent during a trip: parked → the rider left, end it at the last moment it
+            // was moving or under load; riding → GPS decides.
+            if (trip != null && lastSampleMs > 0 &&
+                TripGap.shouldEnd(now, lastSampleMs, ridingAtLossMs, lastRidingMs)) endTrip(trip!!)
+            updateWakeLock()
             if (trip == null && tripCandidateSince == 0L && gps.running && now > gpsStopAt) stopGps()
         }
+    }
+
+    // Riding evidence (load or faster than walking): overall, and up to the last battery reading
+    private var lastRidingMs = 0L
+    private var ridingAtLossMs = 0L
+
+    /** A trip saved while the battery was silent, waiting for the energy of its last stretch. */
+    private class Late(val session: Session, val acc: Acc, val remainAh: Double, val packV: Double)
+    private var late: Late? = null
+
+    // The phone must not sleep during a trip or a charge: polling, GPS and reconnection stop with it.
+    private val wakeLock by lazy {
+        context.getSystemService(android.os.PowerManager::class.java)
+            .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "gtbms:session").apply { setReferenceCounted(false) }
+    }
+
+    /** Renewed every tick; the timeout frees it by itself if the app is killed or stuck. */
+    private fun updateWakeLock() {
+        val need = trip != null || chg != null || gps.running
+        runCatching { if (need) wakeLock.acquire(60_000L) else if (wakeLock.isHeld) wakeLock.release() }
     }
 
     private var lastLevelMs = 0L
@@ -161,9 +185,19 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val bat = battery
             Thread { try { store.addLevel(bat, lvl) } catch (_: Exception) {} }.start()
         }
-        val dtS = if (lastSampleMs == 0L) 0.0 else min((now - lastSampleMs) / 1000.0, MAX_DT_S)
+        val silentMs = if (lastSampleMs == 0L) 0L else now - lastSampleMs
+        val dtS = min(silentMs / 1000.0, MAX_DT_S)
+        val prevInfo = lastInfo
         lastSampleMs = now
         lastInfo = info
+        late?.let { completeLate(it, info, now) }
+        if (silentMs > MAX_DT_S * 1000) trip?.let { t ->
+            // Back after a gap: add what the BMS counted meanwhile, minus the part accumulate() adds
+            val ah = TripGap.missingAh(prevInfo?.remainCapacity ?: 0.0, info.remainCapacity, info.fullCapacity) -
+                max(0.0, -info.current) * dtS / 3600.0
+            if (ah > 0) { t.ah += ah; t.wh += ah * (prevInfo!!.packVoltage + info.packVoltage) / 2 }
+            t.gapMs += silentMs
+        }
         val i = info.current
         val fix = gps.current
         liveSpeedKmh.value = fix?.speedKmh
@@ -203,9 +237,10 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         }
         if (trip == null && !manualHold) {
             if (i < -TRIP_START_A) {
-                if (tripCandidateSince == 0L) { tripCandidateSince = now; gpsStopAt = now + 5 * 60_000L; startGps() }
+                if (tripCandidateSince == 0L) { tripCandidateSince = now; gpsStopAt = now + 5 * 60_000L; startGps(); updateWakeLock() }
                 if (now - tripCandidateSince >= 10_000) {
                     trip = Acc(tripCandidateSince, info.soc); tripIdleSince = 0L; lastTripActiveMs = now
+                    lastRidingMs = now; ridingAtLossMs = now
                 }
             } else if (tripCandidateSince != 0L && now - tripCandidateSince > 60_000) {
                 tripCandidateSince = 0L
@@ -216,7 +251,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             accumulate(t, info, dtS, now, charging = false)
             val moving = (fix?.speedKmh ?: 0.0) >= MOVING_KMH
             val loaded = i < -TRIP_IDLE_A
-            if (moving) t.movingS += dtS
+            if (loaded || (fix?.speedKmh ?: 0.0) >= TripGap.RIDING_KMH) lastRidingMs = now
+            ridingAtLossMs = lastRidingMs
             if (moving || loaded) { tripIdleSince = 0L; lastTripActiveMs = now } else {
                 if (tripIdleSince == 0L) tripIdleSince = now
                 if (now - tripIdleSince >= TRIP_IDLE_END_MS) endTrip(t)
@@ -302,17 +338,33 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private fun onFix(fix: LocationTracker.Fix) {
         liveSpeedKmh.value = fix.speedKmh
         val t = trip ?: return
+        val now = System.currentTimeMillis()
+        val silent = lastSampleMs > 0 && now - lastSampleMs > MAX_DT_S * 1000
+        // Without battery data only riding counts, so walking away adds nothing to the trip
+        val minKmh = if (silent) TripGap.RIDING_KMH else MOVING_KMH
+        if (silent && fix.speedKmh >= TripGap.RIDING_KMH) {
+            lastRidingMs = now; lastTripActiveMs = now
+            activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed)
+            // Keep drawing the route; v = 0 marks "no battery data" (left out of charts and analysis)
+            if (now - t.lastPointMs >= POINT_EVERY_MS) {
+                t.lastPointMs = now
+                t.points += Point(now, 0.0, 0.0, t.socEnd, fix.speedKmh, fix.lat, fix.lon)
+            }
+        }
         val prev = t.lastFix
         t.lastFix = fix
-        t.maxSpeed = max(t.maxSpeed, fix.speedKmh)
+        if (fix.speedKmh >= minKmh) t.maxSpeed = max(t.maxSpeed, fix.speedKmh)
         if (prev == null) return
         val dtS = (fix.elapsedMs - prev.elapsedMs) / 1000.0
-        if (dtS <= 0 || dtS > 10) return
+        if (dtS <= 0) return
         // Distance only while really moving, to ignore GPS drift when parked
-        if (fix.speedKmh >= MOVING_KMH || prev.speedKmh >= MOVING_KMH) {
+        if (fix.speedKmh >= minKmh || prev.speedKmh >= minKmh) {
             val res = FloatArray(1)
             android.location.Location.distanceBetween(prev.lat, prev.lon, fix.lat, fix.lon, res)
-            if (res[0] < 200f) t.distanceKm += res[0] / 1000.0
+            if (TripGap.plausible(res[0].toDouble(), dtS, prev.speedKmh, fix.speedKmh)) {
+                t.distanceKm += res[0] / 1000.0
+                t.movingS += dtS          // same clock as the distance, so the average is real
+            }
         }
         val accel = (fix.speedKmh - prev.speedKmh) / 3.6 / dtS
         if (dtS <= 2.5 && accel >= HARD_ACCEL_MPS2 && fix.elapsedMs - t.lastAccelMs > 5000) {
@@ -349,35 +401,60 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     private fun finishTrip(t: Acc) {
         activeTrip.value = null
-        if (t.activeS < 60 || (t.distanceKm < 0.1 && t.ah < 0.05)) return
+        if (t.endMs - t.startMs < 60_000 || (t.distanceKm < 0.1 && t.ah < 0.05)) return
+        // Ridden on without battery data and not heard from it since: energy is incomplete
+        val partial = lastTripActiveMs - lastSampleMs > MAX_DT_S * 1000
+        if (partial) t.gapMs += lastTripActiveMs - lastSampleMs
         val data = common(t).apply {
             put("distance_km", t.distanceKm)
             put("max_speed", t.maxSpeed)
             put("moving_s", t.movingS)
             put("avg_speed", if (t.movingS > 0) t.distanceKm / (t.movingS / 3600.0) else 0.0)
-            put("wh_per_km", if (t.distanceKm >= 0.1) t.wh / t.distanceKm else JSONObject.NULL)
-            put("ah_per_km", if (t.distanceKm >= 0.1) t.ah / t.distanceKm else JSONObject.NULL)
+            put("gap_s", t.gapMs / 1000)
+            put("energy_partial", partial)
+            put("wh_per_km", if (t.distanceKm >= 0.1 && !partial) t.wh / t.distanceKm else JSONObject.NULL)
+            put("ah_per_km", if (t.distanceKm >= 0.1 && !partial) t.ah / t.distanceKm else JSONObject.NULL)
             put("hard_accel", t.hardAccel)
             put("vehicle", prefs.vehicleType)
             put("gps", t.distanceKm > 0 || t.maxSpeed > 0)
             // Driving style from the current curve (throttle shocks, press-and-release, time at high current)
-            val style = DrivingAnalyzer.analyze(t.points, BmsLimits.fromJson(prefs.bmsLimitsJson).dischargeOcA)
+            val style = DrivingAnalyzer.analyze(t.points.filter { it.v > 0 }, BmsLimits.fromJson(prefs.bmsLimitsJson).dischargeOcA)
             put("throttle_shocks", style.shocks)
             put("onoff_cycles", style.onOff)
             put("high_current_pct", style.highPct)
             put("high_current_a", style.highA)
         }
-        save(Session.TYPE_TRIP, t, data)
+        val before = lastInfo
+        save(Session.TYPE_TRIP, t, data) { s ->
+            if (partial && before != null && before.remainCapacity > 0)
+                late = Late(s, t, before.remainCapacity, before.packVoltage)
+        }
     }
 
-    private fun save(type: String, a: Acc, data: JSONObject) {
+    /** The battery answered again after a trip that ended in silence: complete its energy. */
+    private fun completeLate(l: Late, info: BmsBasicInfo, now: Long) {
+        late = null
+        if (l.session.battery != battery || now - l.session.endMs > LATE_ENERGY_MS) return
+        val ah = TripGap.missingAh(l.remainAh, info.remainCapacity, info.fullCapacity)
+        if (ah <= 0) return
+        val d = l.session.data; val t = l.acc
+        val totalAh = t.ah + ah; val totalWh = t.wh + ah * (l.packV + info.packVoltage) / 2
+        d.put("ah", totalAh).put("wh", totalWh).put("soc_end", info.soc).put("energy_partial", false)
+        if (t.distanceKm >= 0.1) d.put("wh_per_km", totalWh / t.distanceKm).put("ah_per_km", totalAh / t.distanceKm)
+        Thread {
+            try { store.updateData(l.session.id, d) } catch (_: Exception) {}
+            main.post { savedCount.value = (savedCount.value ?: 0) + 1 }
+        }.start()
+    }
+
+    private fun save(type: String, a: Acc, data: JSONObject, then: ((Session) -> Unit)? = null) {
         val pts = a.points.toList()
         val bat = battery
         Thread {
             val id = try { store.insert(type, a.startMs, a.endMs, bat, data, pts) } catch (_: Exception) { -1L }
             main.post {
                 savedCount.value = (savedCount.value ?: 0) + 1
-                if (id > 0) onSaved?.invoke(Session(id, type, a.startMs, a.endMs, bat, data))
+                if (id > 0) Session(id, type, a.startMs, a.endMs, bat, data).let { then?.invoke(it); onSaved?.invoke(it) }
             }
         }.start()
     }
@@ -387,5 +464,6 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         dis?.let { finishDischarge(it) }; dis = null
         trip?.let { finishTrip(it) }; trip = null
         stopGps()
+        runCatching { if (wakeLock.isHeld) wakeLock.release() }
     }
 }

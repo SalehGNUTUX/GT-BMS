@@ -77,4 +77,6 @@
     <string name="about_gnutux">🧩  Projets GNUTUX</string>
     <string name="about_speedometer_open">🛵  Ouvrir GT-SPEEDOMETER</string>
     <string name="about_speedometer">Notre projet frère : un compteur de vitesse, de distance et de trajet pour téléphone, sur une vue caméra en direct. GT-BMS lui a emprunté plusieurs fonctions (vitesse et distance GPS des trajets, enregistrement du tracé, ouverture des trajets dans OsmAnd).</string>
+    <string name="rep_energy_partial">Bluetooth perdu : l\'énergie ne couvre qu\'une partie du trajet</string>
+    <string name="rep_gap">Bluetooth perdu pendant %1$.1f min ; énergie complétée par le compteur du BMS si possible</string>
 </resources>

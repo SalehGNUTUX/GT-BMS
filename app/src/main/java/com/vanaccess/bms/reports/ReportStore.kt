@@ -116,6 +116,11 @@ class ReportStore private constructor(ctx: Context) :
     }
 
     @Synchronized
+    fun updateData(id: Long, data: JSONObject) {
+        writableDatabase.update("sessions", ContentValues().apply { put("data", data.toString()) }, "id = ?", arrayOf(id.toString()))
+    }
+
+    @Synchronized
     /**
      * @param battery only this battery's reports (plus old ones saved before the address was
      *        recorded); null = every battery.
@@ -169,11 +174,18 @@ class ReportStore private constructor(ctx: Context) :
     }
 
     /**
+     * Trips whose distance covers more than their energy would teach a consumption that is too
+     * low. Before 1.6.1 such trips were not marked; an average speed above the top speed gives them away.
+     */
+    private fun energyComplete(s: Session) = !s.b("energy_partial") &&
+        (s.data.has("gap_s") || s.d("max_speed") <= 0 || s.d("avg_speed") <= s.d("max_speed"))
+
+    /**
      * Consumption learned from recent trips with GPS distance: (Wh/km, km covered).
      * Null until at least 2 km have been recorded.
      */
     fun learnedConsumption(maxTrips: Int = 20): Pair<Double, Double>? {
-        val trips = list(Session.TYPE_TRIP, maxTrips).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 }
+        val trips = list(Session.TYPE_TRIP, maxTrips).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 && energyComplete(it) }
         val km = trips.sumOf { it.d("distance_km") }
         if (km < 2.0) return null
         return trips.sumOf { it.d("wh") } / km to km

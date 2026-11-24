@@ -77,4 +77,6 @@
     <string name="about_gnutux">🧩  مشاريع غنوتوكس</string>
     <string name="about_speedometer_open">🛵  فتح GT-SPEEDOMETER</string>
     <string name="about_speedometer">مشروعنا الشقيق: عدّاد سرعة ومسافة ومسار للهاتف فوق كاميرا حيّة. اعتمد عليه GT-BMS في جلب عدد من مزاياه (السرعة والمسافة بالـGPS في الرحلات، وتسجيل المسار، وفتح المسارات في OsmAnd).</string>
+    <string name="rep_energy_partial">انقطع البلوتوث: الطاقة تغطي جزءاً من الرحلة فقط</string>
+    <string name="rep_gap">انقطع البلوتوث %1$.1f د؛ استُكملت الطاقة من عدّاد البطارية حيث أمكن</string>
 </resources>

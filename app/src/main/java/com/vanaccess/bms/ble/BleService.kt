@@ -174,7 +174,7 @@ class BleService : LifecycleService() {
         if (prefs.bmsCellOvMv > 0) recorder.cellOvLimitV = prefs.bmsCellOvMv / 1000.0
         recorder.onSaved = { com.vanaccess.bms.ui.AdviceText.notifySession(this, it) }
         handler.post(object : Runnable {
-            override fun run() { recorder.onTick(); handler.postDelayed(this, 10_000L) }
+            override fun run() { recorder.onTick(); checkLink(); handler.postDelayed(this, 10_000L) }
         })
         // Periodic background update check while the service runs (UpdateChecker throttles to 12 h)
         handler.post(object : Runnable {
@@ -530,6 +530,7 @@ class BleService : LifecycleService() {
             lastConnectedAddress = address
         }
         connectionState.postValue(ConnectionState.CONNECTING)
+        linkStateAt = android.os.SystemClock.elapsedRealtime()
         updateNotification(getString(R.string.st_connecting), address)
 
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: run {
@@ -576,6 +577,30 @@ class BleService : LifecycleService() {
         }.also { handler.postDelayed(it, 2000) }
     }
 
+    @Volatile private var lastRxAt = 0L            // elapsedRealtime of the last notification
+    @Volatile private var linkStateAt = 0L         // …and of the last connect attempt / connection
+
+    /**
+     * Android can leave a link that is "connected" but mute, or an attempt that never returns.
+     * Nothing would ever reconnect then, so restart the connection.
+     */
+    private fun checkLink() {
+        val address = prefs.selectedDeviceAddress
+        if (address.isNullOrEmpty() || linkStateAt == 0L) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val dead = when (connectionState.value) {
+            ConnectionState.CONNECTED -> driverLocked && !is123Bms && now - maxOf(lastRxAt, linkStateAt) > 20_000L
+            ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> now - linkStateAt > 40_000L
+            else -> false
+        }
+        if (!dead) return
+        android.util.Log.w("BleService", "Link stalled (${connectionState.value}) — reconnecting")
+        stopPolling()
+        cancelProbe()
+        driverLocked = false
+        connectToDevice(address)
+    }
+
     private fun cancelReconnect() {
         reconnectRunnable?.let { handler.removeCallbacks(it) }
         reconnectRunnable = null
@@ -587,6 +612,7 @@ class BleService : LifecycleService() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
+                    linkStateAt = android.os.SystemClock.elapsedRealtime()
                     connectionState.postValue(ConnectionState.CONNECTED)
                     updateNotification(getString(R.string.st_connected), gatt.device.name ?: gatt.device.address)
                     // Request a larger MTU; onMtuChanged fires then we discover services
@@ -927,6 +953,7 @@ class BleService : LifecycleService() {
     // ── Data Handling ─────────────────────────────────────────────────────────
 
     private fun handleIncomingData(data: ByteArray) {
+        lastRxAt = android.os.SystemClock.elapsedRealtime()
         // Raw packet log for debugging
         val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
         val hex = data.joinToString(" ") { b -> "%02X".format(b) }

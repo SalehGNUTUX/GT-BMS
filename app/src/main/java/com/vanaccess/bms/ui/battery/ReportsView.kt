@@ -178,6 +178,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     }
 
     private fun badges(s: Session) = buildList {
+        if (s.b("energy_partial")) add("⚠ " + fragment.getString(R.string.rep_energy_partial))
+        else if (s.type == Session.TYPE_TRIP && s.d("gap_s") >= 30) add("ℹ " + fragment.getString(R.string.rep_gap, s.i("gap_s") / 60.0))
         if (s.b("ended_by_protection")) add("⚠ " + fragment.getString(R.string.rep_by_protection))
         if (s.type == Session.TYPE_CHARGE && s.b("reached_full")) add("✓ " + fragment.getString(R.string.rep_full))
     }
@@ -327,8 +329,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                         axisDependency = dep
                     }
                 val sets = mutableListOf(
-                    set(R.string.chart_v, cGreen, YAxis.AxisDependency.LEFT, pts.map { Entry(x(it.tMs), it.v.toFloat()) }),
-                    set(R.string.chart_i, cBlue, YAxis.AxisDependency.RIGHT, pts.map { Entry(x(it.tMs), it.i.toFloat()) }),
+                    set(R.string.chart_v, cGreen, YAxis.AxisDependency.LEFT, pts.filter { it.v > 0 }.map { Entry(x(it.tMs), it.v.toFloat()) }),
+                    set(R.string.chart_i, cBlue, YAxis.AxisDependency.RIGHT, pts.filter { it.v > 0 }.map { Entry(x(it.tMs), it.i.toFloat()) }),
                 )
                 val sp = pts.filter { it.speedKmh != null }
                 if (sp.size > 1) sets += set(R.string.chart_speed, cOrange, YAxis.AxisDependency.RIGHT,

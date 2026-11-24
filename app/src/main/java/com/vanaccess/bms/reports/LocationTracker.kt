@@ -56,7 +56,7 @@ class LocationTracker(private val context: Context) {
         }
         prevLoc = loc
         val fix = Fix(speedMps * 3.6, loc.latitude, loc.longitude,
-            if (loc.hasAccuracy()) loc.accuracy else 30f, SystemClock.elapsedRealtime())
+            if (loc.hasAccuracy()) loc.accuracy else 30f, loc.elapsedRealtimeNanos / 1_000_000)
         last = fix
         listener?.invoke(fix)
     }
