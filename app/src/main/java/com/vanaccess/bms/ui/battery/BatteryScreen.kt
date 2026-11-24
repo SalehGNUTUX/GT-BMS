@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.ui.battery
 
+import com.vanaccess.bms.reports.CellVerdict.Level as CellLevel
+import com.vanaccess.bms.reports.CellVerdict.Why as CellWhy
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -263,7 +265,7 @@ class BatteryScreen(
         com.vanaccess.bms.reports.SessionRecorder.activeTrip.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeCharge.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeDischarge.observe(owner) { renderBanner() }
-        com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext() }
+        com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext(); refreshTripCell() }
         BleService.bmsParams.observe(owner) { refreshAdviceContext() }
     }
 
@@ -575,27 +577,73 @@ class BatteryScreen(
         updateChart(cells, avg)
     }
 
-    /** Weak-cell tracking over time (CellTracker via BleService). */
-    private fun renderCellTrend(weak: List<com.vanaccess.bms.reports.CellTracker.Weak>) {
+    /** What the recorded trips say about the lowest cell. */
+    private var tripCell: com.vanaccess.bms.reports.CellTracker.TripCell? = null
+
+    private fun refreshTripCell() {
+        kotlin.concurrent.thread {
+            val t = runCatching { com.vanaccess.bms.reports.CellTracker.fromTrips(com.vanaccess.bms.reports.ReportStore.get(ctx)
+                .list(com.vanaccess.bms.reports.Session.TYPE_TRIP, 30, prefs.selectedDeviceAddress)) }.getOrNull()
+            fragment.activity?.runOnUiThread { tripCell = t; if (fragment.view != null) BleService.cellStats.value?.let { renderCellTrend(it) } }
+        }
+    }
+
+    /** Cells over time: under load and at rest apart (CellTracker via BleService), and the recorded trips. */
+    private fun renderCellTrend(r: com.vanaccess.bms.reports.CellTracker.Report) {
         val box = b.boxCellTrend
         box.removeAllViews()
-        if (weak.isEmpty()) {   // fewer than 10 samples so far
-            box.addView(label(ctx.getString(R.string.cell_trend_none), cGrey, 13f))
-            return
+        fun line(t: String, color: Int, bold: Boolean = false, top: Int = 3) =
+            box.addView(label(t, color, 13f, bold = bold).apply { setPadding(0, (top * dp).toInt(), 0, (3 * dp).toInt()) })
+        fun rows(title: Int, l: List<com.vanaccess.bms.reports.CellTracker.Row>, marked: Int?) {
+            line(ctx.getString(title), cGrey, true, 6)
+            if (l.isEmpty()) line(ctx.getString(R.string.cell_trend_none), cGrey)
+            l.forEach { w ->
+                line(ctx.getString(R.string.cell_trend_mv, w.cell, w.mv) +
+                    (w.lowestPct?.let { "  •  " + ctx.getString(R.string.cell_trend_pct, it) } ?: ""),
+                    if (w.cell == marked) cOrange else Color.WHITE, w.cell == marked)
+            }
         }
-        weak.forEach { w ->
-            val dev = w.loadMv?.let { ctx.getString(R.string.cell_trend_load, it) }
-                ?: w.restMv?.let { ctx.getString(R.string.cell_trend_rest, it) } ?: "—"
-            box.addView(label(ctx.getString(R.string.cell_trend_row, w.cell, dev, w.lowestPct),
-                if (w.concerning) cOrange else Color.WHITE, 13f, bold = w.concerning).apply {
-                setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt())
-            })
+        rows(R.string.cell_trend_under_load, r.load, r.loadCell)
+        rows(R.string.cell_trend_at_rest, r.rest, r.restCell)
+        val trips = tripCell
+        trips?.cell?.let { line(ctx.getString(R.string.cell_trend_trips, it, trips.times, trips.of), Color.WHITE, false, 8) }
+
+        // The verdict: how serious, on what facts, and what to do
+        val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx)
+        val v = com.vanaccess.bms.reports.CellVerdict.of(r, trips, prefs.alarmDeltaLoadMv, prefs.alarmDeltaRestMv, lim.cellUvMv)
+        val (head, todo, color) = when (v.level) {
+            CellLevel.UNKNOWN -> return
+            CellLevel.NORMAL -> Triple(R.string.verdict_normal, R.string.verdict_normal_do, cGreen)
+            CellLevel.ACCEPTABLE -> Triple(R.string.verdict_acceptable, R.string.verdict_acceptable_do, cBlue)
+            CellLevel.CHECK -> Triple(R.string.verdict_check, R.string.verdict_check_do, cOrange)
+            CellLevel.DANGER -> Triple(R.string.verdict_danger, R.string.verdict_danger_do, cRed)
         }
-        val watch = weak.firstOrNull { it.concerning }
-        box.addView(label(if (watch != null) ctx.getString(R.string.cell_trend_watch, watch.cell)
-            else ctx.getString(R.string.cell_trend_ok), if (watch != null) cOrange else cGreen, 13f).apply {
-            setPadding(0, (6 * dp).toInt(), 0, 0)
-        })
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+            background = GradientDrawable().apply {
+                cornerRadius = 12 * dp; setColor(Color.argb(0x26, Color.red(color), Color.green(color), Color.blue(color)))
+                setStroke((1 * dp).toInt(), color)
+            }
+        }
+        card.addView(label(ctx.getString(head) + (v.cell?.let { " — " + ctx.getString(R.string.verdict_cell, it) } ?: ""), color, 15f, bold = true))
+        v.why.forEach { w ->
+            val t = when (w) {
+                CellWhy.LOAD_SMALL -> ctx.getString(R.string.why_load_small)
+                CellWhy.LOAD_LARGE -> ctx.getString(R.string.why_load_large)
+                CellWhy.LOAD_HUGE -> ctx.getString(R.string.why_load_huge, prefs.alarmDeltaLoadMv)
+                CellWhy.REST_FINE -> ctx.getString(R.string.why_rest_fine)
+                CellWhy.REST_LOW -> ctx.getString(R.string.why_rest_low)
+                CellWhy.REST_FAR -> ctx.getString(R.string.why_rest_far)
+                CellWhy.PEAK_OVER_ALARM -> ctx.getString(R.string.why_peak, trips?.peakMv ?: 0, trips?.peakA ?: 0.0, prefs.alarmDeltaLoadMv)
+                CellWhy.MARGIN_OK -> ctx.getString(R.string.why_margin_ok, trips?.minV ?: 0.0, (lim.cellUvMv ?: 0) / 1000.0)
+                CellWhy.MARGIN_THIN -> ctx.getString(R.string.why_margin_thin, trips?.minV ?: 0.0, (lim.cellUvMv ?: 0) / 1000.0)
+            }
+            card.addView(label("• $t", Color.WHITE, 13f).apply { setPadding(0, (3 * dp).toInt(), 0, 0) })
+        }
+        card.addView(label(ctx.getString(todo), color, 13f, bold = true).apply { setPadding(0, (6 * dp).toInt(), 0, 0) })
+        box.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = (10 * dp).toInt() })
     }
 
     private fun cellTile(title: String, mv: String, border: Int): View {

@@ -1,0 +1,1 @@
+1.7 beta 5: cells over time judged under load and at rest apart, with a plain verdict (normal, acceptable, needs a check, serious), its reasons and what to do; every recommendation says its degree.

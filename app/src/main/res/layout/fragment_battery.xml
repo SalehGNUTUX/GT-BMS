@@ -346,7 +346,7 @@
                     android:layout_height="wrap_content">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
                         <TextView style="@style/GtCardTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/cell_trend_title" />
-                        <TextView style="@style/GtMetricLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="6dp" android:text="@string/cell_trend_desc" />
+                        <TextView style="@style/GtMetricLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="6dp" android:text="@string/cell_trend_desc2" />
                         <LinearLayout android:id="@+id/box_cell_trend" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>

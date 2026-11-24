@@ -24,7 +24,14 @@ object AdviceText {
     fun text(ctx: Context, r: Advisor.Rec): String {
         val id = ctx.resources.getIdentifier("adv_${r.code}", "string", ctx.packageName)
         if (id == 0) return r.code
-        return if (r.args.isEmpty()) ctx.getString(id) else ctx.getString(id, *r.args.toTypedArray())
+        val t = if (r.args.isEmpty()) ctx.getString(id) else ctx.getString(id, *r.args.toTypedArray())
+        if (r.code == "all_ok") return t
+        return ctx.getString(when (r.level) {
+            Advisor.Level.CRITICAL -> R.string.degree_critical
+            Advisor.Level.WARNING -> R.string.degree_warning
+            Advisor.Level.INFO -> R.string.degree_info
+            Advisor.Level.OK -> R.string.degree_ok
+        }) + " " + t
     }
 
     fun color(level: Advisor.Level): Int = Color.parseColor(when (level) {

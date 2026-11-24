@@ -50,13 +50,7 @@
     <string name="export_gpx">مسارات الرحلات (GPX، خرائط)</string>
     <string name="export_empty">لا يوجد ما يُصدَّر بعد</string>
     <string name="cell_trend_title">الخلايا عبر الزمن</string>
-    <string name="cell_trend_desc">الخلايا التي تبقى الأدنى عبر قراءات كثيرة (في الراحة وتحت الحمل). تُجمع أثناء الاتصال.</string>
     <string name="cell_trend_none">القراءات غير كافية بعد — تُؤخذ عينة كل 30 ثانية.</string>
-    <string name="cell_trend_ok">لا خلية تبرز. البطارية تبدو متوازنة.</string>
-    <string name="cell_trend_row">الخلية %1$d: %2$s • الأدنى في %3$d٪ من القراءات</string>
-    <string name="cell_trend_load">%1$+.0f مللي فولت تحت الحمل</string>
-    <string name="cell_trend_rest">%1$+.0f مللي فولت في الراحة</string>
-    <string name="cell_trend_watch">⚠ الخلية %1$d تهبط باستمرار — راقبها؛ إن ساءت فقد تحتاج البطارية موازنة أو صيانة.</string>
     <string name="balance_reminder_title">حان وقت شحنة كاملة</string>
     <string name="balance_reminder_switch">ذكّرني بالشحن حتى 100٪ (للموازنة)</string>
     <string name="rep_delete_msg">سيُحذف التقرير ورسمه البياني نهائياً، ولا يمكن التراجع.</string>

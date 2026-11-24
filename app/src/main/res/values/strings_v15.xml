@@ -50,13 +50,7 @@
     <string name="export_gpx">Trip tracks (GPX, maps)</string>
     <string name="export_empty">Nothing to export yet</string>
     <string name="cell_trend_title">Cells over time</string>
-    <string name="cell_trend_desc">Cells that sit lowest across many readings (rest and under load). Collected while connected.</string>
     <string name="cell_trend_none">Not enough readings yet — a sample is taken every 30 s.</string>
-    <string name="cell_trend_ok">No cell stands out. The pack looks balanced.</string>
-    <string name="cell_trend_row">Cell %1$d: %2$s • lowest in %3$d %% of readings</string>
-    <string name="cell_trend_load">%1$+.0f mV under load</string>
-    <string name="cell_trend_rest">%1$+.0f mV at rest</string>
-    <string name="cell_trend_watch">⚠ Cell %1$d keeps sagging — watch it; if it worsens, the pack may need balancing or service.</string>
     <string name="balance_reminder_title">Time for a full charge</string>
     <string name="balance_reminder_switch">Remind me to charge to 100 % (balancing)</string>
     <string name="rep_delete_msg">The report and its chart will be removed. This cannot be undone.</string>

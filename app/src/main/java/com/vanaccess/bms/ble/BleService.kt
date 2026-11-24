@@ -93,7 +93,7 @@ class BleService : LifecycleService() {
         /** Guided capacity test (Reports → Levels). */
         val capacityTest = MutableLiveData<com.vanaccess.bms.reports.CapacityTest.State>()
         /** Cells that sit lowest over time (CellTracker), for the Cells tab. */
-        val cellStats = MutableLiveData<List<com.vanaccess.bms.reports.CellTracker.Weak>>(emptyList())
+        val cellStats = MutableLiveData(com.vanaccess.bms.reports.CellTracker.Report())
         private var lastDataPersistMs = 0L
         /** Device identity (model, serials, clock…) keyed by DetailKey. */
         val deviceDetails = MutableLiveData<Map<String, String>>(emptyMap())
@@ -176,7 +176,7 @@ class BleService : LifecycleService() {
         if (lastDataMs == 0L) lastDataMs = prefs.lastDataMs
         restoreLastReading(this)
         capacityTest.postValue(com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson))
-        cellStats.postValue(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest())
+        cellStats.postValue(cellReport(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson)))
         recorder = com.vanaccess.bms.reports.SessionRecorder(this, prefs)
         if (prefs.knownOvMv > 0) recorder.cellOvLimitV = prefs.knownOvMv / 1000.0
         recorder.onSaved = {
@@ -626,7 +626,7 @@ class BleService : LifecycleService() {
             handler.post {
                 if (prefs.knownOvMv > 0) recorder.cellOvLimitV = prefs.knownOvMv / 1000.0
                 capacityTest.value = com.vanaccess.bms.reports.CapacityTest.State.fromJson(prefs.capacityTestJson)
-                cellStats.value = com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson).weakest()
+                cellStats.value = cellReport(com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson))
                 loadChargeLearn()
             }
         }
@@ -1196,7 +1196,7 @@ class BleService : LifecycleService() {
             cellVoltages.postValue(it)
             if (basic == null) recorder.onCells(it)
             val b = basic ?: basicInfo.value
-            b?.let { bi -> learnModel(bi, it); trackCells(it, bi.current); alarmMonitor.onCells(it, bi.current, bi.soc) }
+            b?.let { bi -> learnModel(bi, it); trackCells(it, bi.current, bi.soc); alarmMonitor.onCells(it, bi.current, bi.soc) }
         }
     }
 
@@ -1564,7 +1564,9 @@ class BleService : LifecycleService() {
     private var lastCellSampleMs = 0L
     private var lastCellSaveMs = 0L
 
-    private fun trackCells(cells: List<Double>, current: Double) {
+    private fun cellReport(t: com.vanaccess.bms.reports.CellTracker) = t.report(prefs.alarmDeltaRestMv)
+
+    private fun trackCells(cells: List<Double>, current: Double, soc: Int) {
         val now = System.currentTimeMillis()
         if (now - lastCellSampleMs < 30_000L) return
         lastCellSampleMs = now
@@ -1573,9 +1575,9 @@ class BleService : LifecycleService() {
             prefs.cellStatsAddress = addr              // (kept per battery)
             com.vanaccess.bms.reports.CellTracker.fromJson(prefs.cellStatsJson)
         }.also { cellTracker = it }
-        t.update(cells, current, prefs.vehicle.loadCurrentA)
+        t.update(cells, current, prefs.vehicle.loadCurrentA, soc)
         if (now - lastCellSaveMs >= 5 * 60_000L) { lastCellSaveMs = now; prefs.cellStatsJson = t.toJson() }
-        cellStats.postValue(t.weakest())
+        cellStats.postValue(cellReport(t))
     }
 
     // ── Live summary: persistent notification + home-screen widget ─────────────

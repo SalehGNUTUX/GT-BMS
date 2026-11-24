@@ -33,11 +33,12 @@ class AdvisorTest {
         assertFalse("delta_rest" in codes(Advisor.live(live(cells, 0.0, soc = 50, rest = 30.0), lim)))
     }
 
-    @Test fun loadDeltaIsCritical() {
-        val cells = List(22) { 3.250 } + 3.090                    // 160 mV
+    @Test fun loadDeltaIsSeriousOnlyNearTheProtection() {
+        val cells = List(22) { 3.250 } + 3.090                    // 160 mV, far above 2.60 V
         val r = Advisor.live(live(cells, -20.0), lim)
-        assertEquals("delta_load", r.first().code)
-        assertEquals(Advisor.Level.CRITICAL, r.first().level)
+        assertEquals(Advisor.Level.WARNING, r.first { it.code == "delta_load" }.level)
+        val low = Advisor.live(live(List(22) { 2.90 } + 2.68, -20.0), lim)     // 80 mV above the protection
+        assertEquals(Advisor.Level.CRITICAL, low.first { it.code == "delta_load" }.level)
     }
 
     @Test fun emptyCell() {

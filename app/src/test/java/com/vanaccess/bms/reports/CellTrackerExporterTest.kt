@@ -8,28 +8,87 @@ import org.junit.Test
 
 class CellTrackerExporterTest {
 
-    /** Like the user's pack: cell 12 sags ~150 mV under load, ~15 mV at rest. */
-    @Test fun weakCellUnderLoadIsFlagged() {
+    /** Like the user's pack: cell 12 ≈ 27 mV low under load, cell 9 often lowest at rest by 2 mV. */
+    private fun pack(i: Int, load: Boolean, k: Int) = when {
+        load -> if (i == 11) 3.173 else 3.200 + (i % 5 - 2) * 0.003 + (k % 3) * 0.0005
+        else -> if (i == 8) 3.328 else 3.330 + (i % 4) * 0.001
+    }
+
+    @Test fun weakCellUnderLoadIsNotHiddenByRestReadings() {
         val t = CellTracker()
-        repeat(40) {
-            t.update(List(23) { i -> if (i == 11) 3.315 else 3.330 }, 0.0, 10.0)      // rest
-            t.update(List(23) { i -> if (i == 11) 3.050 else 3.200 }, -28.0, 10.0)    // load
+        repeat(40) { k -> t.update(List(23) { pack(it, true, k) }, -25.0, 10.0, 70) }
+        repeat(400) { k -> t.update(List(23) { pack(it, false, k) }, 0.0, 10.0, 70) }   // parked most of the time
+        val r = t.report(30)
+        assertEquals(12, r.loadCell); assertEquals(100, r.load.first().lowestPct)
+        assertEquals(null, r.restCell)                                                 // 2 mV means nothing
+        assertEquals(9, r.rest.first().cell)
+        assertEquals(12, CellTracker.fromJson(t.toJson()).report(30).loadCell)     // save / restore
+    }
+
+    @Test fun severeAndRestOutliers() {
+        val t = CellTracker()
+        repeat(30) { k ->
+            t.update(List(23) { if (it == 11) 3.050 else 3.200 + (it + k) % 3 * 0.002 }, -28.0, 10.0, 60)
+            t.update(List(23) { if (it == 4) 3.300 else 3.330 + (it + k) % 3 * 0.001 }, 0.0, 10.0, 60)
         }
-        val w = t.weakest()
-        assertEquals(12, w.first().cell)
-        assertTrue(w.first().concerning)
-        assertTrue(w.first().loadMv!! < -100)
-        // survives a save/restore
-        assertEquals(12, CellTracker.fromJson(t.toJson()).weakest().first().cell)
+        val r = t.report(30)
+        assertEquals(12, r.loadCell); assertEquals(5, r.restCell)
     }
 
-    @Test fun balancedPackNotConcerning() {
+    @Test fun chargingAndFullBatteryAreLeftOut() {
         val t = CellTracker()
-        repeat(60) { k -> t.update(List(23) { i -> 3.330 + ((i + k) % 3) * 0.002 }, 0.0, 10.0) }
-        assertFalse(t.weakest().any { it.concerning })
+        repeat(60) {
+            t.update(List(23) { if (it == 11) 3.45 else 3.55 }, 12.0, 10.0, 99)         // charging is no load
+            t.update(List(23) { if (it == 11) 3.40 else 3.48 }, 0.0, 10.0, 100)         // full: cells spread
+        }
+        assertEquals(CellTracker.Report(), t.report(30))
     }
 
-    @Test fun notEnoughData() = assertTrue(CellTracker().apply { update(listOf(3.3, 3.2), 0.0, 10.0) }.weakest().isEmpty())
+    @Test fun balancedPackNothingStandsOut() {
+        val t = CellTracker()
+        repeat(60) { k ->
+            t.update(List(23) { i -> 3.330 + ((i + k) % 3) * 0.002 }, 0.0, 10.0, 60)
+            t.update(List(23) { i -> 3.200 + ((i + k) % 3) * 0.004 }, -20.0, 10.0, 60)
+        }
+        val r = t.report(30); assertEquals(null, r.loadCell); assertEquals(null, r.restCell)
+    }
+
+    @Test fun statsSavedBefore17() {
+        // no separate counts yet: the averages alone still show the cell
+        val old = "[" + (1..23).joinToString(",") { i -> "{\"r\":0.5,\"l\":${if (i == 12) -27 else (i % 5) - 1},\"rn\":400,\"ln\":90,\"lo\":${if (i == 9) 200 else 10},\"n\":500}" } + "]"
+        val r = CellTracker.fromJson(old).report(30)
+        assertEquals(12, r.loadCell); assertEquals(null, r.load.first().lowestPct)
+    }
+
+    @Test fun tripsDecideToo() {
+        fun trip(c: Int) = Session(1, Session.TYPE_TRIP, 0, 0, "", JSONObject().put("min_cell_idx", c).put("ah", 1.0))
+        assertEquals(12, CellTracker.fromTrips(List(30) { trip(12) })!!.cell)
+        assertEquals(null, CellTracker.fromTrips(List(10) { trip(it % 3 + 1) })!!.cell)
+        assertEquals(null, CellTracker.fromTrips(List(4) { trip(12) }))
+    }
+
+    @Test fun notEnoughData() = assertEquals(CellTracker.Report(), CellTracker().apply { update(listOf(3.3, 3.2), 0.0, 10.0, 50) }.report(30))
+
+    private fun rep(load: Double? = null, rest: Double? = null) = CellTracker.Report(
+        listOf(CellTracker.Row(12, load ?: -5.0, 60)), listOf(CellTracker.Row(9, rest ?: -2.0, 45)), load?.let { 12 }, rest?.let { 9 })
+    private fun level(r: CellTracker.Report, t: CellTracker.TripCell? = null, uv: Int? = 2600) = CellVerdict.of(r, t, 150, 30, uv).level
+
+    @Test fun howSerious() {
+        val L = CellVerdict.Level.values().associateBy { it.name }
+        assertEquals(L["UNKNOWN"], level(CellTracker.Report()))
+        assertEquals(L["NORMAL"], level(rep()))
+        assertEquals(L["ACCEPTABLE"], level(rep(load = -27.0)))
+        assertEquals(L["CHECK"], level(rep(load = -60.0)))
+        assertEquals(L["CHECK"], level(rep(rest = -20.0)))
+        assertEquals(L["DANGER"], level(rep(load = -160.0))); assertEquals(L["DANGER"], level(rep(rest = -70.0)))
+        // the user's battery: −27 mV on average, 227 mV once at 45 A, 3.04 V lowest → worth a check, not dangerous
+        val mine = CellTracker.TripCell(12, 30, 30, 227, 44.8, 3.04)
+        val v = CellVerdict.of(rep(load = -27.0), mine, 150, 30, 2600)
+        assertEquals(L["CHECK"], v.level); assertEquals(12, v.cell)
+        assertTrue(CellVerdict.Why.MARGIN_OK in v.why && CellVerdict.Why.REST_FINE in v.why && CellVerdict.Why.PEAK_OVER_ALARM in v.why)
+        assertEquals(L["DANGER"], level(rep(), mine.copy(minV = 2.68)))
+        assertEquals(L["ACCEPTABLE"], level(rep(), mine.copy(peakMv = 90), null))        // other battery, no limits known
+    }
 
     @Test fun csvAndGpx() {
         val s = Session(7, Session.TYPE_TRIP, 0, 600_000, "",

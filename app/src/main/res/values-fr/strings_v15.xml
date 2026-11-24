@@ -50,13 +50,7 @@
     <string name="export_gpx">Traces des trajets (GPX, cartes)</string>
     <string name="export_empty">Rien à exporter pour l\'instant</string>
     <string name="cell_trend_title">Cellules dans le temps</string>
-    <string name="cell_trend_desc">Cellules qui restent les plus basses sur de nombreuses mesures (au repos et sous charge). Collecté pendant la connexion.</string>
     <string name="cell_trend_none">Pas encore assez de mesures — un échantillon est pris toutes les 30 s.</string>
-    <string name="cell_trend_ok">Aucune cellule ne se démarque. Le pack semble équilibré.</string>
-    <string name="cell_trend_row">Cellule %1$d : %2$s • la plus basse dans %3$d %% des mesures</string>
-    <string name="cell_trend_load">%1$+.0f mV sous charge</string>
-    <string name="cell_trend_rest">%1$+.0f mV au repos</string>
-    <string name="cell_trend_watch">⚠ La cellule %1$d continue de chuter — surveillez-la ; si cela empire, le pack peut nécessiter un équilibrage ou une révision.</string>
     <string name="balance_reminder_title">C\'est le moment d\'une charge complète</string>
     <string name="balance_reminder_switch">Me rappeler de charger à 100 % (équilibrage)</string>
     <string name="rep_delete_msg">Le rapport et son graphique seront supprimés. Cette action est irréversible.</string>

@@ -60,7 +60,9 @@ object Advisor {
                 if (charging && mxMv >= ov - 20) out += Rec(Level.INFO, "cell_near_ov", listOf(iMx, mx, ov / 1000.0))
             }
             if (iAbs >= x.loadCurrentA && delta >= x.loadDeltaMv) {
-                out += Rec(Level.CRITICAL, "delta_load", listOf(delta, iAbs, iMn))
+                // Serious only when the lowest cell is close to this BMS's protection; else worth a check
+                val thin = lim.cellUvMv != null && mnMv <= lim.cellUvMv + 100
+                out += Rec(if (thin) Level.CRITICAL else Level.WARNING, "delta_load", listOf(delta, iAbs, iMn))
             } else if (x.restSeconds >= 120 && x.soc in 20..90 && delta >= x.restDeltaMv) {
                 out += Rec(Level.WARNING, "delta_rest", listOf(delta, iMn, lim.balanceStartV))
             }
