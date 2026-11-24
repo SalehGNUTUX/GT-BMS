@@ -174,4 +174,12 @@ class V17Test {
         assertTrue(TripGap.known(18.2, 18.2, 29.9)); assertTrue(TripGap.known(18.2, 18.3, 29.9)); assertTrue(TripGap.known(18.2, 17.0, 29.9))
         assertTrue(!TripGap.known(18.2, 25.0, 29.9)); assertTrue(!TripGap.known(0.0, 18.0, 29.9))
     }
+
+    @Test fun chargeOutOfRange() {
+        // 2026-11-24: 42.7 min without Bluetooth at 5.1 A, BMS counter 23.4 → 26.9 Ah
+        assertEquals(3.5, TripGap.chargedAh(23.4, 26.9, 5.1, 2563.0), 1e-9)
+        // cut meanwhile: the jump to full is not counted as charge put in
+        assertEquals(5.1 * 60 / 3600 * 1.05, TripGap.chargedAh(28.4, 29.9, 5.1, 60.0), 1e-9)
+        assertEquals(0.0, TripGap.chargedAh(28.0, 27.0, 5.1, 600.0), 0.0); assertEquals(0.0, TripGap.chargedAh(0.0, 27.0, 5.1, 600.0), 0.0)
+    }
 }

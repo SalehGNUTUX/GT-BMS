@@ -76,6 +76,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private var lastInfo: BmsBasicInfo? = null
     private var lastRemainAh = 0.0
     private var lastPackV = 0.0
+    private var lastCurrentA = 0.0
     private var lastCells: List<Double> = emptyList()
     private var battery = ""
     /** Cell over-voltage protection limit (V) from the BMS parameters, if known. */
@@ -164,7 +165,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         if (now - lastCheckpoint < 20_000) return
         lastCheckpoint = now
         val json = JSONObject().put("battery", battery).put("saved", now).put("sample", lastSampleMs).put("remain", lastRemainAh)
-            .put("pack", lastPackV).put("active", lastTripActiveMs).put("riding", lastRidingMs).put("loss", ridingAtLossMs)
+            .put("pack", lastPackV).put("cur", lastCurrentA).put("active", lastTripActiveMs).put("riding", lastRidingMs).put("loss", ridingAtLossMs)
         t?.let { json.put("trip", it.toJson()) }
         c?.let { json.put("charge", it.toJson()).put("charge_remain0", it.remainStart) }
         val text = json.toString()
@@ -183,7 +184,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val age = System.currentTimeMillis() - o.getLong("saved")
             val same = o.optString("battery") == (prefs.selectedDeviceAddress ?: "")
             battery = o.optString("battery")
-            lastSampleMs = o.getLong("sample"); lastRemainAh = o.getDouble("remain"); lastPackV = o.getDouble("pack")
+            lastSampleMs = o.getLong("sample"); lastRemainAh = o.getDouble("remain"); lastPackV = o.getDouble("pack"); lastCurrentA = o.optDouble("cur", 0.0)
             lastTripActiveMs = o.getLong("active"); lastRidingMs = o.getLong("riding"); ridingAtLossMs = o.getLong("loss")
             lastCheckpoint = 1L
             val go = same && age in 0..RESUME_MS
@@ -235,7 +236,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             val silent = lastSampleMs > 0 && now - lastSampleMs > 10 * 60_000L
             if (silent) {
                 // Forget when they began too, or the next one would be dated back to them
-                chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
+                if (now - lastSampleMs > TripGap.CHARGE_SILENCE_MS) {
+                    chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
+                }
                 dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             }
             // Battery silent during a trip: parked → the rider left, end it at the last moment it
@@ -265,7 +268,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     /** Renewed every tick; the timeout frees it by itself if the app is killed or stuck. */
     private fun updateWakeLock() {
         tripActive = trip != null || (gps.running && tripCandidateSince != 0L)
-        val need = trip != null || chg != null || gps.running
+        val need = trip != null || gps.running ||
+            (chg != null && System.currentTimeMillis() - lastSampleMs < 3 * 60_000L)
         runCatching { if (need) wakeLock.acquire(60_000L) else if (wakeLock.isHeld) wakeLock.release() }
     }
 
@@ -338,10 +342,10 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         }
         val silentMs = if (lastSampleMs == 0L) 0L else now - lastSampleMs
         val dtS = min(silentMs / 1000.0, MAX_DT_S)
-        val remainBefore = lastRemainAh; val packBefore = lastPackV
+        val remainBefore = lastRemainAh; val packBefore = lastPackV; val currentBefore = lastCurrentA
         lastSampleMs = now
         lastInfo = info
-        lastRemainAh = info.remainCapacity; lastPackV = info.packVoltage
+        lastRemainAh = info.remainCapacity; lastPackV = info.packVoltage; lastCurrentA = info.current
         late?.let { completeLate(it, info, now) }
         if (silentMs > MAX_DT_S * 1000) trip?.let { t ->
             // Back after a gap: add what the BMS counted meanwhile, minus the part accumulate() adds
@@ -357,6 +361,17 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
         stepRest(info, now)
         // ── Charge ──
+        if (silentMs > MAX_DT_S * 1000) chg?.let { c ->
+            if (info.remainCapacity < remainBefore - 0.15) {          // used meanwhile: that charge was over
+                finishCharge(c); chg = null; chgCandidateSince = 0L
+            } else {
+                val ah = TripGap.chargedAh(remainBefore, info.remainCapacity, currentBefore, silentMs / 1000.0) -
+                    max(0.0, i) * dtS / 3600.0
+                if (ah > 0) { c.ah += ah; c.wh += ah * (packBefore + info.packVoltage) / 2 }
+                c.endMs = now; c.gapMs += silentMs; chgQuietSince = 0L
+                log("charge continues after ${silentMs / 1000}s of silence")
+            }
+        }
         if (chg == null) {
             if (i > CHG_START_A * k) {
                 if (chgCandidateSince == 0L) chgCandidateSince = now
@@ -575,6 +590,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             put("ended_by_protection", c.endedByProtection || c.maxCellV >= cellOvLimitV - 0.005)
             put("cell_ov_limit", cellOvLimitV)
             put("reached_full", c.socEnd >= 99)
+            put("gap_s", c.gapMs / 1000)
             stop?.let { r ->
                 put("stop_reason", r.reason.name.lowercase())
                 r.alarm?.let { put("stop_alarm", it) }

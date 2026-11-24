@@ -42,6 +42,17 @@ object TripGap {
     fun known(remainBefore: Double, remainAfter: Double, fullAh: Double) =
         remainBefore > 0 && remainAfter > 0 && remainBefore - remainAfter in -0.11..fullAh
 
+    /** A charge out of Bluetooth range stays open this long: it usually just goes on. */
+    const val CHARGE_SILENCE_MS = 6 * 3_600_000L
+
+    /**
+     * Ah charged during a silence: what the BMS counted, but never more than the charge current
+     * could deliver (its counter jumps when the protection cuts).
+     */
+    fun chargedAh(remainBefore: Double, remainAfter: Double, lastCurrent: Double, silentS: Double): Double =
+        if (remainBefore <= 0 || remainAfter <= 0) 0.0
+        else (remainAfter - remainBefore).coerceIn(0.0, (lastCurrent * silentS / 3600.0 * 1.05).coerceAtLeast(0.0))
+
     /** Is the distance between two fixes [dtS] apart believable for these speeds? */
     fun plausible(distM: Double, dtS: Double, kmhA: Double, kmhB: Double): Boolean =
         dtS > 0 && dtS <= 120 && distM / dtS * 3.6 <= maxOf(kmhA, kmhB) * 1.5 + 10

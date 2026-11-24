@@ -688,11 +688,16 @@ class BleService : LifecycleService() {
     @Volatile private var lastRxAt = 0L            // uptimeMillis of the last notification
     @Volatile private var linkStateAt = 0L         // …and of the last connect attempt / connection
 
+    /** Last signal strength, to tell a weak signal from interference when the link is lost. */
+    @Volatile private var rssi = 0
+    @Volatile private var rssiAt = 0L
+
     /**
      * Android can leave a link that is "connected" but mute, or an attempt that never returns.
      * Nothing would ever reconnect then, so restart the connection.
      */
     private fun checkLink() {
+        if (connectionState.value == ConnectionState.CONNECTED && driverLocked) runCatching { bluetoothGatt?.readRemoteRssi() }
         val address = prefs.selectedDeviceAddress
         if (address.isNullOrEmpty() || linkStateAt == 0L) return
         val now = android.os.SystemClock.uptimeMillis()       // awake time: a sleep is not a mute link
@@ -734,7 +739,9 @@ class BleService : LifecycleService() {
                     gatt.requestMtu(512)
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    if (connectionState.value == ConnectionState.CONNECTED) log("disconnected, status $status")
+                    if (connectionState.value == ConnectionState.CONNECTED) log("disconnected, status $status" +
+                        if (rssi != 0) ", signal $rssi dBm ${(android.os.SystemClock.uptimeMillis() - rssiAt) / 1000}s before" else "")
+                    rssi = 0
                     // Stay awake for the direct attempts and for handing over to the passive one
                     keepAlive.hold()
                     stopPolling()
@@ -753,6 +760,10 @@ class BleService : LifecycleService() {
             }
         }
 
+        override fun onReadRemoteRssi(gatt: BluetoothGatt, value: Int, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) { rssi = value; rssiAt = android.os.SystemClock.uptimeMillis() }
+        }
+
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             android.util.Log.d("BleService", "onMtuChanged: mtu=$mtu status=$status")
             // Wipe the GATT cache only for unknown devices; known ones reuse the cached
@@ -766,6 +777,9 @@ class BleService : LifecycleService() {
             } catch (e: Exception) {
                 android.util.Log.d("BleService", "gatt.refresh() not available: ${e.message}")
             }
+            // Kept for the whole connection: the more exchanges per second, the more chances to get
+            // through before the link times out. "Balanced" (1.7.0-beta.2) went from 3 to 59 losses
+            // per hour of riding.
             gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
             gatt.discoverServices()
         }
@@ -1106,9 +1120,6 @@ class BleService : LifecycleService() {
             prefs.upsertSavedBattery(bluetoothGatt?.device?.address, bluetoothGatt?.device?.name ?: prefs.selectedDeviceName, driver.id)
             recorder.onBattery(bluetoothGatt?.device?.address)
             android.util.Log.i("BleService", "Protocol locked: ${driver.id}")
-            // Fast parameters were for the connection; one short poll a second needs no more, and
-            // leaves the radio to headsets and watches
-            bluetoothGatt?.let { runCatching { it.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED) } }
         }
         publishReading(out.basic, out.cells)
         out.hardware?.let { hardwareInfo.postValue(it) }
@@ -1149,7 +1160,6 @@ class BleService : LifecycleService() {
         synchronized(detailsLock) { historyBuf.clear() }
         bmsHistory.postValue(emptyList())
         historyLoading.postValue(true)
-        bluetoothGatt?.let { runCatching { it.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH) } }
         d.historyCommands()
         handler.postDelayed({
             if (historyLoading.value == true) { historyLoading.postValue(false); saveHistoryCache() }

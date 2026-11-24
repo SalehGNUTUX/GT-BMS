@@ -207,6 +207,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     private fun startAlarm(kind: Kind, text: String) {
         Log.i(TAG, "Alarm $kind: $text")
+        com.vanaccess.bms.data.EventLog.add(context, "alarm $kind")
         ringing = kind
         val short = prefs.alarmShort(Tones.toneKey(kind))
         showNotification(kind, text, ongoing = !short)
