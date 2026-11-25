@@ -1,0 +1,1 @@
+1.8.0 : énergie récupérée des trajets (freinage régénératif, descentes) ; rappels de batterie faible à 20, 15, 10 et 5 % ; alarmes plein écran.
