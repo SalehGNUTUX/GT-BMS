@@ -302,6 +302,11 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     /** A charge stopped (or resumed and stopped again): why, and at which SOC. */
     var onChargeStop: ((ChargeWatch.Result) -> Unit)? = null
+    /** Charging alarms by the clock: new charge, fresh estimate (every minute), no longer charging. */
+    var onChargeBegin: () -> Unit = {}
+    var onChargePlan: (BmsBasicInfo, ChargePredictor.P) -> Unit = { _, _ -> }
+    var onChargeEnd: () -> Unit = {}
+    private var lastPlanMs = 0L
     var log: (String) -> Unit = {}
 
     /** Riding, or just started: the phone is kept awake. */
@@ -382,20 +387,25 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                     chargeWatch = chg?.watch; chgQuietSince = 0L; rest = null
                     updateWakeLock()
                     log("charge started ${info.soc}%")
+                    lastPlanMs = 0L
+                    onChargeBegin()
                 }
             } else chgCandidateSince = 0L
         }
         chg?.let { c ->
             if (i > CHG_END_A * k) {
-                accumulate(c, info, dtS, now, charging = true); chgQuietSince = 0L; c.stop = null
+                accumulate(c, info, dtS, now, charging = true); chgQuietSince = 0L
+                if (c.stop != null) { c.stop = null; lastPlanMs = 0L }
                 c.watch?.charging(now, info.soc, info.remainCapacity, info.fullCapacity, i, info.packVoltage,
                     lastCells, info.chargeFetOn, c.ah)
+                if (now - lastPlanMs >= 60_000) { lastPlanMs = now; predict(info)?.let { onChargePlan(info, it) } }
                 if (c.etaFirstMin == null && now - c.startMs >= 120_000) c.etaFirstMin = predict(info)?.let {
                     (now - c.startMs) / 60_000.0 + it.hours * 60 }
             } else {
                 if (chgQuietSince == 0L) chgQuietSince = now
                 if (c.stop == null && now - chgQuietSince >= CHG_STOP_MS) {
                     c.stopMs = chgQuietSince
+                    onChargeEnd()
                     c.stop = c.watch?.stopped(now, info.soc, info.remainCapacity, info.fullCapacity,
                         info.chargeFetOn, info.protectionFlags.map { it.name }, cellOvLimitV)
                     c.stop?.let { r -> if (c.activeS >= 180) { log("charge stopped ${r.reason} ${r.socBefore}/${r.socShown}%"); onChargeStop?.invoke(r) } }
@@ -521,9 +531,28 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     // ── GPS ──
 
-    private fun startGps() = gps.start { fix -> main.post { onFix(fix) } }
+    var onGpsProblem: (com.vanaccess.bms.ui.GpsNotice.Problem) -> Unit = {}
+    var onGpsOk: () -> Unit = {}
+    private var gpsTold = false
+
+    private fun startGps(): Boolean {
+        gps.onProvider = { on -> main.post { if (on) { gpsTold = false; onGpsOk() } else tellGps() } }
+        tellGps()
+        return gps.start { fix -> main.post { onFix(fix) } }
+    }
+
+    /** Once per trip: no GPS means no distance, speed or route. */
+    private fun tellGps() {
+        val p = com.vanaccess.bms.ui.GpsNotice.problem(context) ?: return
+        if (gpsTold) return
+        gpsTold = true
+        log("gps $p")
+        onGpsProblem(p)
+    }
 
     private fun stopGps() {
+        gpsTold = false
+        onGpsOk()
         gps.stop()
         liveSpeedKmh.value = null
     }
@@ -580,6 +609,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     }
 
     private fun finishCharge(c: Acc) {
+        onChargeEnd()
         activeCharge.value = null
         chargeWatch = null
         if (c.activeS < 180 || c.ah < 0.05) return

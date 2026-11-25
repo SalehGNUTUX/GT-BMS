@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="away_channel">منبهات الشحن بالوقت</string>
+    <string name="away_title">🔌 الشحن جارٍ — المنبهات مضبوطة</string>
+    <string name="away_target_at">%1$d٪ نحو %2$s</string>
+    <string name="away_full_at">النهاية نحو %1$s</string>
+    <string name="away_note">إن غادرت بالهاتف يرنّ في هذه الأوقات (تقديرية).</string>
+    <string name="away_done">فصلتُ الشاحن</string>
+    <string name="away_ring_title">🔋 منبه الشحن بالوقت</string>
+    <string name="away_ring_target">يُفترض أن الشحن بلغ %1$d٪ الآن (تقدير، الهاتف بعيد عن البطارية). افصل الشاحن.</string>
+    <string name="away_ring_near">اقترب اكتمال الشحن، نحو %1$s (تقدير، الهاتف بعيد عن البطارية).</string>
+    <string name="away_switch">تنبيه بالوقت عند الابتعاد</string>
+    <string name="away_desc">إن غادرت بالهاتف أثناء الشحن، يرنّ عند الوقت المقدّر لنسبتك، ثم قبل النهاية المقدّرة بـ10 دقائق. يُقدَّر عند بداية الشحن ويُحسَّن ما دام متصلاً.</string>
+    <string name="gps_channel">GPS متوقف أثناء الرحلة</string>
+    <string name="gps_title">📍 رحلة دون GPS</string>
+    <string name="gps_off_text">تحديد الموقع متوقف: لن تُسجَّل مسافة هذه الرحلة ولا سرعتها ولا مسارها. اضغط لتفعيله.</string>
+    <string name="gps_perm_text">إذن الموقع غير ممنوح لـ GT-BMS: لن تُسجَّل مسافة هذه الرحلة ولا سرعتها ولا مسارها. اضغط للسماح.</string>
+    <string name="gps_enable">تفعيل</string>
+    <string name="gps_off_banner">تحديد الموقع متوقف: الرحلات بلا مسافة. اضغط لتفعيله.</string>
+    <string name="gps_perm_banner">إذن الموقع غير ممنوح: الرحلات بلا مسافة. اضغط للسماح.</string>
+</resources>

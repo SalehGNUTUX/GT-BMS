@@ -1,0 +1,1 @@
+1.7.1 : alertes de charge par l'heure quand vous partez avec le téléphone (votre pourcentage, puis 10 minutes avant la fin) ; avertissement si le GPS est coupé pour un trajet.

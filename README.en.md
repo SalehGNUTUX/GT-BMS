@@ -74,6 +74,7 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
 - **Energy cost** per charge, trip and kilometre, with an optional fuel comparison.
 - **Driving style**: sudden current jumps, press-and-release, time at high current, your most economical speed, and
   repeated protection cuts while charging, with lithium riding tips.
+- **Charge alarms by time** when you leave with the phone, and a **warning when GPS is off** for a trip.
 - **Several batteries**: switch from the screen header, with reports, limits, alarms and vehicle per battery; chemistry recognised from the cells.
 - **Cell verdict**: under load and at rest apart, in plain terms (normal, acceptable, needs a check, serious), with the reasons and what to do.
 - **Daily report**: all trips from midnight to midnight, with routes and cost, and a silent notification.

@@ -195,6 +195,15 @@ class BleService : LifecycleService() {
             com.vanaccess.bms.ui.AdviceText.notifyChargeStop(this, it)
         }
         recorder.log = ::log
+        recorder.onChargePlan = { info, p ->
+            ChargeTimer.update(this, com.vanaccess.bms.reports.ChargePlan.make(prefs.selectedDeviceAddress ?: "", System.currentTimeMillis(),
+                info.soc, info.remainCapacity, info.fullCapacity, com.vanaccess.bms.reports.SessionRecorder.chargeWatch?.avgCurrent() ?: info.current,
+                prefs.alarmHighSoc, p.hours, p.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.FULL))
+        }
+        recorder.onChargeBegin = { prefs.chargePlanDone = false }
+        recorder.onChargeEnd = { ChargeTimer.cancel(this) }
+        recorder.onGpsProblem = { com.vanaccess.bms.ui.GpsNotice.show(this, it) }
+        recorder.onGpsOk = { com.vanaccess.bms.ui.GpsNotice.clear(this) }
         recorder.restore()
         loadChargeLearn()
         keepAlive = KeepAlive(this, { connectionState.value == ConnectionState.CONNECTED }) { why ->
@@ -227,6 +236,11 @@ class BleService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_STOP_ALARM -> { alarmMonitor.stopAlarm(); return START_STICKY }
+            ChargeTimer.ACTION_RING -> {
+                // (a service just started for this goes on to look for the battery too)
+                alarmMonitor.ringAway(intent.getStringExtra("text") ?: "")
+                if (bluetoothGatt != null) return START_STICKY
+            }
             ACTION_TEST_ALARM -> {
                 val kind = runCatching { BatteryAlarmMonitor.Kind.valueOf(intent.getStringExtra("kind") ?: "HIGH") }
                     .getOrDefault(BatteryAlarmMonitor.Kind.HIGH)
@@ -563,6 +577,8 @@ class BleService : LifecycleService() {
                 handler.postDelayed({ wake() }, 1500)
         }
     }
+
+    fun stopRinging() = alarmMonitor.stopAlarm()
 
     fun onKeepAliveAlarm() = keepAlive.onAlarm()
 

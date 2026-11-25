@@ -545,6 +545,11 @@ class SettingsFragment : Fragment() {
         binding.switchBalanceReminder.setOnCheckedChangeListener { _, c -> prefs.balanceReminder = c }
         binding.switchSumWeekly.isChecked = prefs.notifyWeekly
         binding.switchSumWeekly.setOnCheckedChangeListener { _, c -> prefs.notifyWeekly = c }
+        binding.switchAlarmAway.isChecked = prefs.alarmAway
+        binding.switchAlarmAway.setOnCheckedChangeListener { _, c ->
+            prefs.alarmAway = c
+            if (!c) com.vanaccess.bms.ble.ChargeTimer.cancel(requireContext())
+        }
         binding.switchAlarmCell.isChecked = prefs.alarmCellEnabled
         binding.switchAlarmCell.setOnCheckedChangeListener { _, c -> prefs.alarmCellEnabled = c }
         binding.etAlarmCell.setText(prefs.alarmCellVoltage.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.3f", it) } ?: "")

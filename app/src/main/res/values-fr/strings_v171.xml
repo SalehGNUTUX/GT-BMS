@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="away_channel">Alertes de charge par l\'heure</string>
+    <string name="away_title">🔌 En charge — alertes réglées</string>
+    <string name="away_target_at">%1$d %% vers %2$s</string>
+    <string name="away_full_at">fin vers %1$s</string>
+    <string name="away_note">Si vous partez avec le téléphone, il sonne à ces heures (estimées).</string>
+    <string name="away_done">J\'ai débranché</string>
+    <string name="away_ring_title">🔋 Alerte de charge par l\'heure</string>
+    <string name="away_ring_target">La charge devrait avoir atteint %1$d %% (estimation, téléphone loin de la batterie). Débranchez le chargeur.</string>
+    <string name="away_ring_near">La charge est presque terminée, vers %1$s (estimation, téléphone loin de la batterie).</string>
+    <string name="away_switch">Alerte par l\'heure à distance</string>
+    <string name="away_desc">Si vous partez avec le téléphone pendant la charge, il sonne à l\'heure estimée de votre pourcentage, puis 10 minutes avant la fin estimée. Estimé au début et affiné tant que connecté.</string>
+    <string name="gps_channel">GPS coupé pendant un trajet</string>
+    <string name="gps_title">📍 Trajet sans GPS</string>
+    <string name="gps_off_text">La localisation est coupée : pas de distance, de vitesse ni de trajet. Touchez pour l\'activer.</string>
+    <string name="gps_perm_text">GT-BMS n\'a pas accès à la position : pas de distance, de vitesse ni de trajet. Touchez pour l\'autoriser.</string>
+    <string name="gps_enable">Activer</string>
+    <string name="gps_off_banner">Localisation coupée : trajets sans distance. Touchez pour l\'activer.</string>
+    <string name="gps_perm_banner">Position non autorisée : trajets sans distance. Touchez pour autoriser.</string>
+</resources>

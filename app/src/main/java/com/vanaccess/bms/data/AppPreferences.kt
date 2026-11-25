@@ -333,6 +333,20 @@ class AppPreferences(context: Context) {
         get() = prefs.getFloat(k("alarm_cell_voltage"), 0f)
         set(value) = prefs.edit().putFloat(k("alarm_cell_voltage"), value).apply()
 
+    /** Charge alarms by the clock when the phone is away from the battery. */
+    var alarmAway: Boolean
+        get() = prefs.getBoolean("alarm_away", true)
+        set(value) = prefs.edit().putBoolean("alarm_away", value).apply()
+
+    /** Running charge plan (reports.ChargePlan JSON), and "the user unplugged it". */
+    var chargePlan: String?
+        get() = prefs.getString("charge_plan", null)
+        set(value) = prefs.edit().putString("charge_plan", value).apply()
+
+    var chargePlanDone: Boolean
+        get() = prefs.getBoolean("charge_plan_done", false)
+        set(value) = prefs.edit().putBoolean("charge_plan_done", value).apply()
+
     /** The monitoring service runs (false only when it was stopped on purpose). */
     var monitoring: Boolean
         get() = prefs.getBoolean("monitoring", false)

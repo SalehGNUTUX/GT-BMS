@@ -1,0 +1,1 @@
+1.7.1: charge alarms by time when you leave with the phone (your percentage, then 10 minutes before the end); warning when GPS is off for a trip.

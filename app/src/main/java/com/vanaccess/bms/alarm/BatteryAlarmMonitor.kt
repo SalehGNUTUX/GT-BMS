@@ -205,12 +205,15 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     // ── Sound / vibration ─────────────────────────────────────────────────────
 
-    private fun startAlarm(kind: Kind, text: String) {
+    /** By the clock, the battery being out of reach (see ble.ChargeTimer): tone of the full-charge alarm. */
+    fun ringAway(text: String) { main.post { if (ringing == null) startAlarm(Kind.HIGH, text, away = true) } }
+
+    private fun startAlarm(kind: Kind, text: String, away: Boolean = false) {
         Log.i(TAG, "Alarm $kind: $text")
         com.vanaccess.bms.data.EventLog.add(context, "alarm $kind")
         ringing = kind
         val short = prefs.alarmShort(Tones.toneKey(kind))
-        showNotification(kind, text, ongoing = !short)
+        showNotification(kind, text, ongoing = !short, away = away)
         playSound(kind)
         if (prefs.alarmVibrate) vibrate()
         if (short) {
@@ -310,7 +313,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    private fun showNotification(kind: Kind, text: String, ongoing: Boolean = true) {
+    private fun showNotification(kind: Kind, text: String, ongoing: Boolean = true, away: Boolean = false) {
         val stopIntent = Intent(context, BleService::class.java).setAction(BleService.ACTION_STOP_ALARM)
         val stopPi = PendingIntent.getService(
             context, 1, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -319,7 +322,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             context, 2, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val title = context.getString(when (kind) {
+        val title = context.getString(if (away) R.string.away_ring_title else when (kind) {
             Kind.HIGH -> R.string.alarm_high_title
             Kind.LOW -> R.string.alarm_low_title
             Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
@@ -338,6 +341,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             .setContentIntent(openPi)
             .setDeleteIntent(stopPi)
             .addAction(R.drawable.ic_battery, context.getString(R.string.alarm_stop), stopPi)
+            .apply { if (away) addAction(0, context.getString(R.string.away_done), com.vanaccess.bms.ble.ChargeTimer.donePending(context)) }
             .build()
         try {
             context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, n)

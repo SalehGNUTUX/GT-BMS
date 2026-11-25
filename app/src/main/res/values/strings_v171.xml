@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="away_channel">Charge alarms by time</string>
+    <string name="away_title">🔌 Charging — alarms set</string>
+    <string name="away_target_at">%1$d%% about %2$s</string>
+    <string name="away_full_at">end about %1$s</string>
+    <string name="away_note">If you leave with the phone, it rings at these times (estimated).</string>
+    <string name="away_done">I unplugged it</string>
+    <string name="away_ring_title">🔋 Charge alarm by time</string>
+    <string name="away_ring_target">The charge should have reached %1$d%% by now (estimate; the phone is away from the battery). Unplug the charger.</string>
+    <string name="away_ring_near">The charge is about to be complete, about %1$s (estimate; the phone is away from the battery).</string>
+    <string name="away_switch">Alarm by time when away</string>
+    <string name="away_desc">If you leave with the phone while charging, it rings when your percentage is expected, and again 10 minutes before the expected end. Estimated when the charge starts and refined while connected.</string>
+    <string name="gps_channel">GPS off during a trip</string>
+    <string name="gps_title">📍 Trip without GPS</string>
+    <string name="gps_off_text">Location is off: this trip will have no distance, speed or route. Tap to turn it on.</string>
+    <string name="gps_perm_text">GT-BMS may not use the location: this trip will have no distance, speed or route. Tap to allow it.</string>
+    <string name="gps_enable">Turn on</string>
+    <string name="gps_off_banner">Location is off: trips will have no distance. Tap to turn it on.</string>
+    <string name="gps_perm_banner">Location not allowed: trips will have no distance. Tap to allow.</string>
+</resources>

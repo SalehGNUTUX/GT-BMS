@@ -38,8 +38,12 @@ class LocationTracker(private val context: Context) {
 
     private val gps = object : LocationListenerCompat {
         override fun onLocationChanged(location: Location) = onFix(location)
-        override fun onProviderDisabled(provider: String) { last = null }
+        override fun onProviderDisabled(provider: String) { last = null; onProvider(false) }
+        override fun onProviderEnabled(provider: String) { onProvider(true) }
     }
+
+    /** GPS switched on or off while in use. */
+    var onProvider: (Boolean) -> Unit = {}
 
     private var prevLoc: Location? = null
 

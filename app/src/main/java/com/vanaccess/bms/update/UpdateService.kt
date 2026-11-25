@@ -131,7 +131,8 @@ object UpdateChecker {
 class UpdateAlarmReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            UpdateChecker.schedule(ctx); return
+            UpdateChecker.schedule(ctx)
+            com.vanaccess.bms.ble.ChargeTimer.rearm(com.vanaccess.bms.data.AppLanguage.wrap(ctx)); return
         }
         val pending = goAsync()
         UpdateChecker.checkIfDue(ctx) { pending.finish() }

@@ -234,6 +234,7 @@ class BatteryScreen(
         }
         handler.post(ticker)
         owner.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onResume(o: androidx.lifecycle.LifecycleOwner) { updateGpsWarning() }
             override fun onDestroy(o: androidx.lifecycle.LifecycleOwner) {
                 handler.removeCallbacks(ticker)
                 fragment.activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -267,6 +268,21 @@ class BatteryScreen(
         com.vanaccess.bms.reports.SessionRecorder.activeDischarge.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext(); refreshTripCell() }
         BleService.bmsParams.observe(owner) { refreshAdviceContext() }
+    }
+
+    /** A vehicle whose trips would have no distance: say so before the ride, tap to fix. */
+    private fun updateGpsWarning() {
+        val p = com.vanaccess.bms.ui.GpsNotice.problem(ctx)
+        b.tvGpsWarning.visibility = if (p == null) View.GONE else View.VISIBLE
+        if (p == null) return
+        b.tvGpsWarning.text = "📍 " + ctx.getString(if (p == com.vanaccess.bms.ui.GpsNotice.Problem.OFF) R.string.gps_off_banner else R.string.gps_perm_banner)
+        b.tvGpsWarning.background = GradientDrawable().apply {
+            cornerRadius = 14 * dp; setColor(Color.argb(0x26, 0xF5, 0xB8, 0x3D)); setStroke((1 * dp).toInt(), cOrange)
+        }
+        b.tvGpsWarning.setOnClickListener {
+            if (p == com.vanaccess.bms.ui.GpsNotice.Problem.PERMISSION) (fragment.activity as? MainActivity)?.ensureLocationPermission()
+            else runCatching { ctx.startActivity(com.vanaccess.bms.ui.GpsNotice.fixIntent(ctx, p)) }
+        }
     }
 
     private fun updateHeader() {
@@ -306,7 +322,7 @@ class BatteryScreen(
     // View.removeCallbacks then no longer reaches the main queue (this stopped the app 30 s after leaving it)
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val ticker = object : Runnable {
-        override fun run() { updateHeader(); handler.postDelayed(this, 30_000L) }
+        override fun run() { updateHeader(); updateGpsWarning(); handler.postDelayed(this, 30_000L) }
     }
 
     // ── Live ─────────────────────────────────────────────────────────────────
