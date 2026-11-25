@@ -176,7 +176,10 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        // One question at a time
+        val asked = com.vanaccess.bms.data.AppPreferences(this).askedBackground
         BackgroundAccess.askOnce(this)
+        if (asked || BackgroundAccess.granted(this)) FullScreenAccess.askOnce(this)
     }
 
     override fun onStart() {

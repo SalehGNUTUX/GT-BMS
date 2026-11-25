@@ -27,8 +27,8 @@ class CellTracker(private val cells: MutableList<Stat> = mutableListOf()) {
         val loadCell: Int? = null, val restCell: Int? = null,
     )
 
-    /** [cell] null = no single cell; [peakMv] at [peakA] and [minV] are the worst of those trips. */
-    data class TripCell(val cell: Int?, val times: Int, val of: Int, val peakMv: Int, val peakA: Double, val minV: Double)
+    /** [cell] null = no single cell; [peakMv] at [peakA] (null = not known) and [minV] are the worst of those trips. */
+    data class TripCell(val cell: Int?, val times: Int, val of: Int, val peakMv: Int, val peakA: Double?, val minV: Double)
 
     fun update(volts: List<Double>, current: Double, loadA: Double, soc: Int) {
         if (volts.size < 2) return
@@ -102,7 +102,7 @@ class CellTracker(private val cells: MutableList<Stat> = mutableListOf()) {
             val top = t.groupingBy { it.i("min_cell_idx") }.eachCount().maxByOrNull { it.value } ?: return null
             val worst = t.maxBy { it.i("max_delta_mv") }
             return TripCell(top.key.takeIf { top.value * 100 >= t.size * 70 }, top.value, t.size,
-                worst.i("max_delta_mv"), worst.d("current_at_max_delta"),
+                worst.i("max_delta_mv"), worst.deltaA,
                 t.filter { it.d("min_cell_v") > 0 }.minOfOrNull { it.d("min_cell_v") } ?: 0.0)
         }
     }

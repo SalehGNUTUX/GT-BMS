@@ -40,4 +40,11 @@ class TripGapTest {
         assertFalse(TripGap.plausible(5000.0, 45.0, 40.0, 40.0))      // 400 km/h jump
         assertFalse(TripGap.plausible(500.0, 200.0, 40.0, 40.0))
     }
+
+    @Test fun shortUnheardEndKeepsTheConsumption() {
+        org.junit.Assert.assertEquals(2.19, TripGap.energyKm(false, 2.19, 2.19)!!, 1e-9)
+        org.junit.Assert.assertEquals(2.0, TripGap.energyKm(true, 2.19, 2.0)!!, 1e-9)
+        org.junit.Assert.assertNull(TripGap.energyKm(true, 8.0, 2.0))
+        org.junit.Assert.assertNull(TripGap.energyKm(true, 0.2, 0.2))
+    }
 }

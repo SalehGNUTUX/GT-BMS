@@ -511,6 +511,8 @@ class SettingsFragment : Fragment() {
         super.onResume()
         _binding?.btnBackground?.visibility =
             if (com.vanaccess.bms.ui.BackgroundAccess.granted(requireContext())) View.GONE else View.VISIBLE
+        _binding?.boxFullScreen?.visibility =
+            if (com.vanaccess.bms.ui.FullScreenAccess.granted(requireContext())) View.GONE else View.VISIBLE
     }
 
     private fun setupAlarms() {
@@ -579,6 +581,7 @@ class SettingsFragment : Fragment() {
             et.setOnFocusChangeListener { _, hasFocus -> if (!hasFocus) saveAlarmFields(false) }
         }
 
+        binding.btnFullScreen.setOnClickListener { com.vanaccess.bms.ui.FullScreenAccess.ask(requireActivity()) }
         binding.btnAlarmTest.setOnClickListener {
             saveAlarmFields(false)
             (activity as? MainActivity)?.ensureNotificationPermission()

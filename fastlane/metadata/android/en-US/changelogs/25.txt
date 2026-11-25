@@ -1,0 +1,1 @@
+1.8.0-beta.1: recovered energy of trips (regenerative braking, descents); low-battery reminders at 20, 15, 10 and 5%; full-screen alarms.

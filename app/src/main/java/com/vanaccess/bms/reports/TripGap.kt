@@ -38,6 +38,15 @@ object TripGap {
         return if (remainBefore > 0 && remainAfter > 0 && d > 0 && d <= fullAh) d else 0.0
     }
 
+    /**
+     * Distance the trip's energy belongs to, for the consumption; null = not known well enough.
+     * With the end unheard ([partial]), the part with data counts when it is nearly all of it.
+     */
+    fun energyKm(partial: Boolean, km: Double, heardKm: Double): Double? = when {
+        !partial -> km.takeIf { it >= 0.1 }
+        else -> heardKm.takeIf { it >= 0.3 && it >= km * 0.8 }
+    }
+
     /** Can the counter be trusted across the silence (not charged or recalibrated meanwhile)? */
     fun known(remainBefore: Double, remainAfter: Double, fullAh: Double) =
         remainBefore > 0 && remainAfter > 0 && remainBefore - remainAfter in -0.11..fullAh

@@ -534,7 +534,8 @@ class BatteryScreen(
         val time = java.text.SimpleDateFormat("HH:mm", Locale.US)
         val (txt, col) = when {
             trip != null -> ctx.getString(R.string.live_trip,
-                "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) to cBlue
+                "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) +
+                (if (trip.regenWh >= 0.5) "  ·  ♻ \u2066" + fmt("%.1f Wh", trip.regenWh) + "\u2069" else "") to cBlue
             chg != null -> ctx.getString(if (chg.stopped) R.string.live_charge_stopped else R.string.live_charge,
                 time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
             dis != null -> ctx.getString(R.string.live_discharge,
@@ -651,9 +652,11 @@ class BatteryScreen(
                 CellWhy.LOAD_LARGE -> ctx.getString(R.string.why_load_large)
                 CellWhy.LOAD_HUGE -> ctx.getString(R.string.why_load_huge, prefs.alarmDeltaLoadMv)
                 CellWhy.REST_FINE -> ctx.getString(R.string.why_rest_fine)
+                CellWhy.REST_SLIGHT -> ctx.getString(R.string.why_rest_slight, -(v.restSlightMv ?: 0.0))
                 CellWhy.REST_LOW -> ctx.getString(R.string.why_rest_low)
                 CellWhy.REST_FAR -> ctx.getString(R.string.why_rest_far)
-                CellWhy.PEAK_OVER_ALARM -> ctx.getString(R.string.why_peak, trips?.peakMv ?: 0, trips?.peakA ?: 0.0, prefs.alarmDeltaLoadMv)
+                CellWhy.PEAK_OVER_ALARM -> trips?.peakA?.let { a -> ctx.getString(R.string.why_peak, trips.peakMv, a, prefs.alarmDeltaLoadMv) }
+                    ?: ctx.getString(R.string.why_peak_mv, trips?.peakMv ?: 0, prefs.alarmDeltaLoadMv)
                 CellWhy.MARGIN_OK -> ctx.getString(R.string.why_margin_ok, trips?.minV ?: 0.0, (lim.cellUvMv ?: 0) / 1000.0)
                 CellWhy.MARGIN_THIN -> ctx.getString(R.string.why_margin_thin, trips?.minV ?: 0.0, (lim.cellUvMv ?: 0) / 1000.0)
             }

@@ -52,7 +52,7 @@
     <string name="alarm_high_label">تنبيه اكتمال الشحن</string>
     <string name="alarm_high_desc">أثناء الشحن: النسبة ≥ القيمة أو الجهد ≥ القيمة</string>
     <string name="alarm_low_label">تنبيه انخفاض البطارية</string>
-    <string name="alarm_low_desc">عند عدم الشحن: النسبة ≤ القيمة أو الجهد ≤ القيمة</string>
+    <string name="alarm_low_desc">عند عدم الشحن: النسبة ≤ القيمة أو الجهد ≤ القيمة. ثم تذكير عند 20 و15 و10 و5٪.</string>
     <string name="alarm_soc_hint">النسبة %</string>
     <string name="alarm_voltage_hint">الجهد (فولت)</string>
     <string name="alarm_cooldown_hint">التكرار بعد (دقيقة)</string>

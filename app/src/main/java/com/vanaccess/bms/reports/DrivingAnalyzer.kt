@@ -50,7 +50,7 @@ object DrivingAnalyzer {
     data class SpeedBand(val fromKmh: Int, val bestWhKm: Double, val worstFromKmh: Int, val worstWhKm: Double)
 
     fun bestSpeed(trips: List<Session>): SpeedBand? {
-        val usable = trips.filter { it.d("distance_km") >= 0.5 && !it.data.isNull("wh_per_km") && it.d("avg_speed") > 5 }
+        val usable = trips.filter { it.d("distance_km") >= 0.5 && !it.data.isNull("wh_per_km") && !it.b("energy_partial") && it.d("avg_speed") > 5 }
         val bands = usable.groupBy { (it.d("avg_speed") / 10).toInt() * 10 }
             .filter { (_, l) -> l.size >= 2 && l.sumOf { it.d("distance_km") } >= 2.0 }
             .mapValues { (_, l) -> l.sumOf { it.d("wh") } / l.sumOf { it.d("distance_km") } }

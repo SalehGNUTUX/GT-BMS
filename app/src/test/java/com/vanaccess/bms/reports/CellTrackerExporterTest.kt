@@ -90,6 +90,25 @@ class CellTrackerExporterTest {
         assertEquals(L["ACCEPTABLE"], level(rep(), mine.copy(peakMv = 90), null))        // other battery, no limits known
     }
 
+    @Test fun slightlyLowAtRest() {
+        // cell 12 at −11 mV, the next at −2: below the limit (−12) but not "like the others"
+        fun r(mv12: Double) = CellTracker.Report(listOf(CellTracker.Row(12, -27.0, 90)),
+            listOf(CellTracker.Row(12, mv12, 60), CellTracker.Row(9, -2.0, 30)), 12, null)
+        val v = CellVerdict.of(r(-11.0), null, 150, 30, 2600)
+        assertEquals(CellVerdict.Level.ACCEPTABLE, v.level); assertEquals(-11.0, v.restSlightMv!!, 1e-9)
+        assertTrue(CellVerdict.Why.REST_SLIGHT in v.why && CellVerdict.Why.REST_FINE !in v.why)
+        assertTrue(CellVerdict.Why.REST_FINE in CellVerdict.of(r(-3.0), null, 150, 30, 2600).why)
+    }
+
+    @Test fun currentOfOldDifferencesIsNotShown() {
+        fun trip(extra: String) = Session(1, Session.TYPE_TRIP, 0, 0, "",
+            JSONObject("""{"min_cell_idx":12,"ah":1.0,"max_delta_mv":227,"current_at_max_delta":11.0$extra}"""))
+        assertEquals(null, CellTracker.fromTrips(List(5) { trip("") })!!.peakA)
+        assertEquals(11.0, CellTracker.fromTrips(List(5) { trip(",\"gap_s\":0") })!!.peakA!!, 1e-9)
+        assertEquals("trip_delta_mv", Advisor.afterTrip(trip(""), BmsLimits(), null, null).last().code)
+        assertEquals("trip_delta", Advisor.afterTrip(trip(",\"gap_s\":0"), BmsLimits(), null, null).last().code)
+    }
+
     @Test fun csvAndGpx() {
         val s = Session(7, Session.TYPE_TRIP, 0, 600_000, "",
             JSONObject("""{"soc_start":95,"soc_end":88,"wh":142.0,"distance_km":4.55,"wh_per_km":31.3}"""))

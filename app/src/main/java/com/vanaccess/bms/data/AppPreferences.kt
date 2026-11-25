@@ -382,6 +382,20 @@ class AppPreferences(context: Context) {
         get() = prefs.getInt(k("alarm_low_soc"), 25)
         set(value) = prefs.edit().putInt(k("alarm_low_soc"), value).apply()
 
+    /** Low-battery step already announced (0 = none), see alarm.LowSteps. */
+    var lowStep: Int
+        get() = prefs.getInt(k("low_step"), 0)
+        set(value) = prefs.edit().putInt(k("low_step"), value).apply()
+
+    var askedFullScreen: Boolean
+        get() = prefs.getBoolean("asked_full_screen", false)
+        set(value) = prefs.edit().putBoolean("asked_full_screen", value).apply()
+
+    /** Recovered energy of the trips saved before 1.8 has been worked out. */
+    var regenBackfilled: Boolean
+        get() = prefs.getBoolean("regen_backfilled", false)
+        set(value) = prefs.edit().putBoolean("regen_backfilled", value).apply()
+
     /** Pack voltage at or below which the low-battery alarm fires (0 = voltage check off). */
     var alarmLowVoltage: Float
         get() = prefs.getFloat(k("alarm_low_voltage"),

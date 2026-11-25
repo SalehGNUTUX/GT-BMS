@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lvl_normal">طبيعي</string>
+    <string name="lvl_acceptable">مقبول</string>
+    <string name="lvl_attention">يحتاج انتباهاً</string>
+    <string name="lvl_danger">خطير</string>
+    <string name="alarm_low_text_soon">البطارية عند %1$d%% (%2$.2f فولت). اشحنها قريباً وسِر برفق.</string>
+    <string name="alarm_low_text_danger">البطارية عند %1$d%% (%2$.2f فولت). اشحنها الآن: قد تقطع الحماية القدرة في أي لحظة.</string>
+    <string name="alarm_low_next">التذكير التالي عند %1$d%%</string>
+    <string name="fs_title">المنبه بملء الشاشة</string>
+    <string name="fs_text">ليظهر المنبه بملء الشاشة مع زر إيقاف كبير، حتى والهاتف مقفل أو تطبيق آخر مفتوح، يحتاج أندرويد إذنك. بدونه يبقى المنبه إشعاراً.</string>
+    <string name="fs_row">بدون هذا الإذن يبقى المنبه إشعاراً حين يكون تطبيق آخر مفتوحاً.</string>
+    <string name="fs_allow">السماح بملء الشاشة</string>
+    <string name="regen_energy">الطاقة المستردّة</string>
+    <string name="regen_share">نسبة الاسترداد</string>
+    <string name="regen_times">مرات الاسترداد</string>
+    <string name="regen_peak">ذروة الاسترداد</string>
+    <string name="regen_brake">الكبح التجديدي</string>
+    <string name="regen_hill">استرداد المنحدرات</string>
+    <string name="regen_km">المسافة المكتسبة</string>
+    <string name="adv_regen">استردّ الكبح التجديدي والمنحدرات %1$.0f واط·ساعة: %2$.1f٪ مما استهلكه المحرك.</string>
+    <string name="adv_regen_current">بلغ تيار الاسترداد %1$.0f أمبير، قريباً من حد الشحن في النظام (%2$d أمبير). فوقه قد يقطع النظام الكبح التجديدي؛ اكبح بتدرّج.</string>
+    <string name="adv_regen_full">بلغت خلية أثناء الاسترداد %1$.3f فولت، قريباً من الحماية (%2$.3f فولت). البطارية شبه الممتلئة لا تستقبل طاقة الكبح، وقد ينقطع الكبح التجديدي: اعتمد على المكابح الميكانيكية.</string>
+    <string name="rep_energy_part_km">انقطع البلوتوث: الطاقة تغطي %1$.2f من %2$.2f كم</string>
+    <string name="adv_trip_summary_partial">%1$.2f كم. وصلت بيانات البطارية في جزء منها فقط: سُجّل %2$.0f واط·ساعة (%3$.2f أمبير·ساعة)، فلا يُعرف استهلاك الكيلومتر.</string>
+    <string name="why_rest_slight">في الراحة أدنى قليلاً من غيرها (%1$.0f مللي فولت): دون حد القلق، راقب هل يزيد</string>
+    <string name="why_peak_mv">بلغ الفرق %1$d مللي فولت في رحلة حديثة، فوق حد تنبيهك (%2$d)</string>
+    <string name="adv_trip_delta_mv">بلغ فرق الخلايا %1$d مللي فولت — راقب احتمال خلية ضعيفة.</string>
+</resources>

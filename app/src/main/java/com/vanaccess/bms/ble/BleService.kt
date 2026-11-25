@@ -205,6 +205,7 @@ class BleService : LifecycleService() {
         recorder.onGpsProblem = { com.vanaccess.bms.ui.GpsNotice.show(this, it) }
         recorder.onGpsOk = { com.vanaccess.bms.ui.GpsNotice.clear(this) }
         recorder.restore()
+        backfillRegen()
         loadChargeLearn()
         keepAlive = KeepAlive(this, { connectionState.value == ConnectionState.CONNECTED }) { why ->
             log("wake: $why, ${connectionState.value}")
@@ -1231,6 +1232,21 @@ class BleService : LifecycleService() {
         if (avg > seenMax + 0.005) { seenMax = avg; prefs.cellSeenMax = avg.toFloat() }
         com.vanaccess.bms.reports.BatteryModel.chemistry(seenMax, avg, info.soc, kotlin.math.abs(info.current) < 1.0)
             ?.let { if (it != prefs.seenChemistry) { prefs.seenChemistry = it; log("chemistry: $it") } }
+    }
+
+    /** Once: recovered energy of the trips saved before it was measured, from their points. */
+    private fun backfillRegen() {
+        if (prefs.regenBackfilled) return
+        Thread {
+            runCatching {
+                val store = com.vanaccess.bms.reports.ReportStore.get(this)
+                store.list(com.vanaccess.bms.reports.Session.TYPE_TRIP, 5000).filter { !it.data.has("regen_wh") }.forEach { s ->
+                    com.vanaccess.bms.reports.RegenMeter.fromPoints(store.points(s.id)).write(s.data)
+                    store.updateData(s.id, s.data)
+                }
+                prefs.regenBackfilled = true
+            }.onFailure { log("regen backfill: $it") }
+        }.start()
     }
 
     // ── Guided capacity test ─────────────────────────────────────────────────

@@ -10,9 +10,9 @@ import kotlin.math.abs
 object CellVerdict {
     enum class Level { UNKNOWN, NORMAL, ACCEPTABLE, CHECK, DANGER }
     /** Facts the verdict rests on, shown to the user. */
-    enum class Why { LOAD_SMALL, LOAD_LARGE, LOAD_HUGE, REST_FINE, REST_LOW, REST_FAR, PEAK_OVER_ALARM, MARGIN_OK, MARGIN_THIN }
+    enum class Why { LOAD_SMALL, LOAD_LARGE, LOAD_HUGE, REST_FINE, REST_SLIGHT, REST_LOW, REST_FAR, PEAK_OVER_ALARM, MARGIN_OK, MARGIN_THIN }
 
-    data class V(val level: Level, val cell: Int?, val why: List<Why>)
+    data class V(val level: Level, val cell: Int?, val why: List<Why>, val restSlightMv: Double? = null)
 
     fun of(r: CellTracker.Report, trips: CellTracker.TripCell?, loadAlarmMv: Int, restAlarmMv: Int, cellUvMv: Int?): V {
         val known = r.load.isNotEmpty() || r.rest.isNotEmpty() || trips != null
@@ -27,10 +27,14 @@ object CellVerdict {
             loadMv != null && -loadMv >= loadAlarmMv / 3.0 -> { why += Why.LOAD_LARGE; raise(Level.CHECK) }
             loadMv != null || trips?.cell != null -> { why += Why.LOAD_SMALL; raise(Level.ACCEPTABLE) }
         }
+        // Below the others at rest too, but not enough to count as low
+        val marked = r.loadCell ?: trips?.cell
+        val slight = if (r.restCell == null) r.rest.firstOrNull { it.cell == marked }?.mv?.takeIf { it <= -restAlarmMv * 0.2 } else null
         val restMv = r.rest.firstOrNull { it.cell == r.restCell }?.mv
         when {
             restMv != null && abs(restMv) >= restAlarmMv * 2 -> { why += Why.REST_FAR; raise(Level.DANGER) }
             restMv != null -> { why += Why.REST_LOW; raise(Level.CHECK) }
+            slight != null -> { why += Why.REST_SLIGHT; raise(Level.ACCEPTABLE) }
             r.rest.isNotEmpty() && level != Level.NORMAL -> why += Why.REST_FINE
         }
         if (trips != null) {
@@ -40,6 +44,6 @@ object CellVerdict {
                 else if (level != Level.NORMAL) why += Why.MARGIN_OK
             }
         }
-        return V(level, r.loadCell ?: r.restCell ?: trips?.cell, why)
+        return V(level, r.loadCell ?: r.restCell ?: trips?.cell, why, slight)
     }
 }

@@ -132,14 +132,24 @@ object Advisor {
                 if (diff >= 15) out += Rec(Level.INFO, "trip_above_avg", listOf(diff, avgWhKm))
                 else if (diff <= -15) out += Rec(Level.OK, "trip_below_avg", listOf(-diff, avgWhKm))
             }
+        } else if (km >= 0.1) {
+            out += Rec(Level.INFO, "trip_summary_partial", listOf(km, s.d("wh"), s.d("ah")))
         } else {
             out += Rec(Level.INFO, "trip_summary_nogps", listOf(s.d("wh"), s.d("ah")))
+        }
+        RegenMeter.sharePct(s.d("regen_wh"), s.d("wh"))?.takeIf { s.d("regen_wh") >= 1 }?.let { pct ->
+            out += Rec(Level.OK, "regen", listOf(s.d("regen_wh"), pct))
+            // Recuperation charges the battery: the charge protections apply to it too
+            lim.chargeOcA?.takeIf { it > 0 }?.let { oc ->
+                if (s.d("regen_max_a") >= oc * 0.8) out += Rec(Level.WARNING, "regen_current", listOf(s.d("regen_max_a"), oc)) }
+            lim.cellOvMv?.let { ov ->
+                if (s.d("regen_max_cell") >= ov / 1000.0 - 0.05) out += Rec(Level.WARNING, "regen_full", listOf(s.d("regen_max_cell"), ov / 1000.0)) }
         }
         rangeKm?.takeIf { it > 0 }?.let { out += Rec(Level.INFO, "trip_range", listOf(it)) }
         lim.dischargeOcA?.takeIf { it > 0 }?.let { oc ->
             if (s.d("max_current") >= oc * 0.8) out += Rec(Level.WARNING, "trip_peak_current", listOf(s.d("max_current"), oc))
         }
-        if (s.i("max_delta_mv") >= 100) out += Rec(Level.WARNING, "trip_delta", listOf(s.i("max_delta_mv"), s.d("current_at_max_delta")))
+        if (s.i("max_delta_mv") >= 100) out += s.deltaA?.let { Rec(Level.WARNING, "trip_delta", listOf(s.i("max_delta_mv"), it)) } ?: Rec(Level.WARNING, "trip_delta_mv", listOf(s.i("max_delta_mv")))
         return out
     }
 
@@ -151,7 +161,7 @@ object Advisor {
         lim.dischargeOcA?.takeIf { it > 0 }?.let { oc ->
             if (s.d("max_current") >= oc * 0.8) out += Rec(Level.WARNING, "trip_peak_current", listOf(s.d("max_current"), oc))
         }
-        if (s.i("max_delta_mv") >= 100) out += Rec(Level.WARNING, "trip_delta", listOf(s.i("max_delta_mv"), s.d("current_at_max_delta")))
+        if (s.i("max_delta_mv") >= 100) out += s.deltaA?.let { Rec(Level.WARNING, "trip_delta", listOf(s.i("max_delta_mv"), it)) } ?: Rec(Level.WARNING, "trip_delta_mv", listOf(s.i("max_delta_mv")))
         if (s.i("soc_end") <= 10) out += Rec(Level.WARNING, "battery_low", listOf(s.i("soc_end")))
         return out
     }

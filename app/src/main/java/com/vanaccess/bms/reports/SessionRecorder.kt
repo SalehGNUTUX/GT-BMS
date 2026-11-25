@@ -72,7 +72,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         val savedCount = MutableLiveData(0)
     }
 
-    data class TripLive(val startMs: Long, val distanceKm: Double, val wh: Double, val maxSpeed: Double)
+    data class TripLive(val startMs: Long, val distanceKm: Double, val wh: Double, val maxSpeed: Double, val regenWh: Double = 0.0)
     data class ChargeLive(val startMs: Long, val socStart: Int, val ah: Double, val wh: Double, val stopped: Boolean = false)
 
     private val main = Handler(Looper.getMainLooper())
@@ -123,6 +123,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         // trip-only
         var distanceKm = 0.0; var maxSpeed = 0.0; var movingS = 0.0; var hardAccel = 0
         var lastFix: LocationTracker.Fix? = null; var lastAccelMs = 0L
+        val regen = RegenMeter()
+        /** Distance up to the last battery reading: what the energy belongs to. */
+        var heardKm = 0.0
         val points = mutableListOf<Point>()
         var lastPointMs = 0L
         // charge-only
@@ -141,6 +144,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             put("dmv", maxDeltaMv); put("di", currentAtMaxDelta); put("temp", maxTemp); put("maxI", maxCurrent)
             put("bal", balancingSeen); put("prot", endedByProtection); put("km", distanceKm); put("vmax", maxSpeed)
             put("mov", movingS); put("acc", hardAccel); put("gap", gapMs); etaFirstMin?.let { put("eta", it) }
+            regen.write(this); put("hkm", heardKm)
             put("pts", org.json.JSONArray().also { a -> points.forEach { p ->
                 a.put(org.json.JSONArray().put(p.tMs).put(p.v).put(p.i).put(p.soc).put(p.speedKmh ?: JSONObject.NULL)
                     .put(p.lat ?: JSONObject.NULL).put(p.lon ?: JSONObject.NULL)) } })
@@ -154,6 +158,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 maxDeltaMv = o.getInt("dmv"); currentAtMaxDelta = o.getDouble("di"); maxTemp = o.getDouble("temp"); maxCurrent = o.getDouble("maxI")
                 balancingSeen = o.getBoolean("bal"); endedByProtection = o.getBoolean("prot"); distanceKm = o.getDouble("km")
                 maxSpeed = o.getDouble("vmax"); movingS = o.getDouble("mov"); hardAccel = o.getInt("acc"); gapMs = o.getLong("gap")
+                regen.read(o); heardKm = o.optDouble("hkm", distanceKm)
                 if (o.has("eta")) etaFirstMin = o.getDouble("eta")
                 val a = o.getJSONArray("pts")
                 for (k in 0 until a.length()) a.getJSONArray(k).let { p ->
@@ -310,7 +315,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     private fun endTrip(t: Acc) {
         if (lastTripActiveMs > t.startMs) t.endMs = lastTripActiveMs
         // Plugged in on arrival: the charger's current is no recovered energy
-        if (gate.since != 0L && gate.since >= lastTripActiveMs - 5_000 && lastSampleMs - gate.since >= 30_000) { t.ah += backAh; t.wh += backWh }
+        if (gate.since != 0L && gate.since >= lastTripActiveMs - 5_000 && lastSampleMs - gate.since >= 30_000) { t.ah += backAh; t.wh += backWh; t.regen.discardOpen() }
         backAh = 0.0; backWh = 0.0
         log("trip ended, battery silent ${(System.currentTimeMillis() - lastSampleMs) / 1000}s, ${"%.2f".format(java.util.Locale.US, t.distanceKm)} km")
         finishTrip(t); trip = null; tripCandidateSince = 0L
@@ -487,6 +492,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         trip?.let { t ->
             accumulate(t, info, dtS, now, charging = false)
             if (gate.since != 0L) { backAh += i * dtS / 3600.0; backWh += i * info.packVoltage * dtS / 3600.0 }
+            t.heardKm = t.distanceKm; silentFast = 0
+            t.regen.add(now, i, info.packVoltage, dtS, fix?.speedKmh, lastCells.maxOrNull() ?: 0.0, CHG_START_A * k)
             val moving = (fix?.speedKmh ?: 0.0) >= MOVING_KMH
             val loaded = i < -TRIP_IDLE_A * k
             if (loaded || (fix?.speedKmh ?: 0.0) >= TripGap.RIDING_KMH) lastRidingMs = now
@@ -495,7 +502,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 if (tripIdleSince == 0L) tripIdleSince = now
                 if (now - tripIdleSince >= TRIP_IDLE_END_MS) endTrip(t)
             }
-            if (trip != null) activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed)
+            if (trip != null) activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed, t.regen.liveWh)
         }
     }
 
@@ -594,6 +601,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         liveSpeedKmh.value = null
     }
 
+    private var silentFast = 0
+
     private fun onFix(fix: LocationTracker.Fix) {
         val t = trip ?: return
         liveSpeedKmh.value = fix.speedKmh
@@ -601,9 +610,11 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         val silent = lastSampleMs > 0 && now - lastSampleMs > MAX_DT_S * 1000
         // Without battery data only riding counts, so walking away adds nothing to the trip
         val minKmh = if (silent) TripGap.RIDING_KMH else MOVING_KMH
-        if (silent && fix.speedKmh >= TripGap.RIDING_KMH) {
+        // (one fast fix alone is GPS noise, as when walking into a building after parking)
+        silentFast = if (silent && fix.speedKmh >= TripGap.RIDING_KMH) silentFast + 1 else 0
+        if (silentFast >= 3) {
             lastRidingMs = now; lastTripActiveMs = now
-            activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed)
+            activeTrip.value = TripLive(t.startMs, t.distanceKm, t.wh, t.maxSpeed, t.regen.liveWh)
             // Keep drawing the route; v = 0 marks "no battery data" (left out of charts and analysis)
             if (now - t.lastPointMs >= POINT_EVERY_MS) {
                 t.lastPointMs = now
@@ -639,7 +650,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         put("max_v", a.maxV); put("min_v", if (a.minV == Double.MAX_VALUE) 0.0 else a.minV)
         put("max_cell_v", a.maxCellV); put("max_cell_idx", a.maxCellIdx)
         put("min_cell_v", if (a.minCellV == Double.MAX_VALUE) 0.0 else a.minCellV); put("min_cell_idx", a.minCellIdx)
-        put("max_delta_mv", a.maxDeltaMv); put("current_at_max_delta", a.currentAtMaxDelta)
+        put("max_delta_mv", a.maxDeltaMv); put("current_at_max_delta", a.currentAtMaxDelta); put("delta_paired", true)
         put("max_temp", if (a.maxTemp < -50) JSONObject.NULL else a.maxTemp)
         put("max_current", a.maxCurrent)
         put("start_min_cell", a.startMinCell)
@@ -687,15 +698,20 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         // Ridden on without battery data and not heard from it since: energy is incomplete
         val partial = lastTripActiveMs - lastSampleMs > MAX_DT_S * 1000
         if (partial) t.gapMs += lastTripActiveMs - lastSampleMs
+        t.regen.close()
+        // A short unheard end: the consumption is that of the part with data
+        val energyKm = TripGap.energyKm(partial, t.distanceKm, t.heardKm)
         val data = common(t).apply {
+            t.regen.write(this)
             put("distance_km", t.distanceKm)
             put("max_speed", t.maxSpeed)
             put("moving_s", t.movingS)
             put("avg_speed", if (t.movingS > 0) t.distanceKm / (t.movingS / 3600.0) else 0.0)
             put("gap_s", t.gapMs / 1000)
             put("energy_partial", partial)
-            put("wh_per_km", if (t.distanceKm >= 0.1 && !partial) t.wh / t.distanceKm else JSONObject.NULL)
-            put("ah_per_km", if (t.distanceKm >= 0.1 && !partial) t.ah / t.distanceKm else JSONObject.NULL)
+            if (partial) put("energy_km", t.heardKm)
+            put("wh_per_km", energyKm?.let { t.wh / it } ?: JSONObject.NULL)
+            put("ah_per_km", energyKm?.let { t.ah / it } ?: JSONObject.NULL)
             put("hard_accel", t.hardAccel)
             put("vehicle", prefs.vehicleType)
             put("gps", t.distanceKm > 0 || t.maxSpeed > 0)
@@ -721,7 +737,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         val ah = TripGap.missingAh(l.remainAh, info.remainCapacity, info.fullCapacity)
         val d = l.session.data; val t = l.acc
         val totalAh = t.ah + ah; val totalWh = t.wh + ah * (l.packV + info.packVoltage) / 2
-        d.put("ah", totalAh).put("wh", totalWh).put("soc_end", info.soc).put("energy_partial", false)
+        d.put("ah", totalAh).put("wh", totalWh).put("soc_end", info.soc).put("energy_partial", false).remove("energy_km")
         if (t.distanceKm >= 0.1) d.put("wh_per_km", totalWh / t.distanceKm).put("ah_per_km", totalAh / t.distanceKm)
         Thread {
             try { store.updateData(l.session.id, d) } catch (_: Exception) {}

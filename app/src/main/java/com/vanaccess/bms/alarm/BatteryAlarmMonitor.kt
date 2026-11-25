@@ -40,6 +40,16 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     enum class Kind { HIGH, LOW, DELTA_LOAD, CELL }
 
+    /** How serious it is, said plainly. */
+    enum class Level(val label: Int, val color: String) {
+        NORMAL(R.string.lvl_normal, "#43D17A"), ACCEPTABLE(R.string.lvl_acceptable, "#4DA3FF"),
+        ATTENTION(R.string.lvl_attention, "#F5B83D"), DANGER(R.string.lvl_danger, "#F0544F")
+    }
+
+    /** What is ringing now (full screen and notification). */
+    class Ring(val kind: Kind, val title: String, val big: String, val text: String,
+               val level: Level, val note: String? = null, val away: Boolean = false)
+
     private class State {
         var armed = true
         var lastStoppedAt = 0L
@@ -55,6 +65,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         private const val CHARGE_MEMORY_MS = 90_000L
         private const val CHARGE_THRESHOLD_A = 0.1
         const val SHORT_ALARM_MS = 5_000L
+        /** Null = nothing rings. */
+        val ring = androidx.lifecycle.MutableLiveData<Ring?>(null)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -84,22 +96,44 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         val highClear = (hSoc <= 0 || soc < hSoc - SOC_HYSTERESIS) &&
                 (hV <= 0 || !validV || voltage < hV - VOLT_HYSTERESIS)
         check(Kind.HIGH, prefs.alarmHighEnabled && charging && highHit, highClear, now) {
-            context.getString(R.string.alarm_high_text, soc, voltage)
+            Ring(Kind.HIGH, context.getString(R.string.alarm_high_title), "$soc%",
+                context.getString(R.string.alarm_high_text, soc, voltage), Level.NORMAL)
         }
 
         // ── Low battery ──
         val lSoc = prefs.alarmLowSoc
         val lV = prefs.alarmLowVoltage.toDouble()
-        val lowHit = (lSoc > 0 && soc <= lSoc) || (lV > 0 && validV && voltage <= lV)
-        val lowClear = (lSoc <= 0 || soc > lSoc + SOC_HYSTERESIS) &&
-                (lV <= 0 || !validV || voltage > lV + VOLT_HYSTERESIS)
+        lastSoc = soc
         val notCharging = current <= CHARGE_THRESHOLD_A
-        check(Kind.LOW, prefs.alarmLowEnabled && notCharging && lowHit, lowClear, now) {
-            context.getString(R.string.alarm_low_text, soc, voltage)
+        // Percentage: once at the owner's value, then at each lower step; the last one repeats
+        val announced = LowSteps.settle(prefs.lowStep, soc, lSoc)
+        if (announced != prefs.lowStep) prefs.lowStep = announced
+        val atLast = LowSteps.at(soc, lSoc).let { it > 0 && LowSteps.next(soc, lSoc) == null }
+        val last = states.getValue(Kind.LOW).lastStoppedAt
+        val again = atLast && last != 0L && now - last >= prefs.alarmCooldownMinutes.coerceAtLeast(1) * 60_000L
+        if (prefs.alarmLowEnabled && notCharging && ringing == null && (LowSteps.due(announced, soc, lSoc) || again)) {
+            prefs.lowStep = LowSteps.at(soc, lSoc)
+            states.getValue(Kind.LOW).armed = false
+            startAlarm(lowRing(soc, voltage, lSoc))
         }
+        // Voltage: as before
+        check(Kind.LOW, prefs.alarmLowEnabled && notCharging && lV > 0 && validV && voltage <= lV,
+            lV <= 0 || !validV || voltage > lV + VOLT_HYSTERESIS, now) { lowRing(soc, voltage, lSoc) }
     }
 
-    private inline fun check(kind: Kind, hit: Boolean, clear: Boolean, now: Long, text: () -> String) {
+    private var lastSoc = 0
+
+    private fun lowRing(soc: Int, voltage: Double, limit: Int) = Ring(Kind.LOW,
+        context.getString(R.string.alarm_low_title), "$soc%",
+        context.getString(when {
+            soc <= 10 -> R.string.alarm_low_text_danger
+            soc <= 20 -> R.string.alarm_low_text_soon
+            else -> R.string.alarm_low_text
+        }, soc, voltage),
+        when { soc <= 10 -> Level.DANGER; soc <= 20 -> Level.ATTENTION; else -> Level.ACCEPTABLE },
+        LowSteps.next(soc, limit)?.takeIf { LowSteps.at(soc, limit) > 0 }?.let { context.getString(R.string.alarm_low_next, it) })
+
+    private inline fun check(kind: Kind, hit: Boolean, clear: Boolean, now: Long, make: () -> Ring) {
         val st = states.getValue(kind)
         if (clear) st.armed = true
         if (!hit || ringing != null) return
@@ -107,7 +141,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         val cooledDown = st.lastStoppedAt != 0L && now - st.lastStoppedAt >= cooldownMs
         if (st.armed || cooledDown) {
             st.armed = false
-            startAlarm(kind, text())
+            startAlarm(make())
         }
     }
 
@@ -125,7 +159,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         val now = System.currentTimeMillis()
         val charging = now - com.vanaccess.bms.reports.SessionRecorder.lastChargingMs < 15_000L
         check(Kind.CELL, charging && current > CHARGE_THRESHOLD_A && mx >= limit, mx < limit - 0.05, now) {
-            context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx)
+            Ring(Kind.CELL, context.getString(R.string.alarm_cell_title), String.format(java.util.Locale.US, "%.2f V", mx),
+                context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx), Level.ACCEPTABLE)
         }
     }
 
@@ -151,7 +186,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             val loadA = prefs.vehicle.loadCurrentA
             val limit = prefs.alarmDeltaLoadMv
             check(Kind.DELTA_LOAD, iAbs >= loadA && delta >= limit, delta < limit - 20, now) {
-                context.getString(R.string.alarm_delta_load_text, delta, iAbs, lowest)
+                Ring(Kind.DELTA_LOAD, context.getString(R.string.alarm_delta_load_title), "$delta mV",
+                    context.getString(R.string.alarm_delta_load_text, delta, iAbs, lowest), Level.ATTENTION)
             }
             if (iAbs < 1.0) { if (restSince == 0L) restSince = now } else restSince = 0L
             val atRest = restSince != 0L && now - restSince >= 120_000
@@ -184,7 +220,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         main.post {
             if (ringing != null) stopSound()
             ringing = null
-            startAlarm(kind, context.getString(R.string.alarm_test_text))
+            startAlarm(Ring(kind, context.getString(title(kind)), "🔔", context.getString(R.string.alarm_test_text), Level.NORMAL))
         }
     }
 
@@ -192,7 +228,10 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         main.post {
             val kind = ringing
             if (kind != null) states.getValue(kind).lastStoppedAt = System.currentTimeMillis()
+            // It went lower while ringing: stopping it covers that step too
+            if (kind == Kind.LOW && prefs.lowStep > 0) LowSteps.at(lastSoc, prefs.alarmLowSoc).let { if (it in 1 until prefs.lowStep) prefs.lowStep = it }
             ringing = null
+            ring.value = null
             stopSound()
             context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         }
@@ -200,6 +239,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     fun release() {
         ringing = null
+        ring.value = null
         stopSound()
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
     }
@@ -207,23 +247,28 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     // ── Sound / vibration ─────────────────────────────────────────────────────
 
     /** By the clock, the battery being out of reach (see ble.ChargeTimer): tone of the full-charge alarm. */
-    fun ringAway(text: String) { main.post { if (ringing == null) startAlarm(Kind.HIGH, text, away = true) } }
+    fun ringAway(text: String) { main.post { if (ringing == null) startAlarm(
+        Ring(Kind.HIGH, context.getString(R.string.away_ring_title), "⏰", text, Level.NORMAL, away = true)) } }
 
-    private fun startAlarm(kind: Kind, text: String, away: Boolean = false) {
-        Log.i(TAG, "Alarm $kind: $text")
+    private fun startAlarm(r: Ring) {
+        val kind = r.kind
+        Log.i(TAG, "Alarm $kind: ${r.text}")
         com.vanaccess.bms.data.EventLog.add(context, "alarm $kind")
         ringing = kind
         val short = prefs.alarmShort(Tones.toneKey(kind))
-        showNotification(kind, text, ongoing = !short, away = away)
+        ring.value = r
+        showNotification(r, ongoing = !short)
+        showFullScreen()
         playSound(kind)
         if (prefs.alarmVibrate) vibrate()
         if (short) {
             // Short mode: ring for 5 s, then stop by itself (counts as stopped for the
             // cooldown) and leave a normal notification so the alert is not lost.
             main.postDelayed({
-                if (ringing == kind) {
+                if (ringing == kind && ring.value === r) {
                     states.getValue(kind).lastStoppedAt = System.currentTimeMillis()
                     ringing = null
+                    ring.value = null
                     stopSound()
                 }
             }, SHORT_ALARM_MS)
@@ -314,7 +359,26 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    private fun showNotification(kind: Kind, text: String, ongoing: Boolean = true, away: Boolean = false) {
+    /**
+     * Screen off or locked: the notification's full-screen intent does it. In use: Android only
+     * lets the app open it when it is on the screen itself or may show over other apps.
+     */
+    private fun showFullScreen() {
+        val st = android.app.ActivityManager.RunningAppProcessInfo().also { android.app.ActivityManager.getMyMemoryState(it) }
+        val visible = st.importance <= android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE &&
+            st.importance != android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE
+        if (visible || com.vanaccess.bms.ui.FullScreenAccess.overApps(context))
+            runCatching { context.startActivity(AlarmActivity.intent(context)) }.onFailure { Log.w(TAG, "full screen: ${it.message}") }
+    }
+
+    private fun title(kind: Kind) = when (kind) {
+        Kind.HIGH -> R.string.alarm_high_title
+        Kind.LOW -> R.string.alarm_low_title
+        Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
+        Kind.CELL -> R.string.alarm_cell_title
+    }
+
+    private fun showNotification(r: Ring, ongoing: Boolean) {
         val stopIntent = Intent(context, BleService::class.java).setAction(BleService.ACTION_STOP_ALARM)
         val stopPi = PendingIntent.getService(
             context, 1, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -323,26 +387,24 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             context, 2, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val title = context.getString(if (away) R.string.away_ring_title else when (kind) {
-            Kind.HIGH -> R.string.alarm_high_title
-            Kind.LOW -> R.string.alarm_low_title
-            Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
-            Kind.CELL -> R.string.alarm_cell_title
-        })
+        val text = r.text + (r.note?.let { "\n" + it } ?: "")
+        val fullPi = PendingIntent.getActivity(context, 4, AlarmActivity.intent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_battery)
-            .setContentTitle(title)
-            .setContentText(text)
+            .setContentTitle(r.title)
+            .setContentText(r.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(ongoing)
             .setAutoCancel(!ongoing)
-            .setContentIntent(openPi)
+            .setContentIntent(if (ongoing) fullPi else openPi)
+            .setFullScreenIntent(fullPi, true)
             .setDeleteIntent(stopPi)
             .addAction(R.drawable.ic_battery, context.getString(R.string.alarm_stop), stopPi)
-            .apply { if (away) addAction(0, context.getString(R.string.away_done), com.vanaccess.bms.ble.ChargeTimer.donePending(context)) }
+            .apply { if (r.away) addAction(0, context.getString(R.string.away_done), com.vanaccess.bms.ble.ChargeTimer.donePending(context)) }
             .build()
         try {
             context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, n)

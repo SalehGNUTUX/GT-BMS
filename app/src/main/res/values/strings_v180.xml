@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lvl_normal">Normal</string>
+    <string name="lvl_acceptable">Acceptable</string>
+    <string name="lvl_attention">Needs attention</string>
+    <string name="lvl_danger">Dangerous</string>
+    <string name="alarm_low_text_soon">Battery at %1$d%% (%2$.2f V). Recharge soon and ride gently.</string>
+    <string name="alarm_low_text_danger">Battery at %1$d%% (%2$.2f V). Recharge now: the protection may cut the power at any moment.</string>
+    <string name="alarm_low_next">Next reminder at %1$d%%</string>
+    <string name="fs_title">Full-screen alarms</string>
+    <string name="fs_text">So the alarm takes the whole screen with a large stop button, even when the phone is locked or another app is open, Android needs your permission. Without it, the alarm stays a notification.</string>
+    <string name="fs_row">Without this permission, an alarm stays a notification while another app is open.</string>
+    <string name="fs_allow">Allow full screen</string>
+    <string name="regen_energy">Recovered energy</string>
+    <string name="regen_share">Recovery rate</string>
+    <string name="regen_times">Recovery events</string>
+    <string name="regen_peak">Peak recovery</string>
+    <string name="regen_brake">Regenerative braking</string>
+    <string name="regen_hill">Downhill recovery</string>
+    <string name="regen_km">Distance gained</string>
+    <string name="adv_regen">Recuperation (regenerative braking and descents) returned %1$.0f Wh: %2$.1f %% of what the motor used.</string>
+    <string name="adv_regen_current">Recovery current peaked at %1$.0f A, close to the BMS charge limit (%2$d A). Beyond it the BMS may cut regenerative braking; brake more gradually.</string>
+    <string name="adv_regen_full">During recuperation a cell reached %1$.3f V, close to the protection (%2$.3f V). A nearly full battery cannot take the braking energy and regenerative braking may be cut: rely on the mechanical brakes.</string>
+    <string name="rep_energy_part_km">Bluetooth was lost: the energy covers %1$.2f of %2$.2f km</string>
+    <string name="adv_trip_summary_partial">%1$.2f km. The battery was heard for part of it only: %2$.0f Wh (%3$.2f Ah) recorded, so the consumption is not known.</string>
+    <string name="why_rest_slight">At rest it is slightly lower than the others (%1$.0f mV): below the level of concern, watch whether it grows</string>
+    <string name="why_peak_mv">The difference reached %1$d mV in a recent trip, above your alarm (%2$d mV)</string>
+    <string name="adv_trip_delta_mv">Cells differed by %1$d mV — watch for a weak cell.</string>
+</resources>

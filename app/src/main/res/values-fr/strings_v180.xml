@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lvl_normal">Normal</string>
+    <string name="lvl_acceptable">Acceptable</string>
+    <string name="lvl_attention">À surveiller</string>
+    <string name="lvl_danger">Dangereux</string>
+    <string name="alarm_low_text_soon">Batterie à %1$d%% (%2$.2f V). Rechargez bientôt et roulez doucement.</string>
+    <string name="alarm_low_text_danger">Batterie à %1$d%% (%2$.2f V). Rechargez maintenant : la protection peut couper à tout moment.</string>
+    <string name="alarm_low_next">Prochain rappel à %1$d%%</string>
+    <string name="fs_title">Alarmes plein écran</string>
+    <string name="fs_text">Pour que l\'alarme occupe tout l\'écran avec un grand bouton d\'arrêt, même téléphone verrouillé ou autre application ouverte, Android demande votre autorisation. Sans elle, l\'alarme reste une notification.</string>
+    <string name="fs_row">Sans cette autorisation, l\'alarme reste une notification quand une autre application est ouverte.</string>
+    <string name="fs_allow">Autoriser le plein écran</string>
+    <string name="regen_energy">Énergie récupérée</string>
+    <string name="regen_share">Taux de récupération</string>
+    <string name="regen_times">Récupérations</string>
+    <string name="regen_peak">Pic de récupération</string>
+    <string name="regen_brake">Freinage régénératif</string>
+    <string name="regen_hill">Récupération en descente</string>
+    <string name="regen_km">Distance gagnée</string>
+    <string name="adv_regen">La récupération (freinage régénératif et descentes) a rendu %1$.0f Wh : %2$.1f %% de l\'énergie du moteur.</string>
+    <string name="adv_regen_current">Le courant de récupération a atteint %1$.0f A, proche de la limite de charge du BMS (%2$d A). Au-delà, le BMS peut couper le freinage régénératif ; freinez plus progressivement.</string>
+    <string name="adv_regen_full">Pendant la récupération une cellule a atteint %1$.3f V, proche de la protection (%2$.3f V). Une batterie presque pleine n\'accepte pas cette énergie et le freinage régénératif peut être coupé : comptez sur les freins mécaniques.</string>
+    <string name="rep_energy_part_km">Bluetooth perdu : l\'énergie couvre %1$.2f sur %2$.2f km</string>
+    <string name="adv_trip_summary_partial">%1$.2f km. Batterie entendue sur une partie seulement : %2$.0f Wh (%3$.2f Ah) enregistrés, la consommation n\'est donc pas connue.</string>
+    <string name="why_rest_slight">Au repos elle est un peu plus basse que les autres (%1$.0f mV) : sous le seuil d\'inquiétude, surveillez si cela augmente</string>
+    <string name="why_peak_mv">L\'écart a atteint %1$d mV lors d\'un trajet récent, au-dessus de votre alerte (%2$d mV)</string>
+    <string name="adv_trip_delta_mv">Écart de %1$d mV entre cellules — surveillez une éventuelle cellule faible.</string>
+</resources>

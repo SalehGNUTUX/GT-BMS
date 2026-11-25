@@ -57,7 +57,7 @@
     <string name="alarm_high_label">Full-charge alarm</string>
     <string name="alarm_high_desc">While charging: SOC ≥ value OR voltage ≥ value</string>
     <string name="alarm_low_label">Low-battery alarm</string>
-    <string name="alarm_low_desc">While not charging: SOC ≤ value OR voltage ≤ value</string>
+    <string name="alarm_low_desc">While not charging: SOC ≤ value OR voltage ≤ value. Then reminders at 20, 15, 10 and 5%.</string>
     <string name="alarm_soc_hint">SOC %</string>
     <string name="alarm_voltage_hint">Voltage (V)</string>
     <string name="alarm_cooldown_hint">Repeat after (min)</string>

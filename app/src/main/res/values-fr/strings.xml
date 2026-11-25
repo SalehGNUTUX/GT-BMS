@@ -56,7 +56,7 @@
     <string name="alarm_high_label">Alarme de charge complète</string>
     <string name="alarm_high_desc">En charge : SOC ≥ valeur OU tension ≥ valeur</string>
     <string name="alarm_low_label">Alarme de batterie faible</string>
-    <string name="alarm_low_desc">Hors charge : SOC ≤ valeur OU tension ≤ valeur</string>
+    <string name="alarm_low_desc">Hors charge : SOC ≤ valeur OU tension ≤ valeur. Puis rappels à 20, 15, 10 et 5 %.</string>
     <string name="alarm_soc_hint">SOC %</string>
     <string name="alarm_voltage_hint">Tension (V)</string>
     <string name="alarm_cooldown_hint">Répéter après (min)</string>

@@ -25,6 +25,8 @@ data class DayReport(
     val unrecorded: Int,
     /** Charge put in during the day as the BMS shows it (%). */
     val socCharged: Int,
+    /** Energy recuperation (braking, descents) of the trips. */
+    val regenAh: Double = 0.0, val regenWh: Double = 0.0,
 ) {
     val avgSpeed get() = if (ridingS > 0) km / (ridingS / 3600.0) else 0.0
 
@@ -76,7 +78,7 @@ data class DayReport(
             }
             val withKm = trips.filter { it.d("distance_km") > 0 }
             // Distance without its energy (before 1.7) would make the consumption look better than it was
-            val complete = withKm.filter { !it.data.isNull("wh_per_km") && !impossible(it) }
+            val complete = withKm.filter { !it.data.isNull("wh_per_km") && !it.b("energy_partial") && !impossible(it) }
             val ckm = complete.sumOf { it.d("distance_km") * part(it) }
             val low = out.filter { it.d("min_cell_v") > 0 }.minByOrNull { it.d("min_cell_v") }
             return DayReport(start, end, trips, charges,
@@ -93,7 +95,8 @@ data class DayReport(
                 out.maxOfOrNull { it.d("max_current") } ?: 0.0, low?.d("min_cell_v") ?: 0.0, low?.i("min_cell_idx") ?: 0,
                 inDay.filter { !it.data.isNull("max_temp") && it.data.has("max_temp") }.maxOfOrNull { it.d("max_temp") },
                 trips.any { it.b("energy_partial") || impossible(it) }, lost,
-                Math.round(charges.sumOf { (it.i("soc_end") - it.i("soc_start")).coerceAtLeast(0) * part(it) }).toInt())
+                Math.round(charges.sumOf { (it.i("soc_end") - it.i("soc_start")).coerceAtLeast(0) * part(it) }).toInt(),
+                trips.sumOf { it.d("regen_ah") * part(it) }, trips.sumOf { it.d("regen_wh") * part(it) })
         }
     }
 }
