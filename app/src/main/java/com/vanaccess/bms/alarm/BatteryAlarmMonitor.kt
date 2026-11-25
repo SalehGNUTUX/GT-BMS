@@ -51,7 +51,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         const val NOTIFICATION_ID = 2001
         private const val SOC_HYSTERESIS = 2
         private const val VOLT_HYSTERESIS = 0.5
-        /** Charging is considered "recent" for this long after current was last > 0. */
+        /** Charging is considered "recent" for this long after the last reading of a confirmed charge. */
         private const val CHARGE_MEMORY_MS = 90_000L
         private const val CHARGE_THRESHOLD_A = 0.1
         const val SHORT_ALARM_MS = 5_000L
@@ -62,7 +62,6 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     private var ringing: Kind? = null
     private var player: MediaPlayer? = null
     private var ringtone: Ringtone? = null
-    private var lastChargingAt = 0L
 
     init { createChannel() }
 
@@ -73,8 +72,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     private fun evaluate(soc: Int, voltage: Double, current: Double) {
         val now = System.currentTimeMillis()
-        if (current > CHARGE_THRESHOLD_A) lastChargingAt = now
-        val charging = now - lastChargingAt < CHARGE_MEMORY_MS
+        // A confirmed charge, never a moment of regenerative braking
+        val charging = now - com.vanaccess.bms.reports.SessionRecorder.lastChargingMs < CHARGE_MEMORY_MS
         val validV = voltage > 1.0
 
         // ── High charge ──
@@ -123,7 +122,9 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         if (!prefs.alarmCellEnabled || (manual <= 0 && (ov <= 0 || learn.cutByProtection == false))) return
         val limit = if (manual > 0) manual else learn.alarmCellV(ov)
         val mx = cells.max()
-        check(Kind.CELL, current > CHARGE_THRESHOLD_A && mx >= limit, mx < limit - 0.05, System.currentTimeMillis()) {
+        val now = System.currentTimeMillis()
+        val charging = now - com.vanaccess.bms.reports.SessionRecorder.lastChargingMs < 15_000L
+        check(Kind.CELL, charging && current > CHARGE_THRESHOLD_A && mx >= limit, mx < limit - 0.05, now) {
             context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx)
         }
     }

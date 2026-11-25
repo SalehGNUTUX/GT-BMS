@@ -365,7 +365,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupChargePulse() {
         com.vanaccess.bms.ble.BleService.basicInfo.observe(this) { info ->
-            val charging = info != null && info.current > 0.3 &&
+            val charging = info != null && info.current > 0.3 && !com.vanaccess.bms.reports.SessionRecorder.regen(info.current) &&
                 com.vanaccess.bms.ble.BleService.connectionState.value == com.vanaccess.bms.ble.BleService.ConnectionState.CONNECTED
             if (charging) startChargePulse() else stopChargePulse()
         }

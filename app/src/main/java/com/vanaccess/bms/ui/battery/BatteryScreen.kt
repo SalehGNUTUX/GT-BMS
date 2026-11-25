@@ -333,7 +333,8 @@ class BatteryScreen(
         if (prefs.temperatureUnit == "F") fmt("%.0f°F", c * 9 / 5 + 32) else fmt("%.0f°C", c)
 
     private fun renderLive(info: BmsBasicInfo) {
-        val charging = info.current > 0.1
+        val regen = com.vanaccess.bms.reports.SessionRecorder.regen(info.current)
+        val charging = info.current > 0.1 && !regen
         val discharging = info.current < -0.1
         b.gauge.level = info.soc
         b.gauge.charging = charging
@@ -345,6 +346,7 @@ class BatteryScreen(
         b.tvSoc.setTextColor(b.gauge.colorFor(info.soc))
 
         val (stateTxt, stateCol) = when {
+            regen -> R.string.st_regen to cGreen
             charging -> R.string.st_charging to cGreen
             discharging -> R.string.st_discharging to cBlue
             else -> R.string.st_idle to cGrey

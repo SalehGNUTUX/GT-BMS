@@ -1,0 +1,1 @@
+1.7.2: fixed the "fully charged" alarm ringing while riding: regenerative braking no longer counts as charging.

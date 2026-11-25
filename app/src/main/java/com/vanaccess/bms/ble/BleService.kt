@@ -1258,7 +1258,10 @@ class BleService : LifecycleService() {
         val lowV = (lim.socLowCalMv ?: if (lim.lion) 3300 else if (lim.lfp) 3050 else lim.cellUvMv ?: 2500) / 1000.0
         val ovV = (lim.cellOvMv ?: 4500) / 1000.0
         val now = System.currentTimeMillis()
-        val next = com.vanaccess.bms.reports.CapacityTest.update(st, now, info.soc, info.current, cells?.minOrNull() ?: 0.0, cells?.maxOrNull() ?: 0.0,
+        // The counting begins with a charger, not with a moment of braking
+        val amps = if (st.phase == com.vanaccess.bms.reports.CapacityTest.Phase.READY && info.current > 0 &&
+            now - com.vanaccess.bms.reports.SessionRecorder.lastChargingMs > 5_000L) 0.0 else info.current
+        val next = com.vanaccess.bms.reports.CapacityTest.update(st, now, info.soc, amps, cells?.minOrNull() ?: 0.0, cells?.maxOrNull() ?: 0.0,
             info.chargeFetOn, lowV, ovV)
         capTest = next
         if (next.phase != st.phase) {
@@ -1623,6 +1626,7 @@ class BleService : LifecycleService() {
         if (now - lastNotifyMs >= 10_000L) {
             lastNotifyMs = now
             val state = getString(when {
+                com.vanaccess.bms.reports.SessionRecorder.regen(info.current) -> R.string.st_regen
                 info.current > 0.1 -> R.string.st_charging
                 info.current < -0.1 -> R.string.st_discharging
                 else -> R.string.st_idle
@@ -1666,6 +1670,7 @@ class BleService : LifecycleService() {
 
     /** Called by the UI after the location permission is granted. */
     fun refreshForegroundType() {
+        lastNotifyMs = 0L          // the next reading puts the live text back at once
         startForegroundTyped(buildNotification(getString(R.string.app_name),
             BleService.activeDriverName.value ?: getString(R.string.notif_initializing)))
     }

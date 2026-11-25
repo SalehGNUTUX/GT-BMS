@@ -15,7 +15,7 @@ import kotlin.math.min
 /**
  * Turns the live BMS stream into charge and trip reports, automatically.
  *
- * Charge: starts after the current stays above +[CHG_START_A] for 20 s; ends after it
+ * Charge: starts after the current stays above +[CHG_START_A] for 20 s (longer after riding, see [ChargeGate]); ends after it
  * stays below [CHG_END_A] for 2 min (or the battery is gone for 10 min).
  *
  * Trip (vehicle profiles only): starts after discharging below −[TRIP_START_A] for 10 s;
@@ -56,6 +56,13 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         /** The charge being followed (time left, next cut). */
         @Volatile var chargeWatch: ChargeWatch? = null
         @Volatile var chargeLearn = ChargeLearn()
+        /** Last reading of a confirmed charge (a charger, not braking); 0 = none. */
+        @Volatile var lastChargingMs = 0L
+            private set
+        /** Positive current while riding: braking or downhill, not a charger. */
+        fun regen(currentA: Double) = currentA > 0.1 && activeTrip.value != null && activeCharge.value == null
+        /** After drawing this recently, a positive current may be braking. */
+        private const val RIDDEN_MS = 60_000L
         /** A charge that has been without current this long has stopped. */
         private const val CHG_STOP_MS = 30_000L
         /** A session younger than this is continued after a restart. */
@@ -84,6 +91,12 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     // ── Charge accumulator ──
     private var chgCandidateSince = 0L
+    private val gate = ChargeGate()
+    private var lastLoadMs = 0L
+    /** The motor ran since the charge's last current: only a confirmed charger continues it. */
+    private var chgBroken = false
+    // What came back since the current being judged began (taken out of the trip if it is a charger)
+    private var backAh = 0.0; private var backWh = 0.0
     private var chg: Acc? = null
     private var chgQuietSince = 0L
 
@@ -218,6 +231,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
             dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             trip?.let { endTrip(it) }
+            gate.reset(); lastChargingMs = 0L; lastLoadMs = 0L; chgBroken = false
             lastRemainAh = 0.0; lastPackV = 0.0
             rest = null; late = null; lastInfo = null; lastCells = emptyList(); lastSampleMs = 0L
             chargeLearn = ChargeLearn()
@@ -295,6 +309,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     private fun endTrip(t: Acc) {
         if (lastTripActiveMs > t.startMs) t.endMs = lastTripActiveMs
+        // Plugged in on arrival: the charger's current is no recovered energy
+        if (gate.since != 0L && gate.since >= lastTripActiveMs - 5_000 && lastSampleMs - gate.since >= 30_000) { t.ah += backAh; t.wh += backWh }
+        backAh = 0.0; backWh = 0.0
         log("trip ended, battery silent ${(System.currentTimeMillis() - lastSampleMs) / 1000}s, ${"%.2f".format(java.util.Locale.US, t.distanceKm)} km")
         finishTrip(t); trip = null; tripCandidateSince = 0L
         gpsStopAt = System.currentTimeMillis() + 60_000
@@ -377,10 +394,19 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 log("charge continues after ${silentMs / 1000}s of silence")
             }
         }
+        // Regenerative braking is no charge
+        val vehicle = prefs.vehicle.mobile
+        if (i < -TRIP_START_A * k) { lastLoadMs = now; if (vehicle) { chgBroken = chg != null; lastChargingMs = 0L } }
+        val charger = gate.update(now, i, if (chg != null) CHG_END_A * k else CHG_START_A * k,
+            vehicle && (trip != null || now - lastLoadMs < RIDDEN_MS), fix?.speedKmh)
+        if (gate.since == 0L || gate.since == now) { backAh = 0.0; backWh = 0.0 }
+        if (charger) chgBroken = false
         if (chg == null) {
-            if (i > CHG_START_A * k) {
-                if (chgCandidateSince == 0L) chgCandidateSince = now
-                if (now - chgCandidateSince >= 20_000) {
+            chgBroken = false
+            if (gate.since != 0L) {
+                chgCandidateSince = gate.since
+                if (charger) {
+                    trip?.let { endTrip(it) }          // arrived and plugged in
                     chg = Acc(chgCandidateSince, info.soc, lastCells.minOrNull() ?: 0.0).apply {
                         watch = ChargeWatch(startMs, info.soc, info.remainCapacity); remainStart = info.remainCapacity
                     }
@@ -393,7 +419,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             } else chgCandidateSince = 0L
         }
         chg?.let { c ->
-            if (i > CHG_END_A * k) {
+            if (i > CHG_END_A * k && !chgBroken) {
+                if (charger || !vehicle) lastChargingMs = now
                 accumulate(c, info, dtS, now, charging = true); chgQuietSince = 0L
                 if (c.stop != null) { c.stop = null; lastPlanMs = 0L }
                 c.watch?.charging(now, info.soc, info.remainCapacity, info.fullCapacity, i, info.packVoltage,
@@ -441,6 +468,15 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 if (now - tripCandidateSince >= 10_000) {
                     trip = Acc(tripCandidateSince, info.soc); tripIdleSince = 0L; lastTripActiveMs = now
                     lastRidingMs = now; ridingAtLossMs = now
+                    // Riding off ends the charge at once: braking must not continue it
+                    chg?.let { c ->
+                        if (c.stop == null) {
+                            if (chgQuietSince != 0L) c.stopMs = chgQuietSince
+                            c.stop = c.watch?.stopped(now, info.soc, info.remainCapacity, info.fullCapacity,
+                                info.chargeFetOn, info.protectionFlags.map { it.name }, cellOvLimitV)
+                        }
+                        finishCharge(c); chg = null; chgCandidateSince = 0L; chgBroken = false
+                    }
                     log("trip started ${info.soc}%")
                 }
             } else if (tripCandidateSince != 0L && now - tripCandidateSince > 60_000) {
@@ -450,6 +486,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         }
         trip?.let { t ->
             accumulate(t, info, dtS, now, charging = false)
+            if (gate.since != 0L) { backAh += i * dtS / 3600.0; backWh += i * info.packVoltage * dtS / 3600.0 }
             val moving = (fix?.speedKmh ?: 0.0) >= MOVING_KMH
             val loaded = i < -TRIP_IDLE_A * k
             if (loaded || (fix?.speedKmh ?: 0.0) >= TripGap.RIDING_KMH) lastRidingMs = now

@@ -1,0 +1,1 @@
+1.7.2 : correction de l'alarme « charge terminée » pendant un trajet : le freinage régénératif n'est plus pris pour une charge.

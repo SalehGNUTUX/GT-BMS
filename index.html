@@ -181,7 +181,7 @@ section,#top{scroll-margin-top:6.5rem}
       <a href="#features"><span data-lang="ar">المزايا</span><span data-lang="en">Features</span></a>
       <a href="#gallery"><span data-lang="ar">الصور</span><span data-lang="en">Screenshots</span></a>
       <a href="#bms"><span data-lang="ar">الأنظمة المدعومة</span><span data-lang="en">Supported BMS</span></a>
-      <a href="#release"><span data-lang="ar">الإصدار 1.7.1</span><span data-lang="en">Release 1.7.1</span></a>
+      <a href="#release"><span data-lang="ar">الإصدار 1.7.2</span><span data-lang="en">Release 1.7.2</span></a>
       <a href="#install"><span data-lang="ar">التثبيت</span><span data-lang="en">Install</span></a>
     </nav>
     <button class="lang" id="lang" type="button">English</button>
@@ -191,18 +191,18 @@ section,#top{scroll-margin-top:6.5rem}
 <main class="wrap" id="top">
   <div class="hero">
     <div>
-      <span class="tag">● <span data-lang="ar">الإصدار 1.7.1</span><span data-lang="en">Release 1.7.1</span></span>
+      <span class="tag">● <span data-lang="ar">الإصدار 1.7.2</span><span data-lang="en">Release 1.7.2</span></span>
       <h1 data-lang="ar">بطاريتك الذكية،<br><b>واضحة على هاتفك</b></h1>
       <h1 data-lang="en">Your smart battery,<br><b>clear on your phone</b></h1>
       <p class="lead" data-lang="ar">GT-BMS تطبيق أندرويد حرّ يتصل بنظام إدارة بطارية الليثيوم (BMS) عبر البلوتوث، فيتعرّف على بروتوكوله تلقائياً ويعرض نسبة الشحن وجهد كل خلية والحرارة والتنبيهات، ويوقظك بمنبّه عند اكتمال الشحن أو انخفاض البطارية.</p>
       <p class="lead" data-lang="en">GT-BMS is a free Android app that talks to your lithium battery's management system over Bluetooth, detects its protocol automatically and shows state of charge, every cell, temperatures and alerts — and rings an alarm when charging completes or the battery runs low.</p>
       <div class="cta">
-        <a class="btn primary" id="dl" href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.1/GT-BMS-v1.7.1-release.apk">
+        <a class="btn primary" id="dl" href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.2/GT-BMS-v1.7.2-release.apk">
           <svg><use href="#i-dl"/></svg><span data-lang="ar">تنزيل لأندرويد</span><span data-lang="en">Download for Android</span></a>
         <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS"><svg><use href="#i-gh"/></svg><span data-lang="ar">المستودع</span><span data-lang="en">Repository</span></a>
         <a class="btn" href="https://github.com/SalehGNUTUX/GT-BMS/releases"><svg><use href="#i-tag"/></svg><span data-lang="ar">الإصدارات</span><span data-lang="en">Releases</span></a>
       </div>
-      <p class="meta"><span id="dl-meta" class="mono">GT-BMS-v1.7.1-release.apk</span> ·
+      <p class="meta"><span id="dl-meta" class="mono">GT-BMS-v1.7.2-release.apk</span> ·
         <span data-lang="ar">أندرويد 8 فأحدث · رخصة GPL v3</span><span data-lang="en">Android 8+ · GPL v3</span></p>
     </div>
     <div class="hero-icon"><img src="site-assets/gt-bms-icon.png" alt="GT-BMS"></div>
@@ -312,10 +312,11 @@ section,#top{scroll-margin-top:6.5rem}
   </section>
 
   <section id="release">
-    <h2 data-lang="ar">الإصدار 1.7.1</h2><h2 data-lang="en">Release 1.7.1</h2>
+    <h2 data-lang="ar">الإصدار 1.7.2</h2><h2 data-lang="en">Release 1.7.2</h2>
     <p class="sub"><span data-lang="ar">25 نوفمبر 2026 · يصل تلقائياً عبر التحديث من داخل التطبيق</span><span data-lang="en">25 November 2026 · delivered by the in-app updater</span></p>
     <div class="release">
       <ul data-lang="ar">
+        <li><b>إصلاح منبه «اكتمل الشحن» أثناء الركوب</b>: تيار الفرملة الاسترجاعية لم يعد يُحسب شحناً. <span class="mono">(1.7.2)</span></li>
         <li><b>منبهات الشحن بالوقت</b>: إن غادرت بالهاتف أثناء الشحن يرنّ عند الوقت المقدّر لنسبتك، ثم قبل النهاية بـ10 دقائق. و<b>تنبيه إن كان GPS متوقفاً</b> عند الرحلة. <span class="mono">(1.7.1)</span></li>
         <li><b>رحلات لا تضيع</b>: تستمر بالـGPS عند انقطاع البلوتوث، وتُكتشف والهاتف نائم، وتُستأنف بعد توقف مفاجئ.</li>
         <li><b>التقرير اليومي</b> من منتصف الليل إلى منتصف الليل، و<b>خريطة OsmAnd</b> داخل التقرير بتكبير وتنقل ومشاركة.</li>
@@ -325,6 +326,7 @@ section,#top{scroll-margin-top:6.5rem}
         <li><b>إصلاح انهيار</b> التطبيق بعد الخروج بزر الرجوع، وكان يوقف المراقبة معه.</li>
       </ul>
       <ul data-lang="en">
+        <li><b>Fixed the “fully charged” alarm while riding</b>: regenerative braking no longer counts as charging. <span class="mono">(1.7.2)</span></li>
         <li><b>Charge alarms by time</b>: if you leave with the phone while charging, it rings when your percentage is expected and 10 minutes before the end. And a <b>warning when GPS is off</b> for a trip. <span class="mono">(1.7.1)</span></li>
         <li><b>Trips that don't get lost</b>: GPS carries them through Bluetooth loss, they start while the phone sleeps and resume after a sudden stop.</li>
         <li><b>Daily report</b>, midnight to midnight, and <b>OsmAnd's map</b> inside the report with zoom and sharing.</li>
@@ -335,9 +337,9 @@ section,#top{scroll-margin-top:6.5rem}
       </ul>
       <p class="sub" style="margin:.8rem 0 0"><span data-lang="ar">1.6.0: «مباشر» المستقل، اختبار السعة، وقت الشحن، تكلفة الطاقة، الفرنسية · 1.5.0: الشاحن والشحن، تصاميم «مباشر»، الودجت، التصدير · 1.4.0: نهاية الرحلة، تقارير التفريغ، المدى، التنبيه القصير، حفظ السجل · 1.3.0: التوصيات وصحة البطارية · 1.2.0: تقارير الشحن والرحلات.</span><span data-lang="en">1.6.0: Live on its own, capacity test, charging time, energy cost, French · 1.5.0: charger analysis, Live designs, widget, export · 1.4.0: trip end, discharge reports, range, short alarm, history kept · 1.3.0: recommendations and battery health · 1.2.0: charge and trip reports.</span></p>
       <div class="files">
-        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.1/GT-BMS-v1.7.1-release.apk">⬇ GT-BMS-v1.7.1-release.apk</a><span class="mono" id="sha">SHA-256: 0f01c21955f9fd9b4d20514a8136ada93c665116b9e2005bd248819984eb7f9c</span></div>
-        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.1/SHA256SUMS.txt">SHA256SUMS.txt</a>
-          <a href="https://github.com/SalehGNUTUX/GT-BMS/releases/tag/v1.7.1"><span data-lang="ar">صفحة الإصدار ←</span><span data-lang="en">Release page →</span></a></div>
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.2/GT-BMS-v1.7.2-release.apk">⬇ GT-BMS-v1.7.2-release.apk</a><span class="mono" id="sha">SHA-256: afd82ece01573c00dd66a15ad00a51b86418954232bdebb7455e550e4bac6b42</span></div>
+        <div class="file"><a href="https://github.com/SalehGNUTUX/GT-BMS/releases/download/v1.7.2/SHA256SUMS.txt">SHA256SUMS.txt</a>
+          <a href="https://github.com/SalehGNUTUX/GT-BMS/releases/tag/v1.7.2"><span data-lang="ar">صفحة الإصدار ←</span><span data-lang="en">Release page →</span></a></div>
       </div>
     </div>
   </section>
@@ -415,7 +417,7 @@ section,#top{scroll-margin-top:6.5rem}
   })();
 
   // Point the main button at the newest release's APK when the API answers;
-  // the static v1.7.1 link stays as the fallback.
+  // the static v1.7.2 link stays as the fallback.
   fetch('https://api.github.com/repos/SalehGNUTUX/GT-BMS/releases/latest')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (rel) {
