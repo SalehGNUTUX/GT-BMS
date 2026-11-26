@@ -73,7 +73,7 @@ object AdviceText {
             val design = lim.designAh
             val range = if (whKm != null && whKm > 0 && design != null)
                 s.i("soc_end") / 100.0 * design * ((s.d("max_v") + s.d("min_v")) / 2) / whKm else null
-            Advisor.afterTrip(s, lim, learned, range) + com.vanaccess.bms.reports.DrivingAnalyzer.recs(s)
+            Advisor.afterTrip(s, lim, learned, range, store.learnedRegen(s.battery, except = s.id)) + com.vanaccess.bms.reports.DrivingAnalyzer.recs(s)
         }
     }
 
@@ -106,6 +106,7 @@ object AdviceText {
             .setAutoCancel(true)
             .build()
         try { ctx.getSystemService(NotificationManager::class.java).notify(4000 + id, n) } catch (_: SecurityException) {}
+        com.vanaccess.bms.data.NotifLog.add(ctx, title, body)
     }
 
     /** Plain one-line notification on the summary channel. */
@@ -117,6 +118,7 @@ object AdviceText {
             .setSmallIcon(R.drawable.ic_battery).setContentTitle(title).setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true).build()
         try { ctx.getSystemService(NotificationManager::class.java).notify(4000 + id, n) } catch (_: SecurityException) {}
+        com.vanaccess.bms.data.NotifLog.add(ctx, title, text)
     }
 
     private const val CHANNEL_QUIET = "gt_bms_quiet"
@@ -135,6 +137,7 @@ object AdviceText {
             .setContentTitle(ctx.getString(R.string.chg_stop_title)).setContentText(text.substringBefore('\n'))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true).build()
         try { ctx.getSystemService(NotificationManager::class.java).notify(4010, n) } catch (_: SecurityException) {}
+        com.vanaccess.bms.data.NotifLog.add(ctx, ctx.getString(R.string.chg_stop_title), text)
     }
 
     fun stopText(ctx: Context, reason: String, alarm: String?, cell: Int, cellV: Double): String = when (reason) {
@@ -224,6 +227,7 @@ object AdviceText {
                     .setContentText(text.substringBefore('\n')).setStyle(NotificationCompat.BigTextStyle().bigText(text))
                     .setContentIntent(open).setAutoCancel(true).build()
                 ctx.getSystemService(NotificationManager::class.java).notify(4011, n)
+                com.vanaccess.bms.data.NotifLog.add(ctx, ctx.getString(R.string.day_notify, java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(yesterday))), text)
             }
         }.start()
     }

@@ -9,7 +9,6 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -25,7 +24,7 @@ import com.vanaccess.bms.ble.ChargeTimer
 
 /**
  * The ringing alarm, on the whole screen: over the lock screen too. Closes by itself when the
- * alarm stops, wherever it was stopped from. Back and the volume keys stop it as well.
+ * alarm stops, wherever it was stopped from. Only its buttons stop it: not Back, not the keys.
  */
 class AlarmActivity : AppCompatActivity() {
 
@@ -37,7 +36,7 @@ class AlarmActivity : AppCompatActivity() {
         else @Suppress("DEPRECATION") window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() = stop()
+            override fun handleOnBackPressed() {}
         })
         BatteryAlarmMonitor.ring.observe(this) { r ->
             if (r == null) finish() else if (r !== shown) { shown = r; render(r) }
@@ -47,11 +46,6 @@ class AlarmActivity : AppCompatActivity() {
     private fun stop() {
         BleService.instance?.stopRinging()
         finish()
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) { stop(); return true }
-        return super.onKeyDown(keyCode, event)
     }
 
     private fun render(r: BatteryAlarmMonitor.Ring) {
@@ -90,11 +84,16 @@ class AlarmActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#0F1118"))
             setPadding(px(24), px(40), px(24), px(32))
             addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
-            if (r.away) addView(button(getString(R.string.away_done), Color.parseColor("#2E9E5B"), 19f, 64) {
-                ChargeTimer.cancel(this@AlarmActivity, byUser = true); stop()
-            }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = px(12) })
             // Large: to be hit at a glance, with gloves, on a handlebar
-            addView(button(getString(R.string.alarm_stop), Color.parseColor("#D9443F"), 26f, 112) { stop() },
+            val snooze = r.snoozeMin
+            if (snooze != null) {
+                addView(button(getString(R.string.away_done), Color.parseColor("#2E9E5B"), 24f, 104) {
+                    BleService.instance?.alarmUnplugged() ?: ChargeTimer.cancel(this@AlarmActivity, byUser = true); finish()
+                }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = px(14) })
+                addView(button(getString(R.string.alarm_snooze, snooze), Color.parseColor("#3A3F55"), 20f, 80) {
+                    BleService.instance?.alarmSnooze(); finish()
+                }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            } else addView(button(getString(R.string.alarm_stop), Color.parseColor("#D9443F"), 26f, 112) { stop() },
                 LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         })
         window.decorView.layoutDirection = resources.configuration.layoutDirection

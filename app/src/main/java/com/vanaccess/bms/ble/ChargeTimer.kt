@@ -27,6 +27,7 @@ import java.util.Locale
 object ChargeTimer {
     const val TARGET = "target"
     const val NEAR = "near"
+    const val SNOOZE = "snooze"
     const val ACTION_RING = "com.gnutux.gtbms.CHARGE_TIMER"
     const val ACTION_DONE = "com.gnutux.gtbms.CHARGE_TIMER_DONE"
     private const val CHANNEL = "gt_bms_charge_plan"
@@ -36,7 +37,7 @@ object ChargeTimer {
 
     private fun hm(ms: Long) = SimpleDateFormat("HH:mm", Locale.US).format(Date(ms))
 
-    private fun pending(ctx: Context, kind: String) = PendingIntent.getBroadcast(ctx, if (kind == TARGET) 41 else 42,
+    private fun pending(ctx: Context, kind: String) = PendingIntent.getBroadcast(ctx, when (kind) { TARGET -> 41; NEAR -> 42; else -> 44 },
         Intent(ctx, ChargeTimerReceiver::class.java).setAction(ACTION_RING).putExtra("kind", kind),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
@@ -53,6 +54,7 @@ object ChargeTimer {
         val old = ChargePlan.fromJson(prefs.chargePlan)
         if (prefs.chargePlanDone || !plan.differs(old)) return
         prefs.chargePlan = plan.toJson()
+        if (old == null) com.vanaccess.bms.data.NotifLog.add(ctx, ctx.getString(R.string.away_title), ctx.getString(R.string.away_full_at, hm(plan.fullAt)))
         if (old == null) EventLog.add(ctx, "charge timer: ${plan.targetSoc}% ${plan.targetAt?.let { hm(it) } ?: "-"}, near ${plan.nearAt?.let { hm(it) } ?: "-"}, full ${hm(plan.fullAt)}")
         arm(ctx, plan)
         show(ctx, plan)
@@ -94,7 +96,7 @@ object ChargeTimer {
         prefs.chargePlanDone = byUser
         if (!had && !byUser) return
         val am = ctx.getSystemService(AlarmManager::class.java)
-        listOf(TARGET, NEAR).forEach { am?.cancel(pending(ctx, it)) }
+        listOf(TARGET, NEAR, SNOOZE).forEach { am?.cancel(pending(ctx, it)) }
         ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF)
     }
 
@@ -103,6 +105,17 @@ object ChargeTimer {
         ChargePlan.fromJson(AppPreferences(ctx).chargePlan)?.let {
             if (it.fullAt > System.currentTimeMillis()) { arm(ctx, it); show(ctx, it) } else cancel(ctx)
         }
+    }
+
+    /** Away alarm put off by the owner: estimated from the plan, sooner near the end. */
+    fun snoozeMinutes(ctx: Context): Int {
+        val plan = ChargePlan.fromJson(AppPreferences(ctx).chargePlan) ?: return 5
+        return ((plan.fullAt - System.currentTimeMillis()) / 60_000 / 2).toInt().coerceIn(3, 15)
+    }
+
+    fun snooze(ctx: Context, minutes: Int) {
+        val am = ctx.getSystemService(AlarmManager::class.java) ?: return
+        setAt(am, System.currentTimeMillis() + minutes * 60_000L, pending(ctx, SNOOZE))
     }
 
     /** Heard from the battery a moment ago: perhaps just leaving, look again shortly (30 min at most). */
@@ -127,10 +140,11 @@ object ChargeTimer {
     fun textFor(ctx: Context, kind: String): String? {
         val prefs = AppPreferences(ctx)
         val plan = ChargePlan.fromJson(prefs.chargePlan) ?: return null
-        val at = (if (kind == TARGET) plan.targetAt else plan.nearAt) ?: return null
         val now = System.currentTimeMillis()
+        val at = when (kind) { TARGET -> plan.targetAt; NEAR -> plan.nearAt; else -> now } ?: return null
         val seen = maxOf(prefs.lastDataMs, BleService.lastDataMs)
         if (!prefs.alarmHighEnabled || !prefs.alarmAway || now - seen < FRESH_MS || now < at - 60_000 || now - at > 30 * 60_000) return null
+        if (kind == SNOOZE) return ctx.getString(R.string.away_ring_snooze)
         return if (kind == TARGET) ctx.getString(R.string.away_ring_target, minOf(plan.targetSoc, 100))
         else ctx.getString(R.string.away_ring_near, hm(plan.fullAt))
     }
@@ -142,7 +156,7 @@ class ChargeTimerReceiver : BroadcastReceiver() {
         if (intent.action == ChargeTimer.ACTION_DONE) {
             EventLog.add(ctx, "charge timer: unplugged by user")
             ChargeTimer.cancel(ctx, byUser = true)
-            BleService.instance?.stopRinging()
+            BleService.instance?.alarmUnplugged()
             return
         }
         val kind = intent.getStringExtra("kind") ?: return
@@ -154,6 +168,7 @@ class ChargeTimerReceiver : BroadcastReceiver() {
             // Not allowed to start the service: at least a notification with sound
             val nm = ctx.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(NotificationChannel("gt_bms_away", ctx.getString(R.string.away_channel), NotificationManager.IMPORTANCE_HIGH))
+            com.vanaccess.bms.data.NotifLog.add(ctx, ctx.getString(R.string.away_ring_title), text)
             runCatching { nm.notify(4014, NotificationCompat.Builder(ctx, "gt_bms_away").setSmallIcon(R.drawable.ic_battery)
                 .setContentTitle(ctx.getString(R.string.away_ring_title)).setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setAutoCancel(true)

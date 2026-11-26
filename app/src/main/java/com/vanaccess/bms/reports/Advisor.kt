@@ -101,7 +101,7 @@ object Advisor {
     fun afterCharge(s: Session, lim: BmsLimits, daysSinceFull: Int?, chargerAdviceV: Double?): List<Rec> {
         val out = mutableListOf<Rec>()
         val hours = (s.endMs - s.startMs) / 3_600_000.0
-        out += Rec(Level.INFO, "charge_summary", listOf(s.i("soc_start"), s.i("soc_end"), hours, s.d("avg_current"), s.d("ah")))
+        out += Rec(Level.INFO, "charge_summary", listOf(s.i("soc_start"), s.i("soc_end"), hours, s.avgA, s.d("ah")))
         if (s.b("ended_by_protection") && chargerAdviceV != null) out += Rec(Level.INFO, "charger_voltage", listOf(chargerAdviceV))
         val full = s.b("reached_full") || s.b("ended_by_protection")
         if (!full && daysSinceFull != null && daysSinceFull >= 7) {
@@ -111,7 +111,7 @@ object Advisor {
         val ot = lim.chargeOtC ?: DEF_CHARGE_OT
         if (!s.data.isNull("max_temp") && s.d("max_temp") >= ot - 15) out += Rec(Level.WARNING, "charge_hot", listOf(s.d("max_temp"), ot))
         lim.designAh?.takeIf { it > 0 }?.let { cap ->
-            val c = s.d("avg_current") / cap
+            val c = s.avgA / cap
             if (c > 0.5) out += Rec(Level.INFO, "fast_charge", listOf(c))
         }
         return out
@@ -121,7 +121,7 @@ object Advisor {
      * Advice after a trip. [avgWhKm] = learned average before this trip; [rangeKm] = what
      * the remaining charge still covers at this trip's consumption.
      */
-    fun afterTrip(s: Session, lim: BmsLimits, avgWhKm: Double?, rangeKm: Double?): List<Rec> {
+    fun afterTrip(s: Session, lim: BmsLimits, avgWhKm: Double?, rangeKm: Double?, regenAvg: Triple<Double, Double, Double>? = null): List<Rec> {
         val out = mutableListOf<Rec>()
         val km = s.d("distance_km")
         if (km >= 0.1 && !s.data.isNull("wh_per_km")) {
@@ -139,12 +139,21 @@ object Advisor {
         }
         RegenMeter.sharePct(s.d("regen_wh"), s.d("wh"))?.takeIf { s.d("regen_wh") >= 1 }?.let { pct ->
             out += Rec(Level.OK, "regen", listOf(s.d("regen_wh"), pct))
+            // Against this vehicle's own habit
+            regenAvg?.let { (_, avgPct, _) ->
+                if (avgPct > 0.2 && pct >= avgPct * 1.5) out += Rec(Level.OK, "regen_above", listOf(pct, avgPct))
+                else if (avgPct > 0.2 && pct <= avgPct * 0.5) out += Rec(Level.INFO, "regen_below", listOf(pct, avgPct))
+            }
             // Recuperation charges the battery: the charge protections apply to it too
             lim.chargeOcA?.takeIf { it > 0 }?.let { oc ->
                 if (s.d("regen_max_a") >= oc * 0.8) out += Rec(Level.WARNING, "regen_current", listOf(s.d("regen_max_a"), oc)) }
             lim.cellOvMv?.let { ov ->
                 if (s.d("regen_max_cell") >= ov / 1000.0 - 0.05) out += Rec(Level.WARNING, "regen_full", listOf(s.d("regen_max_cell"), ov / 1000.0)) }
         }
+        // A vehicle that hardly recovers anything over many km: say it once it is known
+        if (s.d("regen_wh") < 1 && regenAvg != null && regenAvg.second < 0.5 && regenAvg.third >= 20)
+            out += Rec(Level.INFO, "regen_weak", listOf(regenAvg.third, regenAvg.second))
+        if (s.d("coast_km") >= 0.2) out += Rec(Level.OK, "coast", listOf(s.d("coast_km")))
         rangeKm?.takeIf { it > 0 }?.let { out += Rec(Level.INFO, "trip_range", listOf(it)) }
         lim.dischargeOcA?.takeIf { it > 0 }?.let { oc ->
             if (s.d("max_current") >= oc * 0.8) out += Rec(Level.WARNING, "trip_peak_current", listOf(s.d("max_current"), oc))

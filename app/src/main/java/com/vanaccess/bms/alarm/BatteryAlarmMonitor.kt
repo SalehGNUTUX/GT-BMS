@@ -48,11 +48,15 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     /** What is ringing now (full screen and notification). */
     class Ring(val kind: Kind, val title: String, val big: String, val text: String,
-               val level: Level, val note: String? = null, val away: Boolean = false)
+               val level: Level, val note: String? = null, val away: Boolean = false,
+               /** Charging alarms: "I unplugged it" / "remind me in N min" instead of one stop button. */
+               val snoozeMin: Int? = null)
 
     private class State {
         var armed = true
         var lastStoppedAt = 0L
+        /** Asked to be reminded at this time (0 = no). */
+        var snoozeUntil = 0L
     }
 
     companion object {
@@ -97,7 +101,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
                 (hV <= 0 || !validV || voltage < hV - VOLT_HYSTERESIS)
         check(Kind.HIGH, prefs.alarmHighEnabled && charging && highHit, highClear, now) {
             Ring(Kind.HIGH, context.getString(R.string.alarm_high_title), "$soc%",
-                context.getString(R.string.alarm_high_text, soc, voltage), Level.NORMAL)
+                context.getString(R.string.alarm_high_text, soc, voltage), Level.NORMAL, snoozeMin = snoozeFor(soc))
         }
 
         // ── Low battery ──
@@ -123,6 +127,38 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     private var lastSoc = 0
 
+    private fun snoozeFor(soc: Int): Int {
+        val info = BleService.basicInfo.value
+        return AlarmSnooze.minutes(soc, info?.fullCapacity ?: 0.0,
+            com.vanaccess.bms.reports.SessionRecorder.chargeWatch?.avgCurrent() ?: info?.current ?: 0.0)
+    }
+
+    /** "I unplugged it": no reminder, unless it is still charging in two minutes. */
+    fun unplugged() {
+        main.post {
+            val kind = ringing
+            val away = ring.value?.away == true
+            com.vanaccess.bms.ble.ChargeTimer.cancel(context, byUser = true)
+            stopNow()
+            if (kind != null && !away) states.getValue(kind).snoozeUntil = System.currentTimeMillis() + 2 * 60_000L
+        }
+    }
+
+    /** "Remind me later": the same alarm again after the minutes it offered. */
+    fun snooze() {
+        main.post {
+            val r = ring.value ?: return@post
+            val min = r.snoozeMin ?: 5
+            stopNow()
+            com.vanaccess.bms.data.EventLog.add(context, "alarm ${r.kind} snoozed $min min")
+            if (r.away) com.vanaccess.bms.ble.ChargeTimer.snooze(context, min)
+            else states.getValue(r.kind).let { it.armed = false; it.snoozeUntil = System.currentTimeMillis() + min * 60_000L }
+        }
+    }
+
+    /** The ringing notification was swiped away: only the buttons stop the alarm. */
+    fun reshow() { main.post { ring.value?.let { if (ringing != null) showNotification(it, ongoing = true) } } }
+
     private fun lowRing(soc: Int, voltage: Double, limit: Int) = Ring(Kind.LOW,
         context.getString(R.string.alarm_low_title), "$soc%",
         context.getString(when {
@@ -135,12 +171,13 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     private inline fun check(kind: Kind, hit: Boolean, clear: Boolean, now: Long, make: () -> Ring) {
         val st = states.getValue(kind)
-        if (clear) st.armed = true
+        if (clear) { st.armed = true; st.snoozeUntil = 0L }
         if (!hit || ringing != null) return
         val cooldownMs = prefs.alarmCooldownMinutes.coerceAtLeast(1) * 60_000L
-        val cooledDown = st.lastStoppedAt != 0L && now - st.lastStoppedAt >= cooldownMs
+        val cooledDown = if (st.snoozeUntil > 0) now >= st.snoozeUntil
+            else st.lastStoppedAt != 0L && now - st.lastStoppedAt >= cooldownMs
         if (st.armed || cooledDown) {
-            st.armed = false
+            st.armed = false; st.snoozeUntil = 0L
             startAlarm(make())
         }
     }
@@ -160,7 +197,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         val charging = now - com.vanaccess.bms.reports.SessionRecorder.lastChargingMs < 15_000L
         check(Kind.CELL, charging && current > CHARGE_THRESHOLD_A && mx >= limit, mx < limit - 0.05, now) {
             Ring(Kind.CELL, context.getString(R.string.alarm_cell_title), String.format(java.util.Locale.US, "%.2f V", mx),
-                context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx), Level.ACCEPTABLE)
+                context.getString(R.string.alarm_cell_text, cells.indexOf(mx) + 1, mx), Level.ACCEPTABLE, snoozeMin = 3)
         }
     }
 
@@ -213,6 +250,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             .build()
         try { context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID + 1, n) }
         catch (_: SecurityException) {}
+        com.vanaccess.bms.data.NotifLog.add(context, context.getString(R.string.alarm_delta_rest_title), text)
     }
 
     /** Ring a short demo alarm from the settings screen. */
@@ -220,12 +258,15 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         main.post {
             if (ringing != null) stopSound()
             ringing = null
-            startAlarm(Ring(kind, context.getString(title(kind)), "🔔", context.getString(R.string.alarm_test_text), Level.NORMAL))
+            startAlarm(Ring(kind, context.getString(title(kind)), "🔔", context.getString(R.string.alarm_test_text), Level.NORMAL,
+                snoozeMin = if (kind == Kind.HIGH || kind == Kind.CELL) 5 else null))
         }
     }
 
-    fun stopAlarm() {
-        main.post {
+    fun stopAlarm() { main.post { stopNow() } }
+
+    private fun stopNow() {
+        run {
             val kind = ringing
             if (kind != null) states.getValue(kind).lastStoppedAt = System.currentTimeMillis()
             // It went lower while ringing: stopping it covers that step too
@@ -248,7 +289,8 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     /** By the clock, the battery being out of reach (see ble.ChargeTimer): tone of the full-charge alarm. */
     fun ringAway(text: String) { main.post { if (ringing == null) startAlarm(
-        Ring(Kind.HIGH, context.getString(R.string.away_ring_title), "⏰", text, Level.NORMAL, away = true)) } }
+        Ring(Kind.HIGH, context.getString(R.string.away_ring_title), "⏰", text, Level.NORMAL, away = true,
+            snoozeMin = com.vanaccess.bms.ble.ChargeTimer.snoozeMinutes(context))) } }
 
     private fun startAlarm(r: Ring) {
         val kind = r.kind
@@ -258,6 +300,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         val short = prefs.alarmShort(Tones.toneKey(kind))
         ring.value = r
         showNotification(r, ongoing = !short)
+        com.vanaccess.bms.data.NotifLog.add(context, r.title, r.text + (r.note?.let { "\n" + it } ?: ""))
         showFullScreen()
         playSound(kind)
         if (prefs.alarmVibrate) vibrate()
@@ -402,9 +445,13 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             .setAutoCancel(!ongoing)
             .setContentIntent(if (ongoing) fullPi else openPi)
             .setFullScreenIntent(fullPi, true)
-            .setDeleteIntent(stopPi)
-            .addAction(R.drawable.ic_battery, context.getString(R.string.alarm_stop), stopPi)
-            .apply { if (r.away) addAction(0, context.getString(R.string.away_done), com.vanaccess.bms.ble.ChargeTimer.donePending(context)) }
+            .apply {
+                if (ongoing) setDeleteIntent(servicePi(BleService.ACTION_ALARM_RESHOW, 5))
+                if (r.snoozeMin != null) {
+                    addAction(0, context.getString(R.string.away_done), servicePi(BleService.ACTION_ALARM_UNPLUGGED, 6))
+                    addAction(0, context.getString(R.string.alarm_snooze, r.snoozeMin), servicePi(BleService.ACTION_ALARM_SNOOZE, 7))
+                } else addAction(R.drawable.ic_battery, context.getString(R.string.alarm_stop), stopPi)
+            }
             .build()
         try {
             context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, n)
@@ -412,6 +459,9 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
             Log.w(TAG, "Notification permission missing: ${e.message}")
         }
     }
+
+    private fun servicePi(action: String, code: Int) = PendingIntent.getService(context, code,
+        Intent(context, BleService::class.java).setAction(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
     /** True while an alarm is sounding (used by the UI). */
     val isRinging: Boolean get() = ringing != null

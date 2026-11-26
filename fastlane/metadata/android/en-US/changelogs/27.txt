@@ -1,0 +1,1 @@
+1.8.1: charge alarms with "I unplugged it" and "remind me later"; notification history; true average charging current; braking and descents told apart.

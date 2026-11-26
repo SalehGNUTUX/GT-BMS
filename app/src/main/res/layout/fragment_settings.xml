@@ -1401,6 +1401,14 @@
                     android:text="@string/sum_weekly"
                     android:textColor="@color/text_primary" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_notif_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/notif_log_btn"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+
                 <LinearLayout
                     android:id="@+id/box_full_screen"
                     android:layout_width="match_parent"

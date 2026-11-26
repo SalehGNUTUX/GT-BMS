@@ -100,4 +100,17 @@ class AdvisorTest {
         assertEquals(0 to 800, Advisor.cyclesLeft(900, 0, BmsLimits(cellOvMv = 4250)))
         assertEquals(null, Advisor.cyclesLeft(2, 0, BmsLimits()))            // unknown chemistry
     }
+
+    @Test fun averageCurrentOfAChargeMostlyOutOfRange() {
+        // 2026-11-25: 69 → 90 % in 4430 s, 6.19 Ah, the phone mostly away: it said 23.2 A and 0.77C
+        val s = Session(1, Session.TYPE_CHARGE, 0, 4_430_000, "", org.json.JSONObject(
+            """{"soc_start":69,"soc_end":90,"ah":6.19,"avg_current":23.2,"gap_s":3470,"max_delta_mv":10}"""))
+        assertEquals(5.03, s.avgA, 0.01)
+        val recs = Advisor.afterCharge(s, BmsLimits(designAh = 30.0), null, null)
+        assertEquals(5.03, recs.first { it.code == "charge_summary" }.args[3] as Double, 0.01)
+        assertTrue(recs.none { it.code == "fast_charge" })
+        // a real fast charge still says so
+        val fast = Session(2, Session.TYPE_CHARGE, 0, 3_600_000, "", org.json.JSONObject("""{"ah":20.0,"avg_current":20.0,"gap_s":0}"""))
+        assertTrue(Advisor.afterCharge(fast, BmsLimits(designAh = 30.0), null, null).any { it.code == "fast_charge" })
+    }
 }

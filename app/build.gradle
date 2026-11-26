@@ -23,8 +23,8 @@ android {
         applicationId "com.gnutux.gtbms"
         minSdk 26
         targetSdk 34
-        versionCode 26
-        versionName "1.8.0"
+        versionCode 27
+        versionName "1.8.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "BUILD_DATE", "\"${versionName}\""

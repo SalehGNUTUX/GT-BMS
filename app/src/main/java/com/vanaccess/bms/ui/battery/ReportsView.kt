@@ -147,7 +147,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         return when (s.type) {
             Session.TYPE_CHARGE -> listOf(
                 line(socs, d) to Color.WHITE,
-                line(iso(f("+%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh"))), iso(f("⌀ %.1f A", s.d("avg_current")))) to cGrey,
+                line(iso(f("+%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh"))), iso(f("⌀ %.1f A", s.avgA))) to cGrey,
             )
             Session.TYPE_DISCHARGE -> listOf(
                 line(socs, d) to Color.WHITE,
@@ -339,15 +339,16 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     /** Energy recuperation of one trip. */
     private fun regenRows(s: Session): List<Pair<Int, String>> {
         val wh = s.d("regen_wh")
-        if (wh < 0.05) return emptyList()
         val rows = mutableListOf<Pair<Int, String>>()
+        if (s.d("coast_km") >= 0.05) rows += R.string.coast_row to f("%.2f km  •  ", s.d("coast_km")) + dur(s.d("coast_s"))
+        if (wh < 0.05) return rows
         rows += R.string.regen_energy to f("%.1f Wh  •  %.3f Ah", wh, s.d("regen_ah"))
         com.vanaccess.bms.reports.RegenMeter.sharePct(wh, s.d("wh"))?.let { rows += R.string.regen_share to f("%.1f%%", it) }
-        rows += R.string.regen_times to "${s.i("regen_n")}  •  " + dur(s.d("regen_s"))
+        rows += R.string.regen_times to "${s.i("regen_n")}  •  " + (if (s.d("regen_s") < 60) f("%.0f s", s.d("regen_s")) else dur(s.d("regen_s")))
         rows += R.string.regen_peak to f("%.1f A  •  %.0f W", s.d("regen_max_a"), s.d("regen_max_w"))
         if (s.d("regen_brake_wh") >= 0.05) rows += R.string.regen_brake to f("≈ %.1f Wh", s.d("regen_brake_wh"))
         if (s.d("regen_hill_wh") >= 0.05) rows += R.string.regen_hill to f("≈ %.1f Wh", s.d("regen_hill_wh"))
-        if (!s.data.isNull("wh_per_km") && s.d("wh_per_km") > 0) rows += R.string.regen_km to f("≈ %.2f km", wh / s.d("wh_per_km"))
+        if (!s.data.isNull("wh_per_km") && s.d("wh_per_km") > 0 && wh / s.d("wh_per_km") >= 0.01) rows += R.string.regen_km to f("≈ %.2f km", wh / s.d("wh_per_km"))
         return rows
     }
 
@@ -364,7 +365,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         rows += R.string.rep_soc to "${s.i("soc_start")}% – ${s.i("soc_end")}%"
         rows += R.string.rep_energy to f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh"))
         if (charge) {
-            rows += R.string.rep_avg_current to f("%.1f A", s.d("avg_current"))
+            rows += R.string.rep_avg_current to f("%.1f A", s.avgA)
             rows += R.string.rep_charging_cur to f("%.1f A", s.d("max_current"))
             rows += R.string.rep_max_v to f("%.2f V", s.d("max_v"))
             if (s.d("max_cell_v") > 0) rows += R.string.rep_max_cell to ctx.getString(R.string.cell_at, s.d("max_cell_v"), s.i("max_cell_idx"))

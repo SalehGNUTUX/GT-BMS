@@ -392,9 +392,9 @@ class AppPreferences(context: Context) {
         set(value) = prefs.edit().putBoolean("asked_full_screen", value).apply()
 
     /** Recovered energy of the trips saved before 1.8 has been worked out. */
-    var regenBackfilled: Boolean
-        get() = prefs.getBoolean("regen_backfilled", false)
-        set(value) = prefs.edit().putBoolean("regen_backfilled", value).apply()
+    var regenBackfilledV: Int
+        get() = prefs.getInt("regen_backfilled_v", 0)
+        set(value) = prefs.edit().putInt("regen_backfilled_v", value).apply()
 
     /** Pack voltage at or below which the low-battery alarm fires (0 = voltage check off). */
     var alarmLowVoltage: Float

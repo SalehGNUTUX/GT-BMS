@@ -47,6 +47,7 @@ object GpsNotice {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text)).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(fix).addAction(0, ctx.getString(R.string.gps_enable), fix).setOnlyAlertOnce(true).setAutoCancel(true).build()
         try { nm.notify(NOTIF, n) } catch (_: SecurityException) {}
+        com.vanaccess.bms.data.NotifLog.add(ctx, ctx.getString(R.string.gps_title), text)
     }
 
     fun clear(ctx: Context) = ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF)

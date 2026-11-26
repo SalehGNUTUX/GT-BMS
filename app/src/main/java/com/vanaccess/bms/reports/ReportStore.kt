@@ -24,6 +24,15 @@ data class Session(
      * Current at the largest cell difference; null when it can't be trusted: before 1.7 (no
      * "gap_s") the cells of one reading were paired with the current of another.
      */
+    /**
+     * Average current of a charge: Ah over its time. Reports before 1.8.1 divided by the time with
+     * data only, so a charge mostly out of Bluetooth range looked several times faster.
+     */
+    val avgA: Double get() {
+        val h = (endMs - startMs) / 3_600_000.0
+        return if (d("gap_s") >= 30 && h >= 1 / 60.0) d("ah") / h else d("avg_current")
+    }
+
     val deltaA: Double? get() = if (data.has("gap_s") || b("delta_paired")) d("current_at_max_delta") else null
 
     companion object {
@@ -185,6 +194,16 @@ class ReportStore private constructor(ctx: Context) :
      */
     private fun energyComplete(s: Session) = !s.b("energy_partial") &&
         (s.data.has("gap_s") || s.d("max_speed") <= 0 || s.d("avg_speed") <= s.d("max_speed"))
+
+    /** This vehicle's recovery, learned from recent trips with GPS: (Wh per km, % of the energy, km). */
+    fun learnedRegen(battery: String?, maxTrips: Int = 30, except: Long = -1): Triple<Double, Double, Double>? {
+        val t = list(Session.TYPE_TRIP, maxTrips + 1, battery).filter {
+            it.id != except && it.data.has("regen_wh") && it.d("distance_km") >= 0.3 && energyComplete(it) }.take(maxTrips)
+        val km = t.sumOf { it.d("distance_km") }
+        if (t.size < 3 || km < 5.0) return null
+        val rw = t.sumOf { it.d("regen_wh") }
+        return Triple(rw / km, RegenMeter.sharePct(rw, t.sumOf { it.d("wh") }) ?: 0.0, km)
+    }
 
     /**
      * Consumption learned from recent trips with GPS distance: (Wh/km, km covered).

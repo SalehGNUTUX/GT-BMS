@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alarm_snooze">Me le rappeler dans %1$d min</string>
+    <string name="away_ring_snooze">Rappel : le chargeur est-il débranché ? (téléphone loin de la batterie)</string>
+    <string name="notif_log_btn">Historique des notifications</string>
+    <string name="notif_log_title">Historique des notifications (%1$d)</string>
+    <string name="notif_log_empty">Aucune notification pour l\'instant.</string>
+    <string name="notif_log_clear">Vider</string>
+    <string name="notif_log_clear_q">Vider l\'historique ?</string>
+    <string name="notif_log_clear_msg">%1$d notifications seront supprimées de cet historique. Les rapports ne sont pas touchés.</string>
+    <string name="coast_row">Descente libre</string>
+    <string name="adv_regen_above">Récupération %1$.1f %% cette fois, bien au-dessus de votre habitude (%2$.1f %%) : plus de descentes ou un freinage plus doux.</string>
+    <string name="adv_regen_below">Récupération %1$.1f %% cette fois, sous votre habitude (%2$.1f %%) : parcours plus plat ou freinage mécanique plus appuyé.</string>
+    <string name="adv_regen_weak">Sur %1$.0f km votre véhicule n\'a récupéré que %2$.1f %% de son énergie : son contrôleur récupère peu ou pas. La batterie n\'est pas en cause.</string>
+    <string name="adv_coast">Descente libre : %1$.2f km où la vitesse a augmenté sans rien tirer de la batterie.</string>
+</resources>

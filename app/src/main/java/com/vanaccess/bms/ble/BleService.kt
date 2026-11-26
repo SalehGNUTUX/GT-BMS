@@ -109,6 +109,9 @@ class BleService : LifecycleService() {
 
         const val ACTION_STOP_ALARM = "com.gnutux.gtbms.STOP_ALARM"
         const val ACTION_TEST_ALARM = "com.gnutux.gtbms.TEST_ALARM"
+        const val ACTION_ALARM_UNPLUGGED = "com.gnutux.gtbms.ALARM_UNPLUGGED"
+        const val ACTION_ALARM_SNOOZE = "com.gnutux.gtbms.ALARM_SNOOZE"
+        const val ACTION_ALARM_RESHOW = "com.gnutux.gtbms.ALARM_RESHOW"
     }
 
     enum class ConnectionState { DISCONNECTED, SCANNING, CONNECTING, CONNECTED, RECONNECTING }
@@ -237,6 +240,9 @@ class BleService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_STOP_ALARM -> { alarmMonitor.stopAlarm(); return START_STICKY }
+            ACTION_ALARM_UNPLUGGED -> { alarmMonitor.unplugged(); return START_STICKY }
+            ACTION_ALARM_SNOOZE -> { alarmMonitor.snooze(); return START_STICKY }
+            ACTION_ALARM_RESHOW -> { alarmMonitor.reshow(); return START_STICKY }
             ChargeTimer.ACTION_RING -> {
                 // (a service just started for this goes on to look for the battery too)
                 alarmMonitor.ringAway(intent.getStringExtra("text") ?: "")
@@ -580,6 +586,8 @@ class BleService : LifecycleService() {
     }
 
     fun stopRinging() = alarmMonitor.stopAlarm()
+    fun alarmUnplugged() = alarmMonitor.unplugged()
+    fun alarmSnooze() = alarmMonitor.snooze()
 
     fun onKeepAliveAlarm() = keepAlive.onAlarm()
 
@@ -1236,15 +1244,15 @@ class BleService : LifecycleService() {
 
     /** Once: recovered energy of the trips saved before it was measured, from their points. */
     private fun backfillRegen() {
-        if (prefs.regenBackfilled) return
+        if (prefs.regenBackfilledV >= com.vanaccess.bms.reports.RegenMeter.VERSION) return
         Thread {
             runCatching {
                 val store = com.vanaccess.bms.reports.ReportStore.get(this)
-                store.list(com.vanaccess.bms.reports.Session.TYPE_TRIP, 5000).filter { !it.data.has("regen_wh") }.forEach { s ->
+                store.list(com.vanaccess.bms.reports.Session.TYPE_TRIP, 5000).filter { it.data.optInt("regen_v") < com.vanaccess.bms.reports.RegenMeter.VERSION }.forEach { s ->
                     com.vanaccess.bms.reports.RegenMeter.fromPoints(store.points(s.id)).write(s.data)
                     store.updateData(s.id, s.data)
                 }
-                prefs.regenBackfilled = true
+                prefs.regenBackfilledV = com.vanaccess.bms.reports.RegenMeter.VERSION
             }.onFailure { log("regen backfill: $it") }
         }.start()
     }

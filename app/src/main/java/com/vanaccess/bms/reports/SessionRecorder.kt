@@ -663,7 +663,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         if (c.activeS < 180 || c.ah < 0.05) return
         val stop = c.stop ?: c.watch?.lost()
         val data = common(c).apply {
-            put("avg_current", if (c.activeS > 0) c.ah * 3600 / c.activeS else 0.0)
+            // Over the whole charge: Ah counted during Bluetooth gaps belong to their time too
+            put("avg_current", (c.activeS + c.gapMs / 1000.0).let { if (it > 0) c.ah * 3600 / it else 0.0 })
             put("balancing_seen", c.balancingSeen)
             put("ended_by_protection", c.endedByProtection || c.maxCellV >= cellOvLimitV - 0.005)
             put("cell_ov_limit", cellOvLimitV)

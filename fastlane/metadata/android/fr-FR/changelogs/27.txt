@@ -1,0 +1,1 @@
+1.8.1 : alarmes de charge avec « J'ai débranché » et « Rappeler plus tard » ; historique des notifications ; vrai courant moyen de charge ; freinage et descentes distingués.
