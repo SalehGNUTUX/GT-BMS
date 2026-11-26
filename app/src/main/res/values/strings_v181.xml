@@ -2,8 +2,6 @@
 <resources>
     <string name="alarm_snooze">Remind me in %1$d min</string>
     <string name="away_ring_snooze">Reminder: is the charger unplugged? (the phone is away from the battery)</string>
-    <string name="notif_log_btn">Notification history</string>
-    <string name="notif_log_title">Notification history (%1$d)</string>
     <string name="notif_log_empty">No notifications yet.</string>
     <string name="notif_log_clear">Clear</string>
     <string name="notif_log_clear_q">Clear the history?</string>
@@ -13,4 +11,13 @@
     <string name="adv_regen_below">Recovery %1$.1f %% this time, below your usual %2$.1f %%: flatter route or harder braking with the mechanical brakes.</string>
     <string name="adv_regen_weak">Over %1$.0f km your vehicle recovered only %2$.1f %% of its energy: its controller recovers little or not at all. Nothing wrong with the battery.</string>
     <string name="adv_coast">Free descent: %1$.2f km gained speed without drawing from the battery.</string>
+    <string name="tab_notifs">Notifications</string>
+    <string name="notifs_count">%1$d notifications</string>
+    <string name="notifs_auto">Auto-clear notifications: %1$s</string>
+    <string name="notifs_auto_title">Auto-clear notifications</string>
+    <string name="notifs_auto_off">Off</string>
+    <plurals name="notifs_auto_days">
+        <item quantity="one">Older than %d day</item>
+        <item quantity="other">Older than %d days</item>
+    </plurals>
 </resources>

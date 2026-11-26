@@ -387,6 +387,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getInt(k("low_step"), 0)
         set(value) = prefs.edit().putInt(k("low_step"), value).apply()
 
+    /** Notifications older than this many days leave the history by themselves (0 = never). */
+    var notifAutoClearDays: Int
+        get() = prefs.getInt("notif_auto_clear_days", 0)
+        set(value) = prefs.edit().putInt("notif_auto_clear_days", value).apply()
+
     var askedFullScreen: Boolean
         get() = prefs.getBoolean("asked_full_screen", false)
         set(value) = prefs.edit().putBoolean("asked_full_screen", value).apply()

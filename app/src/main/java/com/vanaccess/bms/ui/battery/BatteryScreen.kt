@@ -59,7 +59,7 @@ class BatteryScreen(
     private val cGrey = Color.parseColor("#9BA3B8")
     private val cTile = Color.parseColor("#262A3B")
 
-    private enum class Page { LIVE, CELLS, REPORTS, INFO, HISTORY }
+    private enum class Page { LIVE, CELLS, REPORTS, INFO, HISTORY, NOTIFS }
     private var pages = listOf<Page>()
     private var lastInfo: BmsBasicInfo? = null
     private var lastCells: List<Double> = emptyList()
@@ -123,6 +123,7 @@ class BatteryScreen(
         val wanted = buildList {
             add(Page.CELLS); add(Page.REPORTS); add(Page.INFO)
             if (Feature.HISTORY in features) add(Page.HISTORY)
+            add(Page.NOTIFS)
         }
         if (wanted == pages) return
         val current = b.tabs.getTabAt(b.tabs.selectedTabPosition)?.tag as? Page ?: savedTab()
@@ -133,6 +134,7 @@ class BatteryScreen(
                 Page.LIVE -> R.string.tab_live; Page.CELLS -> R.string.tab_cells
                 Page.REPORTS -> R.string.tab_reports
                 Page.INFO -> R.string.tab_info; Page.HISTORY -> R.string.tab_history
+                Page.NOTIFS -> R.string.tab_notifs
             }
             b.tabs.addTab(b.tabs.newTab().setText(title).setTag(p), p == current)
         }
@@ -201,6 +203,7 @@ class BatteryScreen(
         Page.REPORTS -> R.drawable.ic_tab_reports
         Page.INFO -> R.drawable.ic_tab_info
         Page.HISTORY -> R.drawable.ic_tab_history
+        Page.NOTIFS -> R.drawable.ic_tab_notifs
         Page.LIVE -> R.drawable.ic_battery
     }
 
@@ -218,7 +221,38 @@ class BatteryScreen(
         b.pageInfo.visibility = if (p == Page.INFO) View.VISIBLE else View.GONE
         b.pageHistory.visibility = if (p == Page.HISTORY) View.VISIBLE else View.GONE
         b.pageReports.visibility = if (p == Page.REPORTS) View.VISIBLE else View.GONE
+        b.pageNotifs.visibility = if (p == Page.NOTIFS) View.VISIBLE else View.GONE
         if (p == Page.REPORTS) reports.reload()
+        if (p == Page.NOTIFS) renderNotifs()
+    }
+
+    // ── Notifications: everything the app posted, newest first ────────────────
+
+    private fun renderNotifs() {
+        val items = com.vanaccess.bms.data.NotifLog.all(ctx)
+        val box = b.boxNotifs
+        box.removeAllViews()
+        b.tvNotifsCount.text = ctx.getString(R.string.notifs_count, items.size)
+        b.btnNotifsClear.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+        b.btnNotifsClear.setOnClickListener {
+            com.vanaccess.bms.ui.AppDialog.show(ctx, ctx.getString(R.string.notif_log_clear_q),
+                message = ctx.getString(R.string.notif_log_clear_msg, items.size), buttons = listOf(
+                    com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
+                    com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.notif_log_clear), com.vanaccess.bms.ui.AppDialog.RED) {
+                        com.vanaccess.bms.data.NotifLog.clear(ctx) }))
+        }
+        if (items.isEmpty()) { box.addView(label(ctx.getString(R.string.notif_log_empty), cGrey, 13f).apply { setPadding(0, (12 * dp).toInt(), 0, 0) }); return }
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd  HH:mm", Locale.US)
+        items.forEach { e ->
+            box.addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+                background = GradientDrawable().apply { cornerRadius = 14 * dp; setColor(cTile) }
+                addView(label("\u2066" + fmt.format(java.util.Date(e.tMs)) + "\u2069", cGrey, 12f))
+                addView(label(e.title, Color.WHITE, 14f, bold = true).apply { setPadding(0, (2 * dp).toInt(), 0, (2 * dp).toInt()) })
+                addView(label(e.text, Color.parseColor("#C9CFDD"), 13f))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (8 * dp).toInt() })
+        }
     }
 
     // ── Observers ────────────────────────────────────────────────────────────
@@ -268,6 +302,7 @@ class BatteryScreen(
         com.vanaccess.bms.reports.SessionRecorder.activeDischarge.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext(); refreshTripCell() }
         BleService.bmsParams.observe(owner) { refreshAdviceContext() }
+        com.vanaccess.bms.data.NotifLog.changed.observe(owner) { if (b.pageNotifs.visibility == View.VISIBLE) renderNotifs() }
     }
 
     /** A vehicle whose trips would have no distance: say so before the ride, tap to fix. */

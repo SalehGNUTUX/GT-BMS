@@ -581,7 +581,16 @@ class SettingsFragment : Fragment() {
             et.setOnFocusChangeListener { _, hasFocus -> if (!hasFocus) saveAlarmFields(false) }
         }
 
-        binding.btnNotifLog.setOnClickListener { showNotifLog() }
+        fun renderAutoClear() {
+            val d = prefs.notifAutoClearDays
+            binding.tvNotifAuto.text = getString(R.string.notifs_auto, autoLabel(d)) + "  ▾"
+        }
+        renderAutoClear()
+        binding.tvNotifAuto.setOnClickListener {
+            val all = com.vanaccess.bms.data.NotifLog.AUTO_DAYS
+            AD.show(requireContext(), getString(R.string.notifs_auto_title), items = all.map { autoLabel(it) },
+                checked = all.indexOf(prefs.notifAutoClearDays), onItem = { i -> prefs.notifAutoClearDays = all[i]; renderAutoClear() })
+        }
         binding.btnFullScreen.setOnClickListener { com.vanaccess.bms.ui.FullScreenAccess.ask(requireActivity()) }
         binding.btnAlarmTest.setOnClickListener {
             saveAlarmFields(false)
@@ -595,33 +604,8 @@ class SettingsFragment : Fragment() {
         renderAdvice()
     }
 
-    /** Every notification the app posted, newest first, with a manual "Clear". */
-    private fun showNotifLog() {
-        val ctx = requireContext()
-        val items = com.vanaccess.bms.data.NotifLog.all(ctx)
-        val dp = resources.displayMetrics.density
-        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd  HH:mm", java.util.Locale.US)
-        val col = android.widget.LinearLayout(ctx).apply { orientation = android.widget.LinearLayout.VERTICAL }
-        if (items.isEmpty()) col.addView(android.widget.TextView(ctx).apply {
-            text = getString(R.string.notif_log_empty); setTextColor(android.graphics.Color.parseColor("#9BA3B8")) })
-        items.forEach { e ->
-            col.addView(android.widget.TextView(ctx).apply {
-                text = "\u2066" + fmt.format(java.util.Date(e.tMs)) + "\u2069\n" + e.title + "\n" + e.text
-                setTextColor(android.graphics.Color.parseColor("#E6E9F2")); textSize = 13f
-                setPadding((12 * dp).toInt(), (9 * dp).toInt(), (12 * dp).toInt(), (9 * dp).toInt())
-                background = android.graphics.drawable.GradientDrawable().apply { cornerRadius = 12 * dp; setColor(android.graphics.Color.parseColor("#262A3B")) }
-            }, android.widget.LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = (6 * dp).toInt() })
-        }
-        val btns = mutableListOf(com.vanaccess.bms.ui.AppDialog.Btn(getString(android.R.string.ok), com.vanaccess.bms.ui.AppDialog.GREEN))
-        if (items.isNotEmpty()) btns += com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.notif_log_clear), com.vanaccess.bms.ui.AppDialog.RED) {
-            com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.notif_log_clear_q), message = getString(R.string.notif_log_clear_msg, items.size),
-                buttons = listOf(
-                    com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREEN),
-                    com.vanaccess.bms.ui.AppDialog.Btn(getString(R.string.notif_log_clear), com.vanaccess.bms.ui.AppDialog.RED) {
-                        com.vanaccess.bms.data.NotifLog.clear(ctx) }))
-        }
-        com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.notif_log_title, items.size), body = col, tall = true, buttons = btns)
-    }
+    private fun autoLabel(days: Int) = if (days <= 0) getString(R.string.notifs_auto_off)
+        else resources.getQuantityString(R.plurals.notifs_auto_days, days, days)
 
     /** One row per alarm kind: tone name (tap → system picker) and ▶ to test that alarm. */
     private fun renderTones() {

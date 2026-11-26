@@ -1401,13 +1401,16 @@
                     android:text="@string/sum_weekly"
                     android:textColor="@color/text_primary" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_notif_log"
+                <TextView
+                    android:id="@+id/tv_notif_auto"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/notif_log_btn"
-                    style="@style/Widget.Material3.Button.TonalButton" />
+                    android:layout_marginTop="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:textColor="#4DA3FF"
+                    android:textSize="14sp" />
 
                 <LinearLayout
                     android:id="@+id/box_full_screen"

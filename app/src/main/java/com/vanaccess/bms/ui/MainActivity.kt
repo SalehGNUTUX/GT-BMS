@@ -323,7 +323,7 @@ class MainActivity : AppCompatActivity() {
         val menu = nav.menu
         val batteryIcon = batteryTabIcon.value ?: when (prefs.lastBatteryTab) {
             "REPORTS" -> R.drawable.ic_tab_reports; "INFO" -> R.drawable.ic_tab_info
-            "HISTORY" -> R.drawable.ic_tab_history; else -> R.drawable.ic_tab_cells
+            "HISTORY" -> R.drawable.ic_tab_history; "NOTIFS" -> R.drawable.ic_tab_notifs; else -> R.drawable.ic_tab_cells
         }
         val tabs = mutableListOf(Triple(R.id.dashboardFragment, R.string.nav_dashboard, batteryIcon))
         if (!prefs.smartSolarDeviceAddress.isNullOrBlank()) tabs += Triple(R.id.smartSolarFragment, R.string.nav_solar, R.drawable.ic_solar)

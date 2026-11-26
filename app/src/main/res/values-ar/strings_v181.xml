@@ -2,8 +2,6 @@
 <resources>
     <string name="alarm_snooze">ذكّرني بعد %1$d د</string>
     <string name="away_ring_snooze">تذكير: هل فصلت الشاحن؟ (الهاتف بعيد عن البطارية)</string>
-    <string name="notif_log_btn">سجل الإشعارات</string>
-    <string name="notif_log_title">سجل الإشعارات (%1$d)</string>
     <string name="notif_log_empty">لا إشعارات بعد.</string>
     <string name="notif_log_clear">تفريغ</string>
     <string name="notif_log_clear_q">تفريغ السجل؟</string>
@@ -13,4 +11,17 @@
     <string name="adv_regen_below">الاسترداد %1$.1f٪ هذه المرة، أقل من معتادك %2$.1f٪: طريق أكثر استواءً أو كبح أشد بالمكابح الميكانيكية.</string>
     <string name="adv_regen_weak">خلال %1$.0f كم لم تسترد مركبتك إلا %2$.1f٪ من طاقتها: متحكمها يسترد قليلاً أو لا يسترد. لا خلل في البطارية.</string>
     <string name="adv_coast">نزول حر: %1$.2f كم زادت فيها السرعة دون سحب من البطارية.</string>
+    <string name="tab_notifs">إشعارات</string>
+    <string name="notifs_count">%1$d إشعار</string>
+    <string name="notifs_auto">التفريغ التلقائي للإشعارات: %1$s</string>
+    <string name="notifs_auto_title">التفريغ التلقائي للإشعارات</string>
+    <string name="notifs_auto_off">معطّل</string>
+    <plurals name="notifs_auto_days">
+        <item quantity="zero">معطّل</item>
+        <item quantity="one">أقدم من يوم</item>
+        <item quantity="two">أقدم من يومين</item>
+        <item quantity="few">أقدم من %d أيام</item>
+        <item quantity="many">أقدم من %d يوماً</item>
+        <item quantity="other">أقدم من %d يوم</item>
+    </plurals>
 </resources>

@@ -439,6 +439,48 @@
                 android:padding="12dp" />
         </androidx.core.widget.NestedScrollView>
 
+        <!-- ═════════ NOTIFICATIONS ═════════ -->
+        <LinearLayout
+            android:id="@+id/page_notifs"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+                <TextView
+                    android:id="@+id/tv_notifs_count"
+                    style="@style/GtMetricLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_notifs_clear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/notif_log_clear"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+
+            <androidx.core.widget.NestedScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+                <LinearLayout
+                    android:id="@+id/box_notifs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="12dp" />
+            </androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+
         <!-- ═════════ HISTORY ═════════ -->
         <LinearLayout
             android:id="@+id/page_history"
