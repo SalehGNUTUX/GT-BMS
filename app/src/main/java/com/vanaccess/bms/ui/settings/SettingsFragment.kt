@@ -534,7 +534,10 @@ class SettingsFragment : Fragment() {
         val st = BleService.syncState.value
         if (st != null) {
             text(getString(R.string.pc_code), 13f, "#9BA3B8", top = 10)
-            text(st.code.chunked(3).joinToString(" "), 34f, "#7CB342", bold = true, top = 0).apply { letterSpacing = 0.08f }
+            // Kept left to right as one block: in Arabic the two groups would otherwise swap places
+            // ("798 240" shown for the code 240798)
+            text("\u2066" + st.code.chunked(3).joinToString(" ") + "\u2069", 34f, "#7CB342", bold = true, top = 0).apply {
+                letterSpacing = 0.08f; textDirection = android.view.View.TEXT_DIRECTION_LTR }
             text(getString(R.string.pc_address) + "  ⁦" + st.address + "⁩", 13f, "#C9CFDD")
             text(getString(R.string.pc_open_until, hm.format(java.util.Date(st.untilMs))), 12f, "#9BA3B8")
             st.peer?.let { text("✓ " + getString(R.string.pc_peer, it), 13f, "#43D17A", bold = true) }
