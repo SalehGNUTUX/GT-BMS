@@ -1,0 +1,1 @@
+1.9.2: the computer version now gets the phone's live reading and notifications during a sync, and gives the same trip advice.

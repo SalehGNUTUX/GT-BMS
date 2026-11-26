@@ -1,0 +1,1 @@
+1.9.2 : la version ordinateur reçoit la lecture en direct et les notifications du téléphone pendant la synchro, avec les mêmes conseils de trajet.
