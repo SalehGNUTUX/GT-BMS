@@ -21,4 +21,10 @@
         <item quantity="one">%d heure</item>
         <item quantity="other">%d heures</item>
     </plurals>
+    <string name="standby_title">Véhicule encore allumé ?</string>
+    <string name="standby_text">Le véhicule était allumé et à l\'arrêt (%1$.1f A pour les feux et l\'écran) quand vous vous êtes éloigné. Éteignez-le si vous l\'avez laissé.</string>
+    <string name="standby_switch">Véhicule laissé allumé</string>
+    <string name="standby_desc">Sonne si vous vous éloignez du véhicule allumé et à l\'arrêt (feux, écran). Apprend son propre courant à l\'arrêt.</string>
+    <string name="standby_live">Allumé à l’arrêt depuis %1$s · %2$s</string>
+    <string name="standby_day">Allumé à l\'arrêt</string>
 </resources>

@@ -76,6 +76,7 @@ BMS over Bluetooth LE, shows the data clearly, and alarms on full charge or low 
   repeated protection cuts while charging, with lithium riding tips.
 - **Recovered energy**: what regenerative braking and descents returned to the battery, per trip and per day, its share and the distance gained.
 - **Full-screen alarms** saying how serious it is, with a large stop button, and **low-battery reminders** at your value, then 20, 15, 10 and 5%.
+- **Sync with GT-BMS on the computer** (GNU/Linux) over the home network only, with a pairing code, and **leave the battery link to the computer** while charging.
 - **Charge alarms with two buttons** (“I unplugged it” or “remind me in N min” by the percentage), and a **Notifications tab** keeping everything the app posted, cleared by hand or, if you choose, automatically.
 - **Charge alarms by time** when you leave with the phone, and a **warning when GPS is off** for a trip.
 - **Several batteries**: switch from the screen header, with reports, limits, alarms and vehicle per battery; chemistry recognised from the cells.

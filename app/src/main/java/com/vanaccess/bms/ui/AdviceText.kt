@@ -158,6 +158,7 @@ object AdviceText {
 
     /** Summary after a charge or trip (background thread). */
     fun notifySession(ctx: Context, s: Session) {
+        if (s.type == Session.TYPE_STANDBY) return            // part of the day report
         if (!AppPreferences(ctx).notifySessionSummary) return
         Thread {
             val recs = forSession(ctx, s)

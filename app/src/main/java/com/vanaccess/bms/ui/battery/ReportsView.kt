@@ -112,7 +112,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         thread {
             val bat = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
             val list = if (f == DISCHARGES) store.listTypes(listOf(Session.TYPE_DISCHARGE, Session.TYPE_TRIP), battery = bat)
-                else store.list(f, battery = bat)
+                else store.list(f, battery = bat).filter { it.type != Session.TYPE_STANDBY }
             fragment.activity?.runOnUiThread {
                 if (fragment.view == null || filter != f) return@runOnUiThread
                 if (b.rvReports.adapter !== adapter) b.rvReports.adapter = adapter
@@ -283,6 +283,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             (com.vanaccess.bms.reports.RegenMeter.sharePct(d.regenWh, d.wh)?.let { f("  •  %.1f%%", it) } ?: "") +
             (d.whPerKm?.takeIf { it > 0 }?.let { f("  •  ≈ %.2f km", d.regenWh / it) } ?: "")
         if (d.socStart != null && d.socEnd != null) rows += R.string.day_soc_row to range("${d.socStart}%", "${d.socEnd}%")
+        if (d.standbyS >= 60) rows += R.string.standby_day to dur(d.standbyS) + f("  •  %.1f Wh", d.standbyWh)
         if (d.socUsed >= 0.5) rows += R.string.day_used to f("%.0f%%", d.socUsed)
         if (d.unrecorded > 0) rows += R.string.day_unrecorded to "${d.unrecorded}%"
         if (d.socCharged > 0) rows += R.string.day_soc_charged to "${d.socCharged}%"

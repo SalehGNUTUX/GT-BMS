@@ -25,4 +25,10 @@
         <item quantity="many">%d ساعة</item>
         <item quantity="other">%d ساعة</item>
     </plurals>
+    <string name="standby_title">هل الدراجة ما زالت تعمل؟</string>
+    <string name="standby_text">كانت الدراجة تعمل ومتوقفة (تسحب %1$.1f أمبير للمصباح والشاشة) حين ابتعدتَ عنها. أطفئها إن كنت تركتها.</string>
+    <string name="standby_switch">الدراجة تُركت تعمل</string>
+    <string name="standby_desc">يرنّ إذا ابتعدت عن الدراجة وهي تعمل ومتوقفة (المصباح والشاشة). يتعلّم تيار التشغيل الخاص بها.</string>
+    <string name="standby_live">تعمل دون حركة منذ %1$s · %2$s</string>
+    <string name="standby_day">التشغيل دون حركة</string>
 </resources>

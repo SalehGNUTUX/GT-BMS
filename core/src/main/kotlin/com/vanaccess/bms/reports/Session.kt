@@ -35,6 +35,8 @@ data class Session(
         const val TYPE_CHARGE = "charge"
         const val TYPE_TRIP = "trip"
         const val TYPE_DISCHARGE = "discharge"
+        /** Switched on but not moving (lights, display, controller). */
+        const val TYPE_STANDBY = "standby"
     }
 }
 

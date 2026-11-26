@@ -51,6 +51,9 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
         /** Live state for the UI. */
         val liveSpeedKmh = MutableLiveData<Double?>(null)
         val activeTrip = MutableLiveData<TripLive?>(null)
+        /** The vehicle is on but still (lights, display): since when, at what current. */
+        data class StandbyLive(val sinceMs: Long, val amps: Double, val wh: Double)
+        val standbyLive = MutableLiveData<StandbyLive?>(null)
         val activeDischarge = MutableLiveData<ChargeLive?>(null)
         val activeCharge = MutableLiveData<ChargeLive?>(null)
         /** The charge being followed (time left, next cut). */
@@ -92,6 +95,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
     // ── Charge accumulator ──
     private var chgCandidateSince = 0L
     private val gate = ChargeGate()
+    private val standby = StandbyWatch()
+    private var sb: Acc? = null
     private var lastLoadMs = 0L
     /** The motor ran since the charge's last current: only a confirmed charger continues it. */
     private var chgBroken = false
@@ -236,6 +241,7 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
             dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             trip?.let { endTrip(it) }
+            sb?.let { finishStandby(it) }; standby.reset()
             gate.reset(); lastChargingMs = 0L
         }
     }
@@ -270,6 +276,8 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
                 }
                 dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
             }
+            // Silent for a while: the standby (if any) ended at the last reading
+            if (lastSampleMs > 0 && now - lastSampleMs > 2 * 60_000L) { sb?.let { finishStandby(it) }; standby.reset() }
             // Battery silent during a trip: parked → the rider left, end it at the last moment it
             // was moving or under load; riding → GPS decides.
             if (trip != null && lastSampleMs > 0 &&
@@ -459,6 +467,21 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             if (chg != null) activeCharge.value = ChargeLive(c.startMs, c.socStart, c.ah, c.wh, c.stop != null)
         }
 
+        // ── Switched on, not moving ──
+        if (prefs.vehicle.mobile) {
+            val on = standby.update(now, i, fix?.speedKmh, TRIP_START_A * k)
+            if (on) {
+                val s = sb ?: Acc(standby.onSince, info.soc).also { a ->
+                    // the minute it took to be sure
+                    val sec = (now - standby.onSince) / 1000.0
+                    a.ah += standby.amps * sec / 3600; a.wh += standby.amps * info.packVoltage * sec / 3600; a.activeS += sec
+                    sb = a
+                }
+                accumulate(s, info, dtS, now, charging = false)
+                standbyLive.value = StandbyLive(s.startMs, standby.amps, s.wh)
+            } else sb?.let { finishStandby(it) }
+        }
+
         // ── Trip ──
         val tripsOn = prefs.vehicle.mobile && prefs.tripsEnabled
         if (!tripsOn) {
@@ -539,6 +562,19 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
             if (dis != null) activeDischarge.value = ChargeLive(d.startMs, d.socStart, d.ah, d.wh)
         }
     }
+
+    private fun finishStandby(s: Acc) {
+        sb = null; standbyLive.value = null
+        if (s.activeS < 60 || s.wh < 0.2) return
+        val data = common(s).apply {
+            put("avg_current", if (s.activeS > 0) s.ah * 3600 / s.activeS else 0.0)
+            put("in_trip", trip != null)
+        }
+        save(Session.TYPE_STANDBY, s, data)
+    }
+
+    /** GPS saw riding after this moment (the phone is on the vehicle, not walking away from it). */
+    fun riddenAfter(ms: Long) = lastRidingMs > ms
 
     private fun finishDischarge(d: Acc) {
         activeDischarge.value = null

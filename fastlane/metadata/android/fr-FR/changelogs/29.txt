@@ -1,0 +1,1 @@
+1.9.0 : synchronisation avec GT-BMS sur l'ordinateur (réseau local uniquement, code d'appairage) ; laisser la liaison de la batterie à l'ordinateur pendant la charge ; alarme véhicule laissé allumé ; français dans la langue de l'application.

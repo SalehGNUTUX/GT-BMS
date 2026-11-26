@@ -21,4 +21,10 @@
         <item quantity="one">%d hour</item>
         <item quantity="other">%d hours</item>
     </plurals>
+    <string name="standby_title">Vehicle still switched on?</string>
+    <string name="standby_text">The vehicle was on and still (drawing %1$.1f A for its lights and display) when you went out of range. Switch it off if you have left it.</string>
+    <string name="standby_switch">Vehicle left switched on</string>
+    <string name="standby_desc">Rings when you walk away from the vehicle while it is on and still (lights, display). Learns its own standby current.</string>
+    <string name="standby_live">Switched on, not moving, since %1$s · %2$s</string>
+    <string name="standby_day">On without moving</string>
 </resources>

@@ -397,6 +397,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getLong("link_yield_until", 0L)
         set(value) = prefs.edit().putLong("link_yield_until", value).apply()
 
+    /** Ring when walking away from the vehicle left switched on. */
+    var alarmStandby: Boolean
+        get() = prefs.getBoolean("alarm_standby", true)
+        set(value) = prefs.edit().putBoolean("alarm_standby", value).apply()
+
     var askedFullScreen: Boolean
         get() = prefs.getBoolean("asked_full_screen", false)
         set(value) = prefs.edit().putBoolean("asked_full_screen", value).apply()

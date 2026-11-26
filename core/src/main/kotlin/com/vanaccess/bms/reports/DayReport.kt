@@ -27,6 +27,8 @@ data class DayReport(
     val socCharged: Int,
     /** Energy recuperation (braking, descents) of the trips. */
     val regenAh: Double = 0.0, val regenWh: Double = 0.0,
+    /** Switched on without moving: time (s) and energy. */
+    val standbyS: Double = 0.0, val standbyWh: Double = 0.0,
 ) {
     val avgSpeed get() = if (ridingS > 0) km / (ridingS / 3600.0) else 0.0
 
@@ -69,7 +71,8 @@ data class DayReport(
             val lost = ordered.zipWithNext().filter { (_, b) -> b.startMs >= start }
                 .sumOf { (a, b) -> (a.i("soc_end") - b.i("soc_start")).let { if (it >= 2) it else 0 } }
             fun begun(s: Session) = s.startMs >= start
-            val out = inDay.filter { it.type != Session.TYPE_CHARGE }
+            val out = inDay.filter { it.type != Session.TYPE_CHARGE && it.type != Session.TYPE_STANDBY }
+            val standby = inDay.filter { it.type == Session.TYPE_STANDBY }
             val trips = out.filter { it.type == Session.TYPE_TRIP }
             val charges = inDay.filter { it.type == Session.TYPE_CHARGE }
             fun riding(s: Session): Double {
@@ -96,7 +99,8 @@ data class DayReport(
                 inDay.filter { !it.data.isNull("max_temp") && it.data.has("max_temp") }.maxOfOrNull { it.d("max_temp") },
                 trips.any { it.b("energy_partial") || impossible(it) }, lost,
                 Math.round(charges.sumOf { (it.i("soc_end") - it.i("soc_start")).coerceAtLeast(0) * part(it) }).toInt(),
-                trips.sumOf { it.d("regen_ah") * part(it) }, trips.sumOf { it.d("regen_wh") * part(it) })
+                trips.sumOf { it.d("regen_ah") * part(it) }, trips.sumOf { it.d("regen_wh") * part(it) },
+                standby.sumOf { it.d("active_s") * part(it) }, standby.sumOf { it.d("wh") * part(it) })
         }
     }
 }

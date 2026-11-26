@@ -1,0 +1,1 @@
+1.9.0: sync with GT-BMS on the computer (home network only, pairing code); leave the battery link to the computer while charging; vehicle-left-on alarm; French in the app language.

@@ -38,7 +38,7 @@ import com.vanaccess.bms.ui.MainActivity
  */
 class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPreferences) {
 
-    enum class Kind { HIGH, LOW, DELTA_LOAD, CELL }
+    enum class Kind { HIGH, LOW, DELTA_LOAD, CELL, STANDBY }
 
     /** How serious it is, said plainly. */
     enum class Level(val label: Int, val color: String) {
@@ -74,7 +74,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State(), Kind.DELTA_LOAD to State(), Kind.CELL to State())
+    private val states = mapOf(Kind.HIGH to State(), Kind.LOW to State(), Kind.DELTA_LOAD to State(), Kind.CELL to State(), Kind.STANDBY to State())
     private var ringing: Kind? = null
     private var player: MediaPlayer? = null
     private var ringtone: Ringtone? = null
@@ -287,6 +287,14 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
 
     // ── Sound / vibration ─────────────────────────────────────────────────────
 
+    /** Walking away from a vehicle left switched on. */
+    fun ringStandby(amps: Double) {
+        main.post {
+            if (ringing == null) startAlarm(Ring(Kind.STANDBY, context.getString(R.string.standby_title), "⚠",
+                context.getString(R.string.standby_text, amps), Level.ATTENTION))
+        }
+    }
+
     /** By the clock, the battery being out of reach (see ble.ChargeTimer): tone of the full-charge alarm. */
     fun ringAway(text: String) { main.post { if (ringing == null) startAlarm(
         Ring(Kind.HIGH, context.getString(R.string.away_ring_title), "⏰", text, Level.NORMAL, away = true,
@@ -329,12 +337,12 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
     }
 
     object Tones {
-        fun toneKey(kind: Kind) = when (kind) { Kind.HIGH -> "high"; Kind.LOW -> "low"; Kind.DELTA_LOAD -> "delta"; Kind.CELL -> "cell" }
+        fun toneKey(kind: Kind) = when (kind) { Kind.HIGH -> "high"; Kind.LOW -> "low"; Kind.DELTA_LOAD -> "delta"; Kind.CELL -> "cell"; Kind.STANDBY -> "standby" }
 
         fun defaultTone(context: Context, kind: Kind): Uri? {
             val type = when (kind) {
                 Kind.HIGH, Kind.CELL -> RingtoneManager.TYPE_NOTIFICATION
-                Kind.LOW -> RingtoneManager.TYPE_ALARM
+                Kind.LOW, Kind.STANDBY -> RingtoneManager.TYPE_ALARM
                 Kind.DELTA_LOAD -> RingtoneManager.TYPE_RINGTONE
             }
             return RingtoneManager.getActualDefaultRingtoneUri(context, type)
@@ -419,6 +427,7 @@ class BatteryAlarmMonitor(private val context: Context, private val prefs: AppPr
         Kind.LOW -> R.string.alarm_low_title
         Kind.DELTA_LOAD -> R.string.alarm_delta_load_title
         Kind.CELL -> R.string.alarm_cell_title
+        Kind.STANDBY -> R.string.standby_title
     }
 
     private fun showNotification(r: Ring, ongoing: Boolean) {

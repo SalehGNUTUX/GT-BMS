@@ -1092,6 +1092,22 @@
                     android:layout_height="wrap_content"
                     app:singleSelection="true" />
 
+                <!-- Vehicle left switched on -->
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_alarm_standby"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/standby_switch"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:text="@string/standby_desc"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <!-- By the clock, when the phone leaves the battery -->
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_alarm_away"

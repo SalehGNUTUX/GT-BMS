@@ -300,6 +300,7 @@ class BatteryScreen(
         com.vanaccess.bms.reports.SessionRecorder.activeTrip.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeCharge.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.activeDischarge.observe(owner) { renderBanner() }
+        com.vanaccess.bms.reports.SessionRecorder.standbyLive.observe(owner) { renderBanner() }
         com.vanaccess.bms.reports.SessionRecorder.savedCount.observe(owner) { refreshLearned(); refreshAdviceContext(); refreshTripCell() }
         BleService.bmsParams.observe(owner) { refreshAdviceContext() }
         com.vanaccess.bms.data.NotifLog.changed.observe(owner) { if (b.pageNotifs.visibility == View.VISIBLE) renderNotifs() }
@@ -568,6 +569,8 @@ class BatteryScreen(
         val dis = R0.activeDischarge.value
         val time = java.text.SimpleDateFormat("HH:mm", Locale.US)
         val (txt, col) = when {
+            trip == null && chg == null && R0.standbyLive.value != null -> R0.standbyLive.value!!.let { sb ->
+                ctx.getString(R.string.standby_live, time.format(java.util.Date(sb.sinceMs)), "\u2066" + fmt("%.1f A", sb.amps) + "\u2069") } to cOrange
             trip != null -> ctx.getString(R.string.live_trip,
                 "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) +
                 (if (trip.regenWh >= 0.5) "  ·  ♻ \u2066" + fmt("%.1f Wh", trip.regenWh) + "\u2069" else "") to cBlue

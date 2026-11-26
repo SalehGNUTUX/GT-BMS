@@ -599,6 +599,8 @@ class SettingsFragment : Fragment() {
         binding.switchBalanceReminder.setOnCheckedChangeListener { _, c -> prefs.balanceReminder = c }
         binding.switchSumWeekly.isChecked = prefs.notifyWeekly
         binding.switchSumWeekly.setOnCheckedChangeListener { _, c -> prefs.notifyWeekly = c }
+        binding.switchAlarmStandby.isChecked = prefs.alarmStandby
+        binding.switchAlarmStandby.setOnCheckedChangeListener { _, c -> prefs.alarmStandby = c }
         binding.switchAlarmAway.isChecked = prefs.alarmAway
         binding.switchAlarmAway.setOnCheckedChangeListener { _, c ->
             prefs.alarmAway = c

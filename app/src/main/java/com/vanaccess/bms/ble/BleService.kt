@@ -226,7 +226,7 @@ class BleService : LifecycleService() {
             android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         handler.post(object : Runnable {
-            override fun run() { recorder.onTick(); checkLink(); keepAlive.tick(); com.vanaccess.bms.ui.AdviceText.maybeDaily(this@BleService, recorder.tripActive); handler.postDelayed(this, 10_000L) }
+            override fun run() { recorder.onTick(); checkStandbyAway(); checkLink(); keepAlive.tick(); com.vanaccess.bms.ui.AdviceText.maybeDaily(this@BleService, recorder.tripActive); handler.postDelayed(this, 10_000L) }
         })
         // Periodic background update check while the service runs (UpdateChecker throttles to 12 h)
         handler.post(object : Runnable {
@@ -604,6 +604,22 @@ class BleService : LifecycleService() {
     fun alarmSnooze() = alarmMonitor.snooze()
 
     fun onKeepAliveAlarm() = keepAlive.onAlarm()
+
+    private var standbyWarnedFor = 0L
+
+    /**
+     * The vehicle was on and still, then the battery went silent for 30 s and GPS saw no riding:
+     * the owner walked away with it switched on. Once per time it was found on.
+     */
+    private fun checkStandbyAway() {
+        val sb = com.vanaccess.bms.reports.SessionRecorder.standbyLive.value ?: return
+        if (!prefs.alarmStandby || standbyWarnedFor == sb.sinceMs || prefs.linkYieldUntil > System.currentTimeMillis()) return
+        val last = lastDataMs
+        if (last == 0L || System.currentTimeMillis() - last < 30_000L || recorder.riddenAfter(last)) return
+        standbyWarnedFor = sb.sinceMs
+        log("standby: walked away with the vehicle on")
+        alarmMonitor.ringStandby(sb.amps)
+    }
 
     // ── The computer: sync on the home network, and leaving it the battery's link ──
 
