@@ -14,14 +14,42 @@ dependencies {
     implementation compose.desktop.currentOs
     implementation compose.material3
     implementation 'org.json:json:20231013'
+    implementation 'org.xerial:sqlite-jdbc:3.46.1.3'
     testImplementation 'junit:junit:4.13.2'
 }
+
+// The phone's texts (Arabic, English, French), one merged file per language: one wording for both apps
+def sharedRes = layout.buildDirectory.dir('generated/sharedRes')
+def sharedStrings = tasks.register('sharedStrings') {
+    def res = rootProject.file('app/src/main/res')
+    inputs.dir(res)
+    outputs.dir(sharedRes)
+    doLast {
+        ['': 'en', '-ar': 'ar', '-fr': 'fr'].each { suffix, lang ->
+            def body = new StringBuilder()
+            new File(res, "values$suffix").listFiles().findAll { it.name.startsWith('strings') && it.name.endsWith('.xml') }.sort().each { f ->
+                def t = f.getText('UTF-8')
+                def a = t.indexOf('<resources'); a = t.indexOf('>', a) + 1
+                body.append(t.substring(a, t.lastIndexOf('</resources>'))).append('\n')
+            }
+            def out = sharedRes.get().file("android-res/strings-${lang}.xml").asFile
+            out.parentFile.mkdirs()
+            out.setText('<?xml version="1.0" encoding="utf-8"?>\n<resources xmlns:tools="http://schemas.android.com/tools">' + body + '</resources>\n', 'UTF-8')
+        }
+    }
+}
+sourceSets.main.resources.srcDir(sharedRes)
+tasks.named('processResources') { dependsOn sharedStrings }
+
+tasks.withType(Test).configureEach { systemProperty 'user.language', 'en' }
 
 compose.desktop {
     application {
         mainClass = 'com.gnutux.gtbms.desktop.MainKt'
         nativeDistributions {
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            // the bundled Java keeps only what is used: SQLite needs java.sql, the texts java.xml
+            modules('java.sql', 'java.logging', 'java.xml')
             packageName = 'gt-bms-desktop'
             packageVersion = project.version
             description = 'GT-BMS: lithium battery monitor (read-only BMS reader)'
