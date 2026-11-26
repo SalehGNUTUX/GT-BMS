@@ -28,3 +28,19 @@ class ReplayLogTest {
         assertEquals(cells.sum(), b.packVoltage, 0.05)
     }
 }
+
+class ReplayLinkTest {
+    @Test fun pollerOverARecordingGivesTheReadings() {
+        val packets = ReplayLog.parse(javaClass.getResource("/bwbm-23s-packets.txt")!!.readText())
+        val link = ReplayLink(packets, gapMs = 0)
+        assertTrue("7F 10 02 06 12 57" in link.known)
+        val got = java.util.concurrent.LinkedBlockingQueue<com.vanaccess.bms.ble.drivers.DriverOutput>()
+        val poller = BmsPoller(BwbmDriver(), link) { got += it }
+        poller.start()
+        var cells: List<Double>? = null
+        val until = System.currentTimeMillis() + 5_000
+        while (cells == null && System.currentTimeMillis() < until) got.poll(200, java.util.concurrent.TimeUnit.MILLISECONDS)?.cells?.let { cells = it }
+        poller.stop()
+        assertEquals(23, cells!!.size)
+    }
+}

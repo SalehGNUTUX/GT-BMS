@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=GT-BMS
+Name[ar]=GT-BMS
+GenericName=Battery monitor
+GenericName[ar]=مراقب البطارية
+GenericName[fr]=Moniteur de batterie
+Comment=Read-only monitor for lithium battery BMS over Bluetooth
+Comment[ar]=مراقبة بطاريات الليثيوم عبر البلوتوث، للقراءة فقط
+Comment[fr]=Surveillance des batteries lithium par Bluetooth, en lecture seule
+Exec=gt-bms-desktop
+Icon=gt-bms-desktop
+Categories=Utility;
+Terminal=false

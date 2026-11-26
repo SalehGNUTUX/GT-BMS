@@ -1,0 +1,39 @@
+// GT-BMS for the GNU/Linux desktop. Shares its logic with the phone through :core.
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'org.jetbrains.compose'
+}
+
+version = '0.1.0'
+
+dependencies {
+    implementation project(':core')
+    implementation compose.desktop.currentOs
+    implementation compose.material3
+    implementation 'org.json:json:20231013'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+compose.desktop {
+    application {
+        mainClass = 'com.gnutux.gtbms.desktop.MainKt'
+        nativeDistributions {
+            targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            packageName = 'gt-bms-desktop'
+            packageVersion = project.version
+            description = 'GT-BMS: lithium battery monitor (read-only BMS reader)'
+            vendor = 'GNUTUX'
+            licenseFile.set(rootProject.file('LICENSE'))
+            linux {
+                iconFile.set(project.file('src/main/resources/icon.png'))
+                debMaintainer = 'gnutux.arabic@gmail.com'
+                menuGroup = 'Utility'
+                appCategory = 'Utility'
+                shortcut = true
+            }
+        }
+    }
+}
