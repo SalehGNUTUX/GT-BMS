@@ -87,8 +87,11 @@ private fun SourcePage(monitor: Monitor) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { monitor.startReplay() }) { Text(Tr["srcRest"]) }
             OutlinedButton(onClick = { monitor.startChargeSim() }) { Text(Tr["srcCharge"]) }
+            OutlinedButton(onClick = { monitor.phone.watchAgain() }, enabled = monitor.phone.last != null) { Text(Tr["srcPhoneBtn"]) }
             OutlinedButton(onClick = {}, enabled = false) { Text(Tr["srcBle"]) }
         }
+        if (monitor.phone.last == null) Text(Tr["srcPhoneNeed"], color = Palette.grey, fontSize = 13.sp)
+        st.problem?.let { Text(it, color = Palette.orange, fontWeight = FontWeight.Bold) }
         Text(Tr["srcBleSoon"], color = Palette.grey, fontSize = 13.sp)
         val s = monitor.settings
         if (s.battery.isNotEmpty()) Text(String.format(Tr["batteryFrom"], (s.batteryName.ifEmpty { s.battery })), color = Palette.text)

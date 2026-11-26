@@ -157,31 +157,14 @@ class ReportStore private constructor(ctx: Context) :
         }
     }
 
-    /**
-     * Trips whose distance covers more than their energy would teach a consumption that is too
-     * low. Before 1.6.1 such trips were not marked; an average speed above the top speed gives them away.
-     */
-    private fun energyComplete(s: Session) = !s.b("energy_partial") &&
-        (s.data.has("gap_s") || s.d("max_speed") <= 0 || s.d("avg_speed") <= s.d("max_speed"))
-
     /** This vehicle's recovery, learned from recent trips with GPS: (Wh per km, % of the energy, km). */
-    fun learnedRegen(battery: String?, maxTrips: Int = 30, except: Long = -1): Triple<Double, Double, Double>? {
-        val t = list(Session.TYPE_TRIP, maxTrips + 1, battery).filter {
-            it.id != except && it.data.has("regen_wh") && it.d("distance_km") >= 0.3 && energyComplete(it) }.take(maxTrips)
-        val km = t.sumOf { it.d("distance_km") }
-        if (t.size < 3 || km < 5.0) return null
-        val rw = t.sumOf { it.d("regen_wh") }
-        return Triple(rw / km, RegenMeter.sharePct(rw, t.sumOf { it.d("wh") }) ?: 0.0, km)
-    }
+    fun learnedRegen(battery: String?, maxTrips: Int = 30, except: Long = -1): Triple<Double, Double, Double>? =
+        TripLearn.regen(list(Session.TYPE_TRIP, maxTrips + 1, battery), maxTrips, except)
 
     /**
      * Consumption learned from recent trips with GPS distance: (Wh/km, km covered).
      * Null until at least 2 km have been recorded.
      */
-    fun learnedConsumption(battery: String?, maxTrips: Int = 20): Pair<Double, Double>? {
-        val trips = list(Session.TYPE_TRIP, maxTrips, battery).filter { it.d("distance_km") >= 0.3 && it.d("wh") > 0 && energyComplete(it) }
-        val km = trips.sumOf { it.d("distance_km") }
-        if (km < 2.0) return null
-        return trips.sumOf { it.d("wh") } / km to km
-    }
+    fun learnedConsumption(battery: String?, maxTrips: Int = 20): Pair<Double, Double>? =
+        TripLearn.consumption(list(Session.TYPE_TRIP, maxTrips, battery))
 }

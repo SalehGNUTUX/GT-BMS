@@ -18,7 +18,9 @@ import java.util.zip.ZipInputStream
 /** The battery as the screens see it, the charge being followed, the alarms and the saved reports. */
 class Monitor(home: File = File(System.getProperty("user.home"))) {
     data class State(val source: String = "", val simulated: Boolean = false, val basic: BmsBasicInfo? = null,
-                     val cells: List<Double> = emptyList(), val clock: Long = 0, val charge: ChargeTracker.Live? = null)
+                     val cells: List<Double> = emptyList(), val clock: Long = 0, val charge: ChargeTracker.Live? = null,
+                     /** Watching through the phone; [problem] says why the values are not fresh. */
+                     val viaPhone: Boolean = false, val problem: String? = null)
 
     val settings = Settings(File(home, ".config/gt-bms/settings.json"))
     val store = Store(File(home, ".local/share/gt-bms/gt_bms_reports.db"))
@@ -42,7 +44,9 @@ class Monitor(home: File = File(System.getProperty("user.home"))) {
     private var clock: () -> Long = System::currentTimeMillis
     private var tracker = newTracker()
 
-    private fun newTracker(simulated: Boolean = false) = ChargeTracker(settings.limits.cellOvMv?.let { it / 1000.0 } ?: ChargeTracker.UNKNOWN_OV) { s, e, d, pts ->
+    /** [record] false: the phone records this charge itself (watching through it), so nothing is saved here. */
+    private fun newTracker(simulated: Boolean = false, record: Boolean = true) = ChargeTracker(settings.limits.cellOvMv?.let { it / 1000.0 } ?: ChargeTracker.UNKNOWN_OV) { s, e, d, pts ->
+        if (!record) return@ChargeTracker
         runCatching { (if (simulated) simStore else store).insert(Session.TYPE_CHARGE, s, e, settings.battery, d.put("source", if (simulated) "simulation" else "desktop"), pts) }
         reportsVersion.value++
     }.also { t ->
@@ -72,21 +76,66 @@ class Monitor(home: File = File(System.getProperty("user.home"))) {
         clock = clk
         _state.value = State(source = source, simulated = simulated)
         reportsVersion.value++
-        poller = BmsPoller(BwbmDriver(), link) { out ->
-            val s = _state.value
-            val b = out.basic ?: s.basic; val cells = out.cells ?: s.cells
-            val t = clock()
-            if (out.basic != null && b != null) {
-                tracker.onReading(t, b, cells)
-                alarms.evaluate(t, b, cells, tracker)
+        poller = BmsPoller(BwbmDriver(), link) { out -> reading(out.basic, out.cells, clock()) }.also { it.start() }
+    }
+
+    private fun reading(basic: BmsBasicInfo?, newCells: List<Double>?, t: Long) {
+        val s = _state.value
+        val b = basic ?: s.basic; val cells = newCells ?: s.cells
+        if (basic != null && b != null) {
+            tracker.onReading(t, b, cells)
+            alarms.evaluate(t, b, cells, tracker)
+        }
+        _state.value = s.copy(basic = b, cells = cells, clock = t, charge = tracker.live)
+    }
+
+    @Volatile private var phoneWatch: Thread? = null
+
+    /**
+     * Watches the battery through the phone (its reading every few seconds over the home network),
+     * while the phone keeps the Bluetooth link. Charges are recorded by the phone, not here.
+     */
+    fun startPhoneLive(host: String, port: Int, code: String) {
+        stop()
+        tracker = newTracker(record = false)
+        clock = System::currentTimeMillis
+        _state.value = State(source = Tr["srcPhone"], viaPhone = true, problem = Tr["syncWorking"])
+        val client = com.vanaccess.bms.sync.SyncClient(host, port, code, PhoneLink.computerName())
+        val th = Thread {
+            var lastT = 0L; var lastNotifs = 0L; var fails = 0
+            while (phoneWatch === Thread.currentThread()) {
+                val problem = runCatching {
+                    val now = System.currentTimeMillis()
+                    if (now - lastNotifs > 30_000) { lastNotifs = now; log.addFromPhone(client.notifs(log.lastFromPhone())) }
+                    val l = client.live()
+                    fails = 0
+                    when {
+                        l == null || l.basic == null -> Tr["phoneNoReading"]
+                        else -> {
+                            if (l.tMs != lastT) { lastT = l.tMs; reading(l.basic, l.cells.ifEmpty { null }, l.tMs) }
+                            if (!l.connected || now - l.tMs > 60_000) Tr["phoneStale"] else null
+                        }
+                    }
+                }.getOrElse { e ->
+                    fails++
+                    if (e is com.vanaccess.bms.sync.SyncClient.Refused) {
+                        val msg = when { e.status == 401 -> Tr["syncBadCode"]; e.status == 403 -> Tr["syncClosed"]; e.message == "unknown" -> Tr["phoneOld"]; else -> e.message ?: "" }
+                        _state.value = _state.value.copy(problem = msg); phoneWatch = null; return@Thread
+                    }
+                    if (fails >= 5) { _state.value = _state.value.copy(problem = Tr["phoneGone"]); phoneWatch = null; return@Thread }
+                    Tr["phoneRetry"]
+                }
+                if (_state.value.problem != problem) _state.value = _state.value.copy(problem = problem)
+                try { Thread.sleep(com.vanaccess.bms.sync.SyncProtocol.LIVE_EVERY_MS) } catch (_: InterruptedException) { return@Thread }
             }
-            _state.value = s.copy(basic = b, cells = cells, clock = t, charge = tracker.live)
-        }.also { it.start() }
+        }.apply { isDaemon = true; name = "gtbms-phone-live" }
+        phoneWatch = th
+        th.start()
     }
 
     fun predict() = _state.value.basic?.let { tracker.predict(it) }
 
-    fun stop() { poller?.stop(); poller = null; tracker.close() }
+    fun stop() { poller?.stop(); poller = null; phoneWatch?.let { phoneWatch = null; it.interrupt() }; tracker.close() }
 
     /** A phone backup ZIP: its reports join those of this computer, its battery settings are taken. */
     fun importPhoneBackup(zip: File): Int {

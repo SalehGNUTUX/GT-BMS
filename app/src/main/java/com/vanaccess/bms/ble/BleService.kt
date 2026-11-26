@@ -657,7 +657,16 @@ class BleService : LifecycleService() {
     }
 
     /** A computer identified itself during the sync. */
-    fun syncPeer(name: String) { syncState.value?.let { if (it.peer != name) syncState.postValue(it.copy(peer = name)) } }
+    fun syncPeer(name: String) {
+        handler.post {
+            val st = syncState.value ?: return@post
+            // Each request of the computer keeps the sync open (it may be watching the battery live)
+            handler.removeCallbacks(closeSyncRunnable)
+            handler.postDelayed(closeSyncRunnable, com.vanaccess.bms.sync.SyncProtocol.OPEN_MS)
+            val until = System.currentTimeMillis() + com.vanaccess.bms.sync.SyncProtocol.OPEN_MS
+            if (st.peer != name || until - st.untilMs > 30_000) syncState.value = st.copy(peer = name, untilMs = until)
+        }
+    }
 
     /**
      * Leave the battery's Bluetooth link to the computer (most BMSs take one connection): close

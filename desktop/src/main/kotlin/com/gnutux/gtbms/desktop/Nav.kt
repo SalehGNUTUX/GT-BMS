@@ -85,8 +85,9 @@ private fun Header(st: Monitor.State, monitor: Monitor) {
             Text(monitor.settings.batteryName.ifEmpty { Tr["app"] }, color = Palette.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(Tr["readonly"], color = Palette.grey, fontSize = 12.sp)
         }
-        if (st.source.isNotEmpty()) Text(st.source, color = Palette.orange, fontSize = 13.sp,
-            modifier = Modifier.border(1.dp, Palette.orange, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 4.dp))
+        st.problem?.let { Text(it, color = Palette.orange, fontSize = 13.sp, modifier = Modifier.padding(end = 10.dp)) }
+        if (st.source.isNotEmpty()) Text(st.source, color = if (st.viaPhone) Palette.green else Palette.orange, fontSize = 13.sp,
+            modifier = Modifier.border(1.dp, if (st.viaPhone) Palette.green else Palette.orange, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 4.dp))
         if (st.clock > 0) Text(iso(SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(st.clock))), color = Palette.grey, fontSize = 13.sp,
             modifier = Modifier.padding(start = 12.dp))
     }
@@ -138,7 +139,7 @@ fun NotifsScreen(monitor: Monitor) {
             items(items.size) { i ->
                 val e = items[i]
                 Column(Modifier.fillMaxWidth().background(Palette.tile, RoundedCornerShape(14.dp)).padding(12.dp)) {
-                    Text(iso(fmt.format(Date(e.tMs))), color = Palette.grey, fontSize = 12.sp)
+                    Text(iso(fmt.format(Date(e.tMs))) + if (e.fromPhone) "  •  📱 " + Tr["fromPhone"] else "", color = Palette.grey, fontSize = 12.sp)
                     Text(e.title, color = Palette.text, fontWeight = FontWeight.Bold)
                     Text(e.text, color = Color(0xFFC9CFDD), fontSize = 13.sp)
                 }

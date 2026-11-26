@@ -14,6 +14,10 @@ import java.net.NetworkInterface
 class PhoneLink(private val monitor: Monitor) {
     data class State(val busy: Boolean = false, val found: List<SyncClient.Found> = emptyList(), val message: String = "", val ok: Boolean = true)
     val state = MutableStateFlow(State())
+    /** The phone of the last good sync, to watch it live again (the code lives in memory only). */
+    @Volatile var last: Triple<String, Int, String>? = null; private set
+
+    fun watchAgain(): Boolean = last?.let { (h, p, c) -> monitor.startPhoneLive(h, p, c); true } ?: false
 
     private fun broadcastTargets(): List<InetAddress> = runCatching {
         NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
@@ -37,9 +41,13 @@ class PhoneLink(private val monitor: Monitor) {
         val now = System.currentTimeMillis()
         s.setLastPull(host, now); s.lastPushMs = now
         s.phoneHost = host; s.phonePort = port
+        val notes = monitor.log.addFromPhone(c.notifs(monitor.log.lastFromPhone()))
         monitor.reportsVersion.value++
         monitor.onPhoneValues()
-        val msg = String.format(Tr["syncDone"], got, sent)
+        last = Triple(host, port, code.filter { it.isDigit() })
+        // From now on the Live screen shows the phone's reading (until the sync closes on the phone)
+        monitor.startPhoneLive(host, port, code.filter { it.isDigit() })
+        val msg = String.format(Tr["syncDone"], got, notes, sent)
         monitor.log.add(Tr["syncTitle"], msg)
         msg to true
     }

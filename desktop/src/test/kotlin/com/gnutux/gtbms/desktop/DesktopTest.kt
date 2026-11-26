@@ -63,6 +63,10 @@ class DesktopTest {
             override fun battery() = JSONObject().put("address", "66:6A").put("name", "BWBM").put("bms_limits", """{"ov":3630,"n":23}""").put("alarm_high_soc", 90)
             override fun yieldLink(minutes: Int) = 0L
             override fun resumeLink() {}
+            override fun live() = com.vanaccess.bms.sync.SyncCodec.Live(System.currentTimeMillis(), "BWBM", "66:6A", true,
+                com.vanaccess.bms.ble.BmsBasicInfo(75.69, 0.0, 14.6, 29.9, 4, 48, 23, listOf(17.0, 18.0), true, true, 0, 0L, "", "", ByteArray(0)),
+                List(23) { 3.29 })
+            override fun notifs(sinceMs: Long) = listOf(com.vanaccess.bms.sync.SyncCodec.Notif(1_700_000_000_000, "انتهت الرحلة", "0.8 كم")).filter { it.tMs > sinceMs }
         }
         val server = com.vanaccess.bms.sync.SyncServer(phone, "Infinix").apply { start() }
         try {
@@ -75,6 +79,15 @@ class DesktopTest {
             assertEquals(2, m.store.list().size)                                // its trip is here now
             assertEquals(2, phoneHas.size)                                      // our charge is there
             assertEquals(3630, m.settings.limits.cellOvMv); assertEquals(90, m.settings.highSoc); assertEquals("BWBM", m.settings.batteryName)
+            // the phone's notifications came, once
+            assertEquals(1, m.log.all().count { it.fromPhone })
+            assertEquals(0, m.log.addFromPhone(listOf(com.vanaccess.bms.sync.SyncCodec.Notif(1_700_000_000_000, "انتهت الرحلة", "0.8 كم"))))
+            // and the Live screen now shows the phone's reading
+            val until2 = System.currentTimeMillis() + 10_000
+            while (m.state.value.basic == null && System.currentTimeMillis() < until2) Thread.sleep(50)
+            assertTrue(m.state.value.viaPhone); assertEquals(48, m.state.value.basic?.soc); assertEquals(23, m.state.value.cells.size)
+            assertEquals(null, m.state.value.problem)
+            m.stop()
         } finally { server.stop() }
     }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vanaccess.bms.sync
 
+import com.vanaccess.bms.ble.BmsBasicInfo
 import com.vanaccess.bms.reports.Point
 import com.vanaccess.bms.reports.Session
 import org.json.JSONArray
@@ -31,4 +32,37 @@ object SyncCodec {
 
     /** One report is the same as another: same kind, same start, same battery. */
     fun key(s: Session) = "${s.type}|${s.startMs}|${s.battery}"
+
+    /** The phone's latest reading, so the computer can watch the battery live through the phone. */
+    data class Live(val tMs: Long, val name: String, val address: String, val connected: Boolean, val basic: BmsBasicInfo?, val cells: List<Double>)
+
+    private fun nums(l: List<Double>) = JSONArray().also { a -> l.forEach { a.put(it) } }
+    private fun nums(a: JSONArray?) = a?.let { (0 until it.length()).map { k -> it.getDouble(k) } } ?: emptyList()
+
+    fun liveJson(l: Live): JSONObject = JSONObject().put("t", l.tMs).put("name", l.name).put("address", l.address)
+        .put("connected", l.connected).put("cells", nums(l.cells)).also { o ->
+            l.basic?.let { b -> o.put("basic", JSONObject().put("v", b.packVoltage).put("a", b.current).put("remain", b.remainCapacity)
+                .put("full", b.fullCapacity).put("cycles", b.cycleCount).put("soc", b.soc).put("n", b.cellCount).put("temps", nums(b.temperatures))
+                .put("chg", b.chargeFetOn).put("dsg", b.dischargeFetOn).put("protect", b.protectFlags).put("balance", b.balanceBits)
+                .put("sw", b.softwareVersion).put("made", b.manufactureDate).put("src", b.source).put("mos_temps", nums(b.mosTemperatures))
+                .also { j ->
+                    b.mosTemperature?.let { j.put("mos", it) }; b.sohReported?.let { j.put("soh", it) }; b.heating?.let { j.put("heat", it) }
+                    b.alarmTexts?.let { j.put("alarms", JSONArray(it)) }
+                }) }
+        }
+
+    fun parseLive(o: JSONObject): Live = Live(o.optLong("t"), o.optString("name"), o.optString("address"), o.optBoolean("connected"),
+        o.optJSONObject("basic")?.let { j -> BmsBasicInfo(j.getDouble("v"), j.getDouble("a"), j.optDouble("remain"), j.optDouble("full"),
+            j.optInt("cycles"), j.getInt("soc"), j.optInt("n"), nums(j.optJSONArray("temps")), j.optBoolean("chg"), j.optBoolean("dsg"),
+            j.optInt("protect"), j.optLong("balance"), j.optString("sw"), j.optString("made"), ByteArray(0),
+            j.optJSONArray("alarms")?.let { a -> (0 until a.length()).map { a.getString(it) } },
+            if (j.has("mos")) j.getDouble("mos") else null, if (j.has("soh")) j.getInt("soh") else null, j.optString("src"),
+            nums(j.optJSONArray("mos_temps")), if (j.has("heat")) j.getBoolean("heat") else null) },
+        nums(o.optJSONArray("cells")))
+
+    /** A notification the phone posted: (time, title, text). */
+    data class Notif(val tMs: Long, val title: String, val text: String)
+
+    fun notifsJson(l: List<Notif>) = JSONObject().put("notifs", JSONArray().also { a -> l.forEach { a.put(JSONObject().put("t", it.tMs).put("ti", it.title).put("tx", it.text)) } })
+    fun parseNotifs(o: JSONObject) = o.optJSONArray("notifs")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).let { n -> Notif(n.optLong("t"), n.optString("ti"), n.optString("tx")) } } } ?: emptyList()
 }

@@ -34,8 +34,12 @@ class SyncServer(private val source: Source, private val name: String) {
         /** Leave the battery's Bluetooth link to the computer for [minutes]; returns until when. */
         fun yieldLink(minutes: Int): Long
         fun resumeLink()
-        /** A computer came and identified itself (for the screen). */
+        /** A computer came and identified itself (for the screen); every call keeps the sync open. */
         fun peer(name: String) {}
+        /** The latest reading of the battery (null: none yet). */
+        fun live(): SyncCodec.Live? = null
+        /** Notifications posted after [sinceMs], newest first. */
+        fun notifs(sinceMs: Long): List<SyncCodec.Notif> = emptyList()
     }
 
     val code: String = (SecureRandom().nextInt(900_000) + 100_000).toString()
@@ -108,6 +112,8 @@ class SyncServer(private val source: Source, private val name: String) {
             "GET /v1/sessions" -> "200 OK" to SyncCodec.list(source.sessions(r.query["since"]?.toLongOrNull() ?: 0L))
             "POST /v1/sessions" -> "200 OK" to JSONObject().put("added", source.accept(SyncCodec.parseList(JSONObject(r.body))))
             "GET /v1/battery" -> "200 OK" to source.battery()
+            "GET /v1/live" -> source.live()?.let { "200 OK" to SyncCodec.liveJson(it) } ?: ("404 Not Found" to JSONObject().put("error", "no reading"))
+            "GET /v1/notifs" -> "200 OK" to SyncCodec.notifsJson(source.notifs(r.query["since"]?.toLongOrNull() ?: 0L))
             "POST /v1/yield" -> "200 OK" to JSONObject().put("until", source.yieldLink(JSONObject(r.body.ifBlank { "{}" }).optInt("minutes", 60).coerceIn(5, 720)))
             "POST /v1/resume" -> { source.resumeLink(); "200 OK" to JSONObject().put("ok", true) }
             else -> "404 Not Found" to JSONObject().put("error", "unknown")
@@ -148,6 +154,8 @@ object SyncProtocol {
     const val VERSION = 1
     const val DISCOVERY_PORT = 47321
     const val DISCOVER = "GTBMS-DISCOVER 1"
-    /** How long the phone stays open for the computer once asked. */
+    /** How long the phone stays open for the computer once asked, counted again from each request. */
     const val OPEN_MS = 10 * 60_000L
+    /** How often the computer asks for the live reading while watching through the phone. */
+    const val LIVE_EVERY_MS = 3_000L
 }

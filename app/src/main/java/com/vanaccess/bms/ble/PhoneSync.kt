@@ -5,6 +5,7 @@ import android.content.Context
 import com.vanaccess.bms.data.AppPreferences
 import com.vanaccess.bms.reports.ReportStore
 import com.vanaccess.bms.reports.SessionRecorder
+import com.vanaccess.bms.sync.SyncCodec
 import com.vanaccess.bms.sync.SyncServer
 import com.vanaccess.bms.sync.SyncedSession
 import org.json.JSONObject
@@ -37,6 +38,16 @@ class PhoneSync(private val ctx: Context, private val service: BleService) : Syn
     override fun yieldLink(minutes: Int): Long = service.yieldLink(minutes)
     override fun resumeLink() = service.resumeLink()
     override fun peer(name: String) = service.syncPeer(name)
+
+    /** The reading on the phone's screen now, for the computer to watch the battery through the phone. */
+    override fun live(): SyncCodec.Live? {
+        val b = BleService.basicInfo.value ?: return null
+        return SyncCodec.Live(BleService.lastDataMs, prefs.selectedDeviceName ?: "", prefs.selectedDeviceAddress ?: "",
+            BleService.connectionState.value == BleService.ConnectionState.CONNECTED, b, BleService.cellVoltages.value ?: emptyList())
+    }
+
+    override fun notifs(sinceMs: Long): List<SyncCodec.Notif> =
+        com.vanaccess.bms.data.NotifLog.all(ctx).filter { it.tMs > sinceMs }.map { SyncCodec.Notif(it.tMs, it.title, it.text) }
 
     companion object {
         /** The phone's address on the home network (Wi-Fi first). */

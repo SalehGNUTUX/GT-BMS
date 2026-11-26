@@ -68,12 +68,7 @@ object AdviceText {
         } else if (s.type == Session.TYPE_DISCHARGE) {
             Advisor.afterDischarge(s, lim)
         } else {
-            val learned = store.learnedConsumption(s.battery)?.first
-            val whKm = if (!s.data.isNull("wh_per_km")) s.d("wh_per_km") else null
-            val design = lim.designAh
-            val range = if (whKm != null && whKm > 0 && design != null)
-                s.i("soc_end") / 100.0 * design * ((s.d("max_v") + s.d("min_v")) / 2) / whKm else null
-            Advisor.afterTrip(s, lim, learned, range, store.learnedRegen(s.battery, except = s.id)) + com.vanaccess.bms.reports.DrivingAnalyzer.recs(s)
+            com.vanaccess.bms.reports.TripLearn.advice(s, lim, store.list(Session.TYPE_TRIP, 20, s.battery), store.list(Session.TYPE_TRIP, 31, s.battery))
         }
     }
 

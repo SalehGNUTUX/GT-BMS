@@ -21,6 +21,10 @@ class SyncClient(private val host: String, private val port: Int, private val co
     fun battery(): JSONObject = call("GET", "/v1/battery")
     fun yieldLink(minutes: Int): Long = call("POST", "/v1/yield", JSONObject().put("minutes", minutes).toString()).optLong("until")
     fun resumeLink() { call("POST", "/v1/resume", "{}") }
+    /** The phone's latest reading; null when it has none (or is too old to answer /v1/live). */
+    fun live(): SyncCodec.Live? = try { SyncCodec.parseLive(call("GET", "/v1/live")) } catch (e: Refused) { if (e.status == 404 && e.message != "unknown") null else throw e }
+    fun notifs(sinceMs: Long = 0): List<SyncCodec.Notif> = try { SyncCodec.parseNotifs(call("GET", "/v1/notifs?since=$sinceMs")) }
+        catch (e: Refused) { if (e.status == 404) emptyList() else throw e }
 
     class Refused(val status: Int, msg: String) : Exception(msg)
 
