@@ -814,6 +814,13 @@
                         android:layout_height="wrap_content"
                         android:text="English"
                         android:textColor="@color/text_primary" />
+
+                    <RadioButton
+                        android:id="@+id/radio_lang_fr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Français"
+                        android:textColor="@color/text_primary" />
                 </RadioGroup>
 
                 <!-- Temperature Unit -->
@@ -1641,6 +1648,22 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ════════════════════ Import / Export Card ════════════════════ -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_computer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="16dp">
+
+            <LinearLayout
+                android:id="@+id/box_computer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp" />
+        </com.google.android.material.card.MaterialCardView>
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_backup"
             android:layout_width="match_parent"

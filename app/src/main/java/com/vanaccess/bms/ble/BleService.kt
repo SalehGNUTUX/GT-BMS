@@ -112,6 +112,13 @@ class BleService : LifecycleService() {
         const val ACTION_ALARM_UNPLUGGED = "com.gnutux.gtbms.ALARM_UNPLUGGED"
         const val ACTION_ALARM_SNOOZE = "com.gnutux.gtbms.ALARM_SNOOZE"
         const val ACTION_ALARM_RESHOW = "com.gnutux.gtbms.ALARM_RESHOW"
+        const val ACTION_RESUME_LINK = "com.gnutux.gtbms.RESUME_LINK"
+        private const val YIELD_NOTIF = 4015
+        /** The sync with the computer while it is open (code, where to reach the phone, until when, who came). */
+        data class SyncState(val code: String, val address: String, val untilMs: Long, val peer: String?)
+        val syncState = MutableLiveData<SyncState?>(null)
+        /** The battery's link is left to the computer until then; 0 = not. */
+        val linkYield = MutableLiveData(0L)
     }
 
     enum class ConnectionState { DISCONNECTED, SCANNING, CONNECTING, CONNECTED, RECONNECTING }
@@ -243,6 +250,7 @@ class BleService : LifecycleService() {
             ACTION_ALARM_UNPLUGGED -> { alarmMonitor.unplugged(); return START_STICKY }
             ACTION_ALARM_SNOOZE -> { alarmMonitor.snooze(); return START_STICKY }
             ACTION_ALARM_RESHOW -> { alarmMonitor.reshow(); return START_STICKY }
+            ACTION_RESUME_LINK -> { resumeLink(); return START_STICKY }
             ChargeTimer.ACTION_RING -> {
                 // (a service just started for this goes on to look for the battery too)
                 alarmMonitor.ringAway(intent.getStringExtra("text") ?: "")
@@ -260,7 +268,13 @@ class BleService : LifecycleService() {
         is123Bms = savedType == "123bms"
         batteryType.postValue(savedType)
         val savedAddress = prefs.selectedDeviceAddress
-        if (!savedAddress.isNullOrEmpty()) {
+        val yielded = prefs.linkYieldUntil
+        if (yielded > System.currentTimeMillis()) {
+            // still left to the computer: come back at the time agreed
+            userDisconnected = true
+            linkYield.postValue(yielded)
+            handler.postDelayed(resumeRunnable, yielded - System.currentTimeMillis())
+        } else if (!savedAddress.isNullOrEmpty()) {
             connectToDevice(savedAddress)
         }
         startVictronScan()
@@ -590,6 +604,89 @@ class BleService : LifecycleService() {
     fun alarmSnooze() = alarmMonitor.snooze()
 
     fun onKeepAliveAlarm() = keepAlive.onAlarm()
+
+    // ── The computer: sync on the home network, and leaving it the battery's link ──
+
+    private var sync: com.vanaccess.bms.sync.SyncServer? = null
+    private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
+    private val closeSyncRunnable = Runnable { closeSyncNow() }
+    private val resumeRunnable = Runnable { resumeLink() }
+
+    /** Open to the computer for [com.vanaccess.bms.sync.SyncProtocol.OPEN_MS], with a fresh code. */
+    fun openSync() {
+        handler.post {
+            closeSyncNow()
+            val s = com.vanaccess.bms.sync.SyncServer(PhoneSync(applicationContext, this), android.os.Build.MODEL ?: "phone")
+            runCatching { s.start() }.onFailure { log("sync: $it"); return@post }
+            sync = s
+            // Some phones drop broadcast datagrams while the screen is off unless asked
+            multicastLock = runCatching {
+                (applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager)
+                    .createMulticastLock("gtbms-sync").apply { setReferenceCounted(false); acquire() }
+            }.getOrNull()
+            val until = System.currentTimeMillis() + com.vanaccess.bms.sync.SyncProtocol.OPEN_MS
+            syncState.value = SyncState(s.code, (PhoneSync.localAddress() ?: "?") + ":" + s.port, until, null)
+            handler.postDelayed(closeSyncRunnable, com.vanaccess.bms.sync.SyncProtocol.OPEN_MS)
+            log("sync open")
+        }
+    }
+
+    fun closeSync() { handler.post { closeSyncNow() } }
+
+    private fun closeSyncNow() {
+        handler.removeCallbacks(closeSyncRunnable)
+        sync?.stop(); sync = null
+        runCatching { multicastLock?.release() }; multicastLock = null
+        if (syncState.value != null) { syncState.value = null; log("sync closed") }
+    }
+
+    /** A computer identified itself during the sync. */
+    fun syncPeer(name: String) { syncState.value?.let { if (it.peer != name) syncState.postValue(it.copy(peer = name)) } }
+
+    /**
+     * Leave the battery's Bluetooth link to the computer (most BMSs take one connection): close
+     * what runs, disconnect, stay away for [minutes], then come back by itself.
+     */
+    fun yieldLink(minutes: Int): Long {
+        val until = System.currentTimeMillis() + minutes * 60_000L
+        handler.post {
+            prefs.linkYieldUntil = until
+            linkYield.value = until
+            recorder.closeSessions()
+            disconnect()
+            handler.removeCallbacks(resumeRunnable)
+            handler.postDelayed(resumeRunnable, until - System.currentTimeMillis())
+            showYieldNotice(until)
+            log("link left to the computer for $minutes min")
+        }
+        return until
+    }
+
+    fun resumeLink() {
+        handler.post {
+            handler.removeCallbacks(resumeRunnable)
+            val was = prefs.linkYieldUntil != 0L
+            prefs.linkYieldUntil = 0L
+            linkYield.value = 0L
+            getSystemService(NotificationManager::class.java).cancel(YIELD_NOTIF)
+            if (was) log("link taken back from the computer")
+            prefs.selectedDeviceAddress?.takeIf { it.isNotEmpty() }?.let { connectToDevice(it) }
+        }
+    }
+
+    private fun showYieldNotice(until: Long) {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(android.app.NotificationChannel("gt_bms_computer", getString(R.string.pc_channel), NotificationManager.IMPORTANCE_LOW))
+        val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(until))
+        val text = getString(R.string.pc_yielded_until, hm)
+        val resume = android.app.PendingIntent.getService(this, 90, Intent(this, BleService::class.java).setAction(ACTION_RESUME_LINK),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = androidx.core.app.NotificationCompat.Builder(this, "gt_bms_computer").setSmallIcon(R.drawable.ic_battery)
+            .setContentTitle(getString(R.string.pc_yield_title)).setContentText(text).setOngoing(true)
+            .addAction(0, getString(R.string.pc_resume), resume).build()
+        runCatching { nm.notify(YIELD_NOTIF, n) }
+        com.vanaccess.bms.data.NotifLog.add(this, getString(R.string.pc_yield_title), text)
+    }
 
     /**
      * The phone woke up or the app came to the screen: look for the battery. [brief] = it will
@@ -1700,6 +1797,7 @@ class BleService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        closeSyncNow()
         log("service destroyed")
         prefs.monitoring = false
         instance = null

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sec_computer">Ordinateur</string>
+    <string name="sec_computer_sub">Synchro et liaison</string>
+    <string name="pc_channel">Ordinateur</string>
+    <string name="pc_sync_title">Synchronisation avec l\'ordinateur</string>
+    <string name="pc_sync_desc">GT-BMS sous GNU/Linux échange les rapports avec le téléphone sur votre réseau local uniquement, rien ne part sur Internet. Ouvrez la synchro, puis saisissez le code sur l\'ordinateur.</string>
+    <string name="pc_sync_open">Ouvrir la synchro (10 min)</string>
+    <string name="pc_sync_close">Fermer la synchro</string>
+    <string name="pc_code">Code à saisir sur l\'ordinateur</string>
+    <string name="pc_address">Adresse :</string>
+    <string name="pc_open_until">Ouverte jusqu\'à %1$s</string>
+    <string name="pc_peer">Connecté : %1$s</string>
+    <string name="pc_no_service">La surveillance ne tourne pas</string>
+    <string name="pc_yield_title">Laisser la batterie à l\'ordinateur</string>
+    <string name="pc_yield_desc">La plupart des batteries n\'acceptent qu\'une connexion. Pendant la charge près de l\'ordinateur, le téléphone lâche la liaison et la reprend seul ensuite.</string>
+    <string name="pc_yield">Laisser la liaison à l\'ordinateur</string>
+    <string name="pc_yielded_until">Liaison laissée à l\'ordinateur jusqu\'à %1$s</string>
+    <string name="pc_resume">Reprendre la liaison</string>
+    <plurals name="pc_hours">
+        <item quantity="one">%d heure</item>
+        <item quantity="other">%d heures</item>
+    </plurals>
+</resources>

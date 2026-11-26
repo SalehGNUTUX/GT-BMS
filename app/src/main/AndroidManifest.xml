@@ -25,6 +25,9 @@
 
     <!-- Self-update from GitHub Releases -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Sync with GT-BMS on the computer, on the home network only -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 

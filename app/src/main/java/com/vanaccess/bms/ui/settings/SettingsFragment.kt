@@ -111,6 +111,7 @@ class SettingsFragment : Fragment() {
         setupDebugButton()
         setupProtocolSelector()
         setupAlarms()
+        setupComputer()
         setupUpdates()
         setupShare()
         setupVehicle()
@@ -181,7 +182,7 @@ class SettingsFragment : Fragment() {
 
     // ── Section tiles ───────────────────────────────────────────────────────
 
-    private val SECTION_COLORS = mapOf("devices" to "#2ECC71", "vehicle" to "#2196F3", "alarms" to "#F5A623", "charger" to "#FF7043", "prefs" to "#9C8CFF", "updates" to "#26C6DA", "share" to "#EC407A", "backup" to "#4FC3F7", "about" to "#90A4AE")
+    private val SECTION_COLORS = mapOf("devices" to "#2ECC71", "vehicle" to "#2196F3", "alarms" to "#F5A623", "charger" to "#FF7043", "prefs" to "#9C8CFF", "updates" to "#26C6DA", "share" to "#EC407A", "backup" to "#4FC3F7", "computer" to "#7CB342", "about" to "#90A4AE")
 
     private data class Section(val key: String, val icon: Int, val title: Int, val sub: Int, val cards: List<View>)
 
@@ -201,6 +202,7 @@ class SettingsFragment : Fragment() {
                 arrayOf(Section("updates", R.drawable.ic_sec_updates, R.string.sec_updates, R.string.sec_updates_sub, listOf(binding.cardUpdates)))
               else emptyArray()),
             Section("share", R.drawable.ic_sec_share, R.string.sec_share, R.string.sec_share_sub, listOf(binding.cardShare)),
+            Section("computer", R.drawable.ic_sec_computer, R.string.sec_computer, R.string.sec_computer_sub, listOf(binding.cardComputer)),
             Section("backup", R.drawable.ic_sec_backup, R.string.sec_backup, R.string.sec_backup_sub, listOf(binding.cardBackup)),
             Section("about", R.drawable.ic_sec_about, R.string.sec_about, R.string.sec_about_sub, listOf(binding.cardAbout, binding.cardDev)),
         )
@@ -503,6 +505,56 @@ class SettingsFragment : Fragment() {
 
     private fun installUpdate(file: java.io.File) {
         (activity as? androidx.appcompat.app.AppCompatActivity)?.let { com.vanaccess.bms.ui.UpdateUi.install(it, file) }
+    }
+
+    // ── The computer (GT-BMS for GNU/Linux) ──────────────────────────────────
+
+    private fun setupComputer() {
+        BleService.syncState.observe(viewLifecycleOwner) { renderComputer() }
+        BleService.linkYield.observe(viewLifecycleOwner) { renderComputer() }
+        renderComputer()
+    }
+
+    /** Sync on the home network (code + address while open) and leaving the battery's link to the computer. */
+    private fun renderComputer() {
+        val box = _binding?.boxComputer ?: return
+        val ctx = requireContext(); val dp = resources.displayMetrics.density
+        box.removeAllViews()
+        fun text(t: String, size: Float, color: String, bold: Boolean = false, top: Int = 4) = android.widget.TextView(ctx).apply {
+            text = t; textSize = size; setTextColor(Color.parseColor(color)); setPadding(0, (top * dp).toInt(), 0, 0)
+            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }.also { box.addView(it) }
+        fun button(t: String, onClick: () -> Unit) = com.google.android.material.button.MaterialButton(ctx).apply { text = t; setOnClickListener { onClick() } }
+            .also { box.addView(it, android.widget.LinearLayout.LayoutParams(-1, -2).apply { topMargin = (8 * dp).toInt() }) }
+        val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+        val svc = (activity as? MainActivity)?.getBleService()
+
+        text(getString(R.string.pc_sync_title), 16f, "#FFFFFF", bold = true, top = 0)
+        text(getString(R.string.pc_sync_desc), 12f, "#9BA3B8")
+        val st = BleService.syncState.value
+        if (st != null) {
+            text(getString(R.string.pc_code), 13f, "#9BA3B8", top = 10)
+            text(st.code.chunked(3).joinToString(" "), 34f, "#7CB342", bold = true, top = 0).apply { letterSpacing = 0.08f }
+            text(getString(R.string.pc_address) + "  ⁦" + st.address + "⁩", 13f, "#C9CFDD")
+            text(getString(R.string.pc_open_until, hm.format(java.util.Date(st.untilMs))), 12f, "#9BA3B8")
+            st.peer?.let { text("✓ " + getString(R.string.pc_peer, it), 13f, "#43D17A", bold = true) }
+            button(getString(R.string.pc_sync_close)) { svc?.closeSync() }
+        } else button(getString(R.string.pc_sync_open)) {
+            if (svc != null) svc.openSync() else Toast.makeText(ctx, R.string.pc_no_service, Toast.LENGTH_SHORT).show()
+        }
+
+        text(getString(R.string.pc_yield_title), 16f, "#FFFFFF", bold = true, top = 18)
+        text(getString(R.string.pc_yield_desc), 12f, "#9BA3B8")
+        val until = BleService.linkYield.value ?: 0L
+        if (until > System.currentTimeMillis()) {
+            text(getString(R.string.pc_yielded_until, hm.format(java.util.Date(until))), 14f, "#F5B83D", bold = true, top = 8)
+            button(getString(R.string.pc_resume)) { svc?.resumeLink() }
+        } else button(getString(R.string.pc_yield)) {
+            val mins = intArrayOf(30, 60, 120, 240)
+            com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.pc_yield_title),
+                items = mins.map { if (it < 60) getString(R.string.stats_min, it) else resources.getQuantityString(R.plurals.pc_hours, it / 60, it / 60) },
+                onItem = { i -> svc?.yieldLink(mins[i]) })
+        }
     }
 
     // ── Battery alarms ──────────────────────────────────────────────────────
@@ -1004,10 +1056,11 @@ class SettingsFragment : Fragment() {
         binding.radioGroupLang.check(when {
             tag.startsWith("ar") -> binding.radioLangAr.id
             tag.startsWith("en") -> binding.radioLangEn.id
+            tag.startsWith("fr") -> binding.radioLangFr.id
             else -> binding.radioLangSystem.id
         })
         binding.radioGroupLang.setOnCheckedChangeListener { _, id ->
-            val newTag = when (id) { binding.radioLangAr.id -> "ar"; binding.radioLangEn.id -> "en"; else -> "" }
+            val newTag = when (id) { binding.radioLangAr.id -> "ar"; binding.radioLangEn.id -> "en"; binding.radioLangFr.id -> "fr"; else -> "" }
             com.vanaccess.bms.data.AppLanguage.set(requireContext(), newTag)
             if (newTag != androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags()) {
                 // Recreates the activity in the new language

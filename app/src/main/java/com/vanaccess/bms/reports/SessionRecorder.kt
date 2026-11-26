@@ -230,6 +230,16 @@ class SessionRecorder(private val context: Context, private val prefs: AppPrefer
 
     fun onBattery(address: String?) { main.post { battery = address ?: "" } }
 
+    /** The link is left to the computer: what runs now is closed (the computer records what follows). */
+    fun closeSessions() {
+        main.post {
+            chg?.let { finishCharge(it) }; chg = null; chgCandidateSince = 0L
+            dis?.let { finishDischarge(it) }; dis = null; disCandidateSince = 0L
+            trip?.let { endTrip(it) }
+            gate.reset(); lastChargingMs = 0L
+        }
+    }
+
     /** Another battery is about to be connected: close what belongs to the previous one. */
     fun switchBattery() {
         main.post {

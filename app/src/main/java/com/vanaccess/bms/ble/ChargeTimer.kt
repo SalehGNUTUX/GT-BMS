@@ -143,6 +143,8 @@ object ChargeTimer {
         val now = System.currentTimeMillis()
         val at = when (kind) { TARGET -> plan.targetAt; NEAR -> plan.nearAt; else -> now } ?: return null
         val seen = maxOf(prefs.lastDataMs, BleService.lastDataMs)
+        // The computer watches this charge: no data here is expected, not a sign of being away
+        if (prefs.linkYieldUntil > now) return null
         if (!prefs.alarmHighEnabled || !prefs.alarmAway || now - seen < FRESH_MS || now < at - 60_000 || now - at > 30 * 60_000) return null
         if (kind == SNOOZE) return ctx.getString(R.string.away_ring_snooze)
         return if (kind == TARGET) ctx.getString(R.string.away_ring_target, minOf(plan.targetSoc, 100))

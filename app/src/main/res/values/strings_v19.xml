@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sec_computer">Computer</string>
+    <string name="sec_computer_sub">Sync and link</string>
+    <string name="pc_channel">Computer</string>
+    <string name="pc_sync_title">Sync with the computer</string>
+    <string name="pc_sync_desc">GT-BMS on GNU/Linux exchanges reports with the phone over your home network only, nothing goes to the internet. Open the sync, then enter the code on the computer.</string>
+    <string name="pc_sync_open">Open the sync (10 min)</string>
+    <string name="pc_sync_close">Close the sync</string>
+    <string name="pc_code">Code to enter on the computer</string>
+    <string name="pc_address">Address:</string>
+    <string name="pc_open_until">Open until %1$s</string>
+    <string name="pc_peer">Connected: %1$s</string>
+    <string name="pc_no_service">Monitoring is not running</string>
+    <string name="pc_yield_title">Leave the battery to the computer</string>
+    <string name="pc_yield_desc">Most batteries take one connection at a time. While charging near the computer, the phone can let go of the link and take it back by itself afterwards.</string>
+    <string name="pc_yield">Leave the link to the computer</string>
+    <string name="pc_yielded_until">The link is left to the computer until %1$s</string>
+    <string name="pc_resume">Take the link back</string>
+    <plurals name="pc_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+</resources>

@@ -392,6 +392,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getInt("notif_auto_clear_days", 0)
         set(value) = prefs.edit().putInt("notif_auto_clear_days", value).apply()
 
+    /** The Bluetooth link is left to the computer until then (0 = not). */
+    var linkYieldUntil: Long
+        get() = prefs.getLong("link_yield_until", 0L)
+        set(value) = prefs.edit().putLong("link_yield_until", value).apply()
+
     var askedFullScreen: Boolean
         get() = prefs.getBoolean("asked_full_screen", false)
         set(value) = prefs.edit().putBoolean("asked_full_screen", value).apply()

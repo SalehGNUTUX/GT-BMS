@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sec_computer">الحاسوب</string>
+    <string name="sec_computer_sub">المزامنة والاتصال</string>
+    <string name="pc_channel">الحاسوب</string>
+    <string name="pc_sync_title">المزامنة مع الحاسوب</string>
+    <string name="pc_sync_desc">يتبادل GT-BMS على غنو/لينكس التقارير مع الهاتف عبر شبكة البيت فقط، ولا يخرج شيء إلى الإنترنت. افتح المزامنة، ثم أدخل الرمز في الحاسوب.</string>
+    <string name="pc_sync_open">فتح المزامنة (10 د)</string>
+    <string name="pc_sync_close">إغلاق المزامنة</string>
+    <string name="pc_code">الرمز الذي تدخله في الحاسوب</string>
+    <string name="pc_address">العنوان:</string>
+    <string name="pc_open_until">مفتوحة حتى %1$s</string>
+    <string name="pc_peer">متصل: %1$s</string>
+    <string name="pc_no_service">المراقبة غير مشغّلة</string>
+    <string name="pc_yield_title">إفساح البطارية للحاسوب</string>
+    <string name="pc_yield_desc">أغلب البطاريات تقبل اتصالاً واحداً. أثناء الشحن قرب الحاسوب يترك الهاتف الاتصال، ثم يستعيده وحده بعد المدة.</string>
+    <string name="pc_yield">إفساح الاتصال للحاسوب</string>
+    <string name="pc_yielded_until">الاتصال متروك للحاسوب حتى %1$s</string>
+    <string name="pc_resume">استعادة الاتصال</string>
+    <plurals name="pc_hours">
+        <item quantity="zero">%d ساعة</item>
+        <item quantity="one">ساعة</item>
+        <item quantity="two">ساعتان</item>
+        <item quantity="few">%d ساعات</item>
+        <item quantity="many">%d ساعة</item>
+        <item quantity="other">%d ساعة</item>
+    </plurals>
+</resources>

@@ -43,6 +43,8 @@ private fun f(p: String, vararg a: Any) = String.format(Locale.US, p, *a)
 private fun socColor(soc: Int) = when { soc >= 50 -> Palette.green; soc >= 20 -> Palette.orange; else -> Palette.red }
 /** Numbers and units keep their left-to-right order inside Arabic text. */
 private fun iso(s: String) = "⁦$s⁩"
+/** A range: each end whole, the order following the interface (start on the right in Arabic). */
+private fun range(a: String, b: String) = iso(a) + " – " + iso(b)
 
 @Composable
 fun App(monitor: Monitor, initialTab: Int = 0, onImport: () -> Unit = {}, overlay: Boolean = false) {
@@ -213,9 +215,9 @@ private fun kind(s: Session) = when (s.type) {
 }
 
 private fun summary(s: Session): String = when (s.type) {
-    Session.TYPE_CHARGE -> listOf(iso("${s.i("soc_start")}% – ${s.i("soc_end")}%"), Res.dur((s.endMs - s.startMs) / 1000.0),
+    Session.TYPE_CHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), Res.dur((s.endMs - s.startMs) / 1000.0),
         iso(f("+%.2f Ah", s.d("ah"))), iso(f("⌀ %.1f A", s.avgA))).joinToString("  •  ")
-    Session.TYPE_DISCHARGE -> listOf(iso("${s.i("soc_start")}% – ${s.i("soc_end")}%"), iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh")))).joinToString("  •  ")
+    Session.TYPE_DISCHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh")))).joinToString("  •  ")
     else -> listOfNotNull(if (s.d("distance_km") > 0) iso(f("%.2f km", s.d("distance_km"))) else null, Res.dur((s.endMs - s.startMs) / 1000.0),
         iso(f("%.0f Wh", s.d("wh"))), if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) iso(f("%.1f Wh/km", s.d("wh_per_km"))) else null).joinToString("  •  ")
 }
@@ -224,7 +226,7 @@ private fun rows(s: Session): List<Pair<String, String>> {
     val r = mutableListOf<Pair<String, String>>()
     fun row(k: String, v: String) { r += Res.s(k) to v }
     row("rep_duration", Res.dur((s.endMs - s.startMs) / 1000.0))
-    row("rep_soc", iso("${s.i("soc_start")}% – ${s.i("soc_end")}%"))
+    row("rep_soc", range("${s.i("soc_start")}%", "${s.i("soc_end")}%"))
     row("rep_energy", iso(f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh"))))
     if (s.type == Session.TYPE_CHARGE) {
         row("rep_avg_current", iso(f("%.1f A", s.avgA)))

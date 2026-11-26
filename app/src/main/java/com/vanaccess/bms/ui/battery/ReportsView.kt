@@ -133,6 +133,11 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     /** Wraps numbers/units so they keep left-to-right order inside Arabic text. */
     private fun iso(t: String) = "\u2066$t\u2069"
+    /**
+     * A range, start first in the reading direction: each end is kept whole on its own, the order
+     * follows the interface (start on the right in Arabic, like the dates).
+     */
+    private fun range(a: String, b: String) = iso(a) + " – " + iso(b)
     private fun line(vararg parts: String?) = parts.filterNotNull().filter { it.isNotBlank() }.joinToString("  •  ")
 
     private fun kind(s: Session): Triple<String, Int, Int> = when (s.type) {
@@ -142,7 +147,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     }
 
     private fun summary(s: Session): List<Pair<String, Int>> {
-        val socs = iso("${s.i("soc_start")}% – ${s.i("soc_end")}%")
+        val socs = range("${s.i("soc_start")}%", "${s.i("soc_end")}%")
         val d = dur((s.endMs - s.startMs) / 1000.0)
         return when (s.type) {
             Session.TYPE_CHARGE -> listOf(
@@ -277,7 +282,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (d.regenWh >= 0.5) rows += R.string.regen_energy to f("%.0f Wh", d.regenWh) +
             (com.vanaccess.bms.reports.RegenMeter.sharePct(d.regenWh, d.wh)?.let { f("  •  %.1f%%", it) } ?: "") +
             (d.whPerKm?.takeIf { it > 0 }?.let { f("  •  ≈ %.2f km", d.regenWh / it) } ?: "")
-        if (d.socStart != null && d.socEnd != null) rows += R.string.day_soc_row to "${d.socStart}% – ${d.socEnd}%"
+        if (d.socStart != null && d.socEnd != null) rows += R.string.day_soc_row to range("${d.socStart}%", "${d.socEnd}%")
         if (d.socUsed >= 0.5) rows += R.string.day_used to f("%.0f%%", d.socUsed)
         if (d.unrecorded > 0) rows += R.string.day_unrecorded to "${d.unrecorded}%"
         if (d.socCharged > 0) rows += R.string.day_soc_charged to "${d.socCharged}%"
@@ -322,7 +327,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 orientation = LinearLayout.VERTICAL
                 setPadding((12 * dp).toInt(), (9 * dp).toInt(), (12 * dp).toInt(), (9 * dp).toInt())
                 background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor("#262A3B")) }
-                addView(text("$icon " + ctx.getString(label) + "  " + iso(hm.format(Date(s.startMs)) + " – " + hm.format(Date(s.endMs))), color, 13f, true))
+                addView(text("$icon " + ctx.getString(label) + "  " + range(hm.format(Date(s.startMs)), hm.format(Date(s.endMs))), color, 13f, true))
                 summary(s).take(1).forEach { (t, c) -> addView(text(t, c, 12f, false)) }
                 setOnClickListener { showDetail(s) }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (6 * dp).toInt() })
@@ -362,7 +367,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         val charge = s.type == Session.TYPE_CHARGE
         val rows = mutableListOf<Pair<Int, String>>()
         rows += R.string.rep_duration to dur((s.endMs - s.startMs) / 1000.0)
-        rows += R.string.rep_soc to "${s.i("soc_start")}% – ${s.i("soc_end")}%"
+        rows += R.string.rep_soc to range("${s.i("soc_start")}%", "${s.i("soc_end")}%")
         rows += R.string.rep_energy to f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh"))
         if (charge) {
             rows += R.string.rep_avg_current to f("%.1f A", s.avgA)

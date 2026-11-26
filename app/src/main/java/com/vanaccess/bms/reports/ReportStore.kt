@@ -89,6 +89,16 @@ class ReportStore private constructor(ctx: Context) :
         } finally { db.endTransaction() }
     }
 
+    /** From the computer: kept only if no report of that kind started then for that battery. */
+    @Synchronized
+    fun insertIfNew(type: String, startMs: Long, endMs: Long, battery: String, data: JSONObject, points: List<Point>): Boolean {
+        val exists = readableDatabase.rawQuery("SELECT 1 FROM sessions WHERE type = ? AND start_ms = ? AND IFNULL(battery,'') = ? LIMIT 1",
+            arrayOf(type, startMs.toString(), battery)).use { it.moveToFirst() }
+        if (exists) return false
+        insert(type, startMs, endMs, battery, data, points)
+        return true
+    }
+
     @Synchronized
     fun updateData(id: Long, data: JSONObject) {
         writableDatabase.update("sessions", ContentValues().apply { put("data", data.toString()) }, "id = ?", arrayOf(id.toString()))
