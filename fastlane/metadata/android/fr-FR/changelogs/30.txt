@@ -1,0 +1,1 @@
+1.9.1 : le code de synchronisation s'affiche dans le bon ordre (en arabe ses deux groupes étaient inversés).
