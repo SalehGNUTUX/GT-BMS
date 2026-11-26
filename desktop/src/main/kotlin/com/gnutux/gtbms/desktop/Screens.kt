@@ -39,69 +39,19 @@ object Palette {
     val green = Color(0xFF43D17A); val blue = Color(0xFF4DA3FF); val orange = Color(0xFFF5B83D); val red = Color(0xFFF0544F)
 }
 
-private fun f(p: String, vararg a: Any) = String.format(Locale.US, p, *a)
-private fun socColor(soc: Int) = when { soc >= 50 -> Palette.green; soc >= 20 -> Palette.orange; else -> Palette.red }
+internal fun f(p: String, vararg a: Any) = String.format(Locale.US, p, *a)
+internal fun socColor(soc: Int) = when { soc >= 50 -> Palette.green; soc >= 20 -> Palette.orange; else -> Palette.red }
 /** Numbers and units keep their left-to-right order inside Arabic text. */
-private fun iso(s: String) = "⁦$s⁩"
+internal fun iso(s: String) = "⁦$s⁩"
 /** A range: each end whole, the order following the interface (start on the right in Arabic). */
-private fun range(a: String, b: String) = iso(a) + " – " + iso(b)
+internal fun range(a: String, b: String) = iso(a) + " – " + iso(b)
 
 @Composable
-fun App(monitor: Monitor, initialTab: Int = 0, onImport: () -> Unit = {}, overlay: Boolean = false) {
-    val st by monitor.state.collectAsState()
-    val ring by monitor.alarms.ring.collectAsState()
-    var tab by remember { mutableStateOf(initialTab) }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Palette.blue, background = Palette.bg, surface = Palette.card)) {
-        CompositionLocalProvider(LocalLayoutDirection provides if (Tr.rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-            Box(Modifier.fillMaxSize().background(Palette.bg)) {
-                Column(Modifier.fillMaxSize().padding(16.dp)) {
-                    Header(st, monitor, onImport)
-                    Spacer(Modifier.height(12.dp))
-                    TabRow(selectedTabIndex = tab, containerColor = Palette.bg, contentColor = Palette.blue) {
-                        listOf("live", "cells", "reports").forEachIndexed { i, k ->
-                            Tab(selected = tab == i, onClick = { tab = i }, text = { Text(Tr[k], fontSize = 16.sp) })
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    when {
-                        tab == 2 -> ReportsScreen(monitor)
-                        st.basic == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(Tr["waiting"], color = Palette.grey) }
-                        tab == 0 -> LiveScreen(st, monitor)
-                        else -> CellsScreen(st.cells, st.basic!!.balanceBits)
-                    }
-                }
-                // In the window, the alarm is its own window over everything (see Main); a picture shows it here
-                if (overlay && tab != 2) ring?.let { r ->
-                    Box(Modifier.fillMaxSize().background(Color(0xE60F1118)).clickable(enabled = true, onClick = {}), contentAlignment = Alignment.Center) {
-                        AlarmCard(r, monitor.alarms)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Header(st: Monitor.State, monitor: Monitor, onImport: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(Tr["app"], color = Palette.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text(Tr["readonly"], color = Palette.grey, fontSize = 12.sp)
-        }
-        if (st.source.isNotEmpty()) Text(st.source, color = Palette.orange, fontSize = 13.sp,
-            modifier = Modifier.border(1.dp, Palette.orange, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 4.dp))
-        OutlinedButton(onClick = { monitor.startReplay() }) { Text(Tr["srcRest"]) }
-        OutlinedButton(onClick = { monitor.startChargeSim() }) { Text(Tr["srcCharge"]) }
-        Button(onClick = onImport) { Text(Tr["import"]) }
-    }
-}
-
-@Composable
-private fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
+internal fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
     Column(modifier.background(Palette.card, RoundedCornerShape(18.dp)).padding(16.dp), content = content)
 
 @Composable
-private fun Metric(label: String, value: String, color: Color = Palette.text, modifier: Modifier = Modifier) =
+internal fun Metric(label: String, value: String, color: Color = Palette.text, modifier: Modifier = Modifier) =
     Column(modifier.background(Palette.tile, RoundedCornerShape(14.dp)).padding(14.dp)) {
         Text(label, color = Palette.grey, fontSize = 13.sp)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -110,7 +60,7 @@ private fun Metric(label: String, value: String, color: Color = Palette.text, mo
     }
 
 @Composable
-private fun LiveScreen(st: Monitor.State, monitor: Monitor) {
+internal fun LiveScreen(st: Monitor.State, monitor: Monitor) {
     val b = st.basic ?: return
     val state = when { b.current > 0.1 -> "st_charging" to Palette.green; b.current < -0.1 -> "st_discharging" to Palette.blue; else -> "st_idle" to Palette.grey }
     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -179,7 +129,7 @@ private fun ChargeCard(st: Monitor.State, monitor: Monitor) {
 }
 
 @Composable
-private fun CellsScreen(cells: List<Double>, balance: Long) {
+internal fun CellsScreen(cells: List<Double>, balance: Long) {
     if (cells.isEmpty()) return
     val mx = cells.max(); val mn = cells.min()
     Column {
@@ -280,7 +230,7 @@ private fun levelColor(l: Advisor.Level) = when (l) {
 }
 
 @Composable
-private fun ReportsScreen(monitor: Monitor) {
+internal fun ReportsScreen(monitor: Monitor) {
     val version by monitor.reportsVersion.collectAsState()
     val simulated = monitor.state.collectAsState().value.simulated
     val list = remember(version, simulated) { runCatching { monitor.reports().list() }.getOrDefault(emptyList()) }

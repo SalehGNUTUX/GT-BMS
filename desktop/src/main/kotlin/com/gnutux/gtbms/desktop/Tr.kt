@@ -5,7 +5,10 @@ import java.util.Locale
 
 /** Interface texts in Arabic, English and French (the phone's wording where it exists). */
 object Tr {
-    val lang: String = (System.getenv("GTBMS_LANG") ?: Locale.getDefault().language).let { if (it in setOf("ar", "fr")) it else "en" }
+    /** GTBMS_LANG, else the choice in the settings, else the system's language. */
+    val lang: String = (System.getenv("GTBMS_LANG")
+        ?: runCatching { org.json.JSONObject(java.io.File(System.getProperty("user.home"), ".config/gt-bms/settings.json").readText()).optString("lang") }.getOrNull()?.takeIf { it.isNotEmpty() }
+        ?: Locale.getDefault().language).let { if (it in setOf("ar", "fr")) it else "en" }
     val rtl get() = lang == "ar"
 
     private val t = mapOf(
@@ -44,6 +47,60 @@ object Tr {
         "noReport" to listOf("اختر تقريراً لعرض تفاصيله", "Pick a report to see it", "Choisissez un rapport"),
         "fromPhone" to listOf("من الهاتف", "from the phone", "du téléphone"),
         "fromPc" to listOf("من هذا الحاسوب", "from this computer", "de cet ordinateur"),
+        "battery" to listOf("البطارية", "Battery", "Batterie"),
+        "settings" to listOf("الإعدادات", "Settings", "Paramètres"),
+        "notifs" to listOf("إشعارات", "Notifications", "Notifications"),
+        "clear" to listOf("تفريغ", "Clear", "Vider"),
+        "noNotifs" to listOf("لا إشعارات بعد.", "No notifications yet.", "Aucune notification."),
+        "all" to listOf("الكل", "All", "Tout"),
+        "daily" to listOf("يومي", "Daily", "Quotidien"),
+        "back" to listOf("رجوع", "Back", "Retour"),
+        "secSource" to listOf("المصدر", "Source", "Source"), "secSourceSub" to listOf("من أين تأتي القراءات", "Where readings come from", "Origine des mesures"),
+        "secAlarms" to listOf("المنبهات", "Alarms", "Alarmes"), "secAlarmsSub" to listOf("الاكتمال والانخفاض والخلية", "Full, low and cell", "Pleine, faible, cellule"),
+        "secPhone" to listOf("الهاتف", "Phone", "Téléphone"), "secPhoneSub" to listOf("المزامنة والاتصال", "Sync and link", "Synchro et liaison"),
+        "secData" to listOf("البيانات", "Data", "Données"), "secDataSub" to listOf("استيراد وتصدير", "Import and export", "Import et export"),
+        "secPrefs" to listOf("التفضيلات", "Preferences", "Préférences"), "secPrefsSub" to listOf("اللغة", "Language", "Langue"),
+        "secAbout" to listOf("حول", "About", "À propos"), "secAboutSub" to listOf("الإصدار والترخيص", "Version and licence", "Version et licence"),
+        "srcBle" to listOf("البطارية عبر البلوتوث", "The battery over Bluetooth", "La batterie par Bluetooth"),
+        "srcBleSoon" to listOf("قريباً: يحتاج تجربة محوّل البلوتوث قرب البطارية.", "Soon: needs a test of the Bluetooth adapter near the battery.", "Bientôt : à tester près de la batterie."),
+        "srcNow" to listOf("المصدر الحالي: %s", "Current source: %s", "Source actuelle : %s"),
+        "batteryFrom" to listOf("البطارية: %s", "Battery: %s", "Batterie : %s"),
+        "limitsKnown" to listOf("حد حماية الخلية: %.3f فولت (من البطارية أو الهاتف)", "Cell protection: %.3f V (from the battery or the phone)", "Protection cellule : %.3f V (batterie ou téléphone)"),
+        "limitsUnknown" to listOf("حد حماية الخلية غير معروف بعد: زامن مع الهاتف أو اتصل بالبطارية.", "Cell protection not known yet: sync with the phone or connect the battery.", "Protection cellule inconnue : synchronisez ou connectez la batterie."),
+        "alHigh" to listOf("تنبيه اكتمال الشحن", "Full-charge alarm", "Alarme de charge complète"),
+        "alLow" to listOf("تنبيه انخفاض البطارية (ثم 20 و15 و10 و5٪)", "Low-battery alarm (then 20, 15, 10, 5%)", "Alarme batterie faible (puis 20, 15, 10, 5 %)"),
+        "alCell" to listOf("تنبيه الخلية المبكر", "Early cell alarm", "Alarme cellule précoce"),
+        "alSound" to listOf("صوت المنبه", "Alarm sound", "Son de l\u2019alarme"),
+        "alNotify" to listOf("إشعار النظام بالأزرار", "System notification with buttons", "Notification système avec boutons"),
+        "alTest" to listOf("تجربة المنبه", "Test the alarm", "Tester l\u2019alarme"),
+        "syncTitle" to listOf("المزامنة مع الهاتف", "Sync with the phone", "Synchro avec le téléphone"),
+        "syncHow" to listOf("على الهاتف: الإعدادات › الحاسوب › فتح المزامنة. ثم ابحث هنا وأدخل الرمز الظاهر على الهاتف. على شبكة البيت فقط.",
+            "On the phone: Settings › Computer › Open the sync. Then search here and enter the code shown on the phone. Home network only.",
+            "Sur le téléphone : Paramètres › Ordinateur › Ouvrir la synchro. Puis cherchez ici et saisissez le code affiché. Réseau local uniquement."),
+        "syncSearch" to listOf("البحث عن الهاتف", "Find the phone", "Chercher le téléphone"),
+        "syncAddr" to listOf("أو العنوان كما يظهر على الهاتف", "or the address shown on the phone", "ou l\u2019adresse affichée sur le téléphone"),
+        "syncCode" to listOf("الرمز (6 أرقام)", "Code (6 digits)", "Code (6 chiffres)"),
+        "syncNow" to listOf("مزامنة الآن", "Sync now", "Synchroniser"),
+        "syncWorking" to listOf("جارٍ…", "Working…", "En cours…"),
+        "syncNone" to listOf("لم يُعثر على هاتف: هل المزامنة مفتوحة على الهاتف، وهما على الشبكة نفسها؟", "No phone found: is the sync open on the phone, on the same network?", "Aucun téléphone : la synchro est-elle ouverte, sur le même réseau ?"),
+        "syncFound" to listOf("عُثر على %d", "%d found", "%d trouvé(s)"),
+        "syncDone" to listOf("استُقبل %d تقريراً من الهاتف، وأُرسل إليه %d", "%d reports received from the phone, %d sent to it", "%d rapports reçus du téléphone, %d envoyés"),
+        "syncBadCode" to listOf("رمز خاطئ", "Wrong code", "Code incorrect"),
+        "syncClosed" to listOf("أُغلقت المزامنة على الهاتف بعد رموز خاطئة: افتحها من جديد", "The phone closed the sync after wrong codes: open it again", "Le téléphone a fermé la synchro : rouvrez-la"),
+        "syncFail" to listOf("تعذّر: %s", "Failed: %s", "Échec : %s"),
+        "syncLast" to listOf("آخر مزامنة: %s", "Last sync: %s", "Dernière synchro : %s"),
+        "yieldAsk" to listOf("اطلب من الهاتف ترك البطارية لساعة", "Ask the phone to leave the battery for an hour", "Demander au téléphone de laisser la batterie une heure"),
+        "yieldBack" to listOf("أعِد البطارية للهاتف", "Give the battery back to the phone", "Rendre la batterie au téléphone"),
+        "yieldDone" to listOf("الهاتف ترك البطارية حتى %s", "The phone left the battery until %s", "Le téléphone laisse la batterie jusqu\u2019à %s"),
+        "resumeDone" to listOf("عاد الهاتف إلى البطارية", "The phone took the battery back", "Le téléphone a repris la batterie"),
+        "exportCsv" to listOf("تصدير CSV", "Export CSV", "Exporter CSV"),
+        "exported" to listOf("حُفظ في %s", "Saved to %s", "Enregistré dans %s"),
+        "langSystem" to listOf("لغة النظام", "System language", "Langue du système"),
+        "langRestart" to listOf("تُطبَّق اللغة عند إعادة تشغيل البرنامج.", "The language applies at the next start.", "La langue s\u2019applique au prochain démarrage."),
+        "about" to listOf("GT-BMS لسطح المكتب: مراقبة بطاريات الليثيوم للقراءة فقط، رفيق تطبيق الهاتف. حر ومفتوح المصدر (GPL-3.0).",
+            "GT-BMS for the desktop: read-only lithium battery monitor, companion of the phone app. Free software (GPL-3.0).",
+            "GT-BMS pour l\u2019ordinateur : surveillance des batteries lithium en lecture seule, compagnon de l\u2019application. Libre (GPL-3.0)."),
+        "version" to listOf("الإصدار %s", "Version %s", "Version %s"),
         "readonly" to listOf("قراءة فقط: لا يُرسل إلى البطارية إلا أوامر القراءة", "Read-only: only read commands are sent to the battery", "Lecture seule : seules des commandes de lecture sont envoyées"),
     )
 

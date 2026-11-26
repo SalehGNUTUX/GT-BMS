@@ -19,7 +19,7 @@ import kotlin.math.sin
  * battery by steps. Shown over the whole window with a sound and a desktop notification; only
  * its buttons stop it. Charging alarms offer "I unplugged it" / "remind me in N min".
  */
-class Alarms(private val settings: Settings) {
+class Alarms(private val settings: Settings, private val log: DesktopLog? = null) {
     enum class Kind { HIGH, CELL, LOW }
     enum class Level(val key: String, val color: Long) {
         NORMAL("lvl_normal", 0xFF43D17A), ACCEPTABLE("lvl_acceptable", 0xFF4DA3FF), ATTENTION("lvl_attention", 0xFFF5B83D), DANGER("lvl_danger", 0xFFF0544F)
@@ -83,10 +83,15 @@ class Alarms(private val settings: Settings) {
 
     private fun start(r: Ring) {
         _ring.value = r
+        log?.add(r.title, r.text)
         if (quiet) return
-        notifyDesktop(r)
-        beep()
+        if (settings.systemNotify) notifyDesktop(r)
+        if (settings.sound) beep()
     }
+
+    /** A short demo from the settings. */
+    fun test(kind: Kind) = start(Ring(kind, Res.s(when (kind) { Kind.HIGH -> "alarm_high_title"; Kind.CELL -> "alarm_cell_title"; Kind.LOW -> "alarm_low_title" }),
+        "🔔", Res.s("alarm_test_text"), Level.NORMAL, snoozeMin = if (kind == Kind.LOW) null else 5))
 
     /** «فصلتُ الشاحن»: no reminder, unless it is still charging two minutes later. */
     fun unplugged() = stop { it.snoozeUntil = now + 2 * 60_000L }

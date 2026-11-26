@@ -26,7 +26,14 @@ class Monitor(home: File = File(System.getProperty("user.home"))) {
     private val simStore by lazy { Store(File(home, ".local/share/gt-bms/simulation.db")) }
     /** The reports to show: the simulator's while it runs. */
     fun reports(): Store = if (_state.value.simulated) simStore else store
-    val alarms = Alarms(settings)
+    val log = DesktopLog(File(home, ".local/share/gt-bms/notifications.json"))
+    val alarms = Alarms(settings, log)
+    val phone by lazy { PhoneLink(this) }
+    /** A short message for the owner, shown over the screens until closed. */
+    val notice = MutableStateFlow<String?>(null)
+
+    /** New battery values came from the phone: the analysis uses them from now on. */
+    fun onPhoneValues() { tracker.cellOvV = settings.limits.cellOvMv?.let { it / 1000.0 } ?: tracker.cellOvV; tracker.targetSoc = settings.highSoc }
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
     /** Bumped when reports change. */

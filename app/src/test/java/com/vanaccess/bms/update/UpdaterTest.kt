@@ -13,4 +13,9 @@ class UpdaterTest {
         assertFalse(Updater.isNewer("v1.0.0", "1.0.0"))
         assertFalse(Updater.isNewer("v0.9.9", "1.0.0"))
     }
+
+    @Test fun desktopReleasesAreNotForThePhone() {
+        org.junit.Assert.assertTrue(Updater.isPhoneTag("v1.9.0")); org.junit.Assert.assertTrue(Updater.isPhoneTag("v2.0.0-beta.1"))
+        org.junit.Assert.assertFalse(Updater.isPhoneTag("desktop-v0.1.0"))
+    }
 }

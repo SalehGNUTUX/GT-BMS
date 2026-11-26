@@ -19,10 +19,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import org.jetbrains.skia.EncodedImageFormat
-import java.awt.FileDialog
-import java.awt.Frame
 import java.io.File
-import javax.swing.JOptionPane
 
 fun main(args: Array<String>) {
     // Headless checks: --home DIR (own settings and reports), --sim-charge, --wait SECONDS, --snapshot out.png [--tab N]
@@ -35,17 +32,21 @@ fun main(args: Array<String>) {
     else monitor.startReplay(args.indexOf("--replay").takeIf { it >= 0 }?.let { File(args[it + 1]).readText() })
     args.indexOf("--snapshot").takeIf { it >= 0 }?.let { i ->
         Thread.sleep((args.indexOf("--wait").takeIf { it >= 0 }?.let { args[it + 1].toLong() } ?: 3L) * 1000)
-        snapshot(monitor, File(args[i + 1]), args.indexOf("--tab").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 0)
+        snapshot(monitor, File(args[i + 1]), args.indexOf("--place").takeIf { it >= 0 }?.let { Place.valueOf(args[it + 1]) } ?: Place.LIVE,
+            args.indexOf("--tab").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 0, args.indexOf("--section").takeIf { it >= 0 }?.let { args[it + 1] })
         monitor.stop(); System.exit(0)
     }
     application {
         val windowState = rememberWindowState(width = 1180.dp, height = 800.dp)
         Window(onCloseRequest = { monitor.stop(); exitApplication() }, title = "GT-BMS", icon = painterResource("icon.png"), state = windowState) {
+            window.minimumSize = java.awt.Dimension(900, 640)
             App(monitor, onImport = {
-                val d = FileDialog(null as Frame?, Tr["import"], FileDialog.LOAD).apply { file = "*.zip"; isVisible = true }
-                val f = d.file?.let { File(d.directory, it) } ?: return@App
-                val msg = runCatching { String.format(Tr["imported"], monitor.importPhoneBackup(f)) }.getOrElse { Tr["importFail"] }
-                JOptionPane.showMessageDialog(null, msg, "GT-BMS", JOptionPane.INFORMATION_MESSAGE)
+                Thread {
+                    val f = FilePicker.open(Tr["import"], "zip") ?: return@Thread
+                    val msg = runCatching { String.format(Tr["imported"], monitor.importPhoneBackup(f)) }.getOrElse { Tr["importFail"] }
+                    monitor.log.add(Tr["import"], msg)
+                    monitor.notice.value = msg
+                }.apply { isDaemon = true; start() }
             })
         }
         // The ringing alarm: its own window in the middle of the screen, over the others, even with
@@ -62,8 +63,8 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun snapshot(monitor: Monitor, out: File, tab: Int) {
-    val scene = ImageComposeScene(1180, 800, Density(1f)) { App(monitor, tab, overlay = true) }
+private fun snapshot(monitor: Monitor, out: File, place: Place, tab: Int, section: String?) {
+    val scene = ImageComposeScene(1180, 800, Density(1f)) { App(monitor, place, tab, overlay = true, initialSection = section) }
     scene.render(0); val img = scene.render(1_000_000_000L)
     out.writeBytes(img.encodeToData(EncodedImageFormat.PNG)!!.bytes)
     scene.close()

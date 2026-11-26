@@ -71,6 +71,9 @@ object Updater {
 
     private val VERSION_RE = Regex("""(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?""")
 
+    /** The phone's releases are tagged vX.Y.Z; the computer's (desktop-vX.Y.Z) are not for it. */
+    fun isPhoneTag(tag: String) = tag.startsWith("v")
+
     private fun parse(text: String?): Version? {
         val m = VERSION_RE.find(text.orEmpty()) ?: return null
         val pre = m.groupValues[4].takeIf { it.isNotBlank() }
@@ -109,6 +112,7 @@ object Updater {
                 val r = releases.getJSONObject(i)
                 if (r.optBoolean("draft")) continue
                 if (!allowPrerelease && r.optBoolean("prerelease")) continue
+                if (!isPhoneTag(r.optString("tag_name"))) continue
                 val v = parse(r.optString("tag_name")) ?: continue
                 if (bestV == null || v > bestV) { best = r; bestV = v }
             }
@@ -150,6 +154,7 @@ object Updater {
         val entries = xml.split("<entry>").drop(1)
         val best = entries.mapNotNull { e ->
             val tag = Regex("""/releases/tag/([^"]+)"""").find(e)?.groupValues?.get(1) ?: return@mapNotNull null
+            if (!isPhoneTag(tag)) return@mapNotNull null
             val v = parse(tag) ?: return@mapNotNull null
             if (!allowPrerelease && v.pre.isNotEmpty()) return@mapNotNull null
             Triple(tag, v, e)

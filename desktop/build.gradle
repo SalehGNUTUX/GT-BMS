@@ -3,8 +3,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     id 'org.jetbrains.kotlin.jvm'
-    id 'org.jetbrains.kotlin.plugin.compose'
-    id 'org.jetbrains.compose'
+    // declared here only, so phone builds never fetch them
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.2.10'
+    id 'org.jetbrains.compose' version '1.8.2'
 }
 
 version = '0.1.0'
@@ -23,8 +24,10 @@ def sharedRes = layout.buildDirectory.dir('generated/sharedRes')
 def sharedStrings = tasks.register('sharedStrings') {
     def res = rootProject.file('app/src/main/res')
     inputs.dir(res)
+    inputs.property('version', project.version)
     outputs.dir(sharedRes)
     doLast {
+        sharedRes.get().file('gtbms-desktop-version.txt').asFile.with { parentFile.mkdirs(); text = project.version.toString() }
         ['': 'en', '-ar': 'ar', '-fr': 'fr'].each { suffix, lang ->
             def body = new StringBuilder()
             new File(res, "values$suffix").listFiles().findAll { it.name.startsWith('strings') && it.name.endsWith('.xml') }.sort().each { f ->

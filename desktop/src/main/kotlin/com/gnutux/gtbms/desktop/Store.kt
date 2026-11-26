@@ -71,6 +71,19 @@ class Store(file: File) {
         out
     }
 
+    /** A report from the phone, unless one of that kind started then for that battery is here already. */
+    @Synchronized
+    fun addIfNew(x: com.vanaccess.bms.sync.SyncedSession): Boolean {
+        val s = x.session
+        val exists = db.prepareStatement("SELECT 1 FROM sessions WHERE type=? AND start_ms=? AND IFNULL(battery,'')=?").use { p ->
+            p.setString(1, s.type); p.setLong(2, s.startMs); p.setString(3, s.battery); p.executeQuery().next()
+        }
+        if (exists) return false
+        insert(s.type, s.startMs, s.endMs, s.battery, s.data, x.points); return true
+    }
+
+    fun synced(s: Session) = com.vanaccess.bms.sync.SyncedSession(s, points(s.id))
+
     /** Adds the reports of another GT-BMS database (a phone backup) that are not here yet. */
     @Synchronized
     fun merge(other: File): Int {

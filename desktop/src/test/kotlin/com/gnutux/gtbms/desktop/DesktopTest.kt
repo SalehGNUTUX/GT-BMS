@@ -53,4 +53,28 @@ class DesktopTest {
         val t = Res.advice(Advisor.Rec(Advisor.Level.INFO, "charge_summary", listOf(69, 90, 1.2, 5.16, 6.19)))
         assertTrue(t, t.contains("69") && t.contains("5.2") && !t.contains("%1"))
     }
+
+    /** The computer syncs with a phone: takes its report and battery values, gives it the charges recorded here. */
+    @Test fun syncWithThePhone() {
+        val phoneHas = mutableListOf(com.vanaccess.bms.sync.SyncedSession(Session(0, Session.TYPE_TRIP, 1_000, 2_000, "66:6A", JSONObject().put("distance_km", 7.72)), emptyList()))
+        val phone = object : com.vanaccess.bms.sync.SyncServer.Source {
+            override fun sessions(sinceMs: Long) = phoneHas.filter { it.session.endMs > sinceMs }
+            override fun accept(list: List<com.vanaccess.bms.sync.SyncedSession>): Int { phoneHas += list; return list.size }
+            override fun battery() = JSONObject().put("address", "66:6A").put("name", "BWBM").put("bms_limits", """{"ov":3630,"n":23}""").put("alarm_high_soc", 90)
+            override fun yieldLink(minutes: Int) = 0L
+            override fun resumeLink() {}
+        }
+        val server = com.vanaccess.bms.sync.SyncServer(phone, "Infinix").apply { start() }
+        try {
+            val m = Monitor(tmp())
+            m.store.insert(Session.TYPE_CHARGE, 5_000, 9_000, "66:6A", JSONObject().put("source", "desktop").put("ah", 1.0), emptyList())
+            m.phone.sync("127.0.0.1", server.port, server.code)
+            val until = System.currentTimeMillis() + 10_000
+            while ((m.phone.state.value.busy || m.phone.state.value.message.isEmpty()) && System.currentTimeMillis() < until) Thread.sleep(50)
+            assertTrue(m.phone.state.value.message, m.phone.state.value.ok)
+            assertEquals(2, m.store.list().size)                                // its trip is here now
+            assertEquals(2, phoneHas.size)                                      // our charge is there
+            assertEquals(3630, m.settings.limits.cellOvMv); assertEquals(90, m.settings.highSoc); assertEquals("BWBM", m.settings.batteryName)
+        } finally { server.stop() }
+    }
 }

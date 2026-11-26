@@ -17,5 +17,7 @@ dependencyResolutionManagement {
 rootProject.name = "GT-BMS"
 include ':app'
 include ':core'
-include ':desktop'
+// The desktop version (Compose for Desktop) is left out of phone-only builds such as F-Droid's
+// (-Pfdroid): they need neither its libraries nor its native parts.
+if (!startParameter.projectProperties.containsKey('fdroid')) include ':desktop'
 include ':osmand-api'
