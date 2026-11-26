@@ -1,0 +1,21 @@
+// Shared, platform-free logic of GT-BMS: BMS protocol parsers, charge and trip analysis,
+// recommendations. Used by the Android app and the desktop version.
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+kotlin {
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8 }
+}
+
+dependencies {
+    // Android ships org.json; the desktop adds the real library itself
+    compileOnly 'org.json:json:20231013'
+    testImplementation 'org.json:json:20231013'
+    testImplementation 'junit:junit:4.13.2'
+}

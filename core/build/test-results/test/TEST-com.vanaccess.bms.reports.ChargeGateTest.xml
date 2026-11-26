@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.reports.ChargeGateTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.496Z" hostname="mx" time="0.049">
+  <properties/>
+  <testcase name="chargerIsFoundParkedAndOnArrival" classname="com.vanaccess.bms.reports.ChargeGateTest" time="0.013"/>
+  <testcase name="longDescentIsNoCharge" classname="com.vanaccess.bms.reports.ChargeGateTest" time="0.011"/>
+  <testcase name="brakingInTrafficIsNoCharge" classname="com.vanaccess.bms.reports.ChargeGateTest" time="0.018"/>
+  <testcase name="tripEndingMeanwhileDoesNotShortenTheWait" classname="com.vanaccess.bms.reports.ChargeGateTest" time="0.001"/>
+  <testcase name="lostLinkDoesNotJoinTwoBrakings" classname="com.vanaccess.bms.reports.ChargeGateTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

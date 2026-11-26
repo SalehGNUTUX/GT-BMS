@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.reports.CellTrackerExporterTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.262Z" hostname="mx" time="0.224">
+  <properties/>
+  <testcase name="severeAndRestOutliers" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.042"/>
+  <testcase name="howSerious" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.007"/>
+  <testcase name="weakCellUnderLoadIsNotHiddenByRestReadings" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.052"/>
+  <testcase name="notEnoughData" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.009"/>
+  <testcase name="csvAndGpx" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.085"/>
+  <testcase name="slightlyLowAtRest" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.0"/>
+  <testcase name="statsSavedBefore17" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.004"/>
+  <testcase name="balancedPackNothingStandsOut" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.002"/>
+  <testcase name="tripsDecideToo" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.004"/>
+  <testcase name="chargingAndFullBatteryAreLeftOut" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.001"/>
+  <testcase name="currentOfOldDifferencesIsNotShown" classname="com.vanaccess.bms.reports.CellTrackerExporterTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

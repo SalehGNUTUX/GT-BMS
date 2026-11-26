@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.alarm.LowStepsTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.019Z" hostname="mx" time="0.044">
+  <properties/>
+  <testcase name="jitterIsSilentAndChargingRearms" classname="com.vanaccess.bms.alarm.LowStepsTest" time="0.009"/>
+  <testcase name="remindsAtEachStep" classname="com.vanaccess.bms.alarm.LowStepsTest" time="0.02"/>
+  <testcase name="connectingLowRingsOnce" classname="com.vanaccess.bms.alarm.LowStepsTest" time="0.007"/>
+  <testcase name="nextStep" classname="com.vanaccess.bms.alarm.LowStepsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

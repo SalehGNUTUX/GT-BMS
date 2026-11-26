@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.reports.V17Test" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.730Z" hostname="mx" time="0.164">
+  <properties/>
+  <testcase name="drivingThresholdsFollowTheBattery" classname="com.vanaccess.bms.reports.V17Test" time="0.004"/>
+  <testcase name="recognisesOtherBatteries" classname="com.vanaccess.bms.reports.V17Test" time="0.008"/>
+  <testcase name="chargeOutOfRange" classname="com.vanaccess.bms.reports.V17Test" time="0.005"/>
+  <testcase name="timeLeftLearnsWhatCutsLeaveOut" classname="com.vanaccess.bms.reports.V17Test" time="0.014"/>
+  <testcase name="nothingDrawnWhileSilentMeansComplete" classname="com.vanaccess.bms.reports.V17Test" time="0.007"/>
+  <testcase name="cutAnnouncedInTheLastSecondsNotIn42Minutes" classname="com.vanaccess.bms.reports.V17Test" time="0.04"/>
+  <testcase name="dayShowsWhatWasNotRecorded" classname="com.vanaccess.bms.reports.V17Test" time="0.01"/>
+  <testcase name="dailyReportRunsMidnightToMidnight" classname="com.vanaccess.bms.reports.V17Test" time="0.007"/>
+  <testcase name="constantCurrentEstimateCountsTheChargePutIn" classname="com.vanaccess.bms.reports.V17Test" time="0.003"/>
+  <testcase name="otherStops" classname="com.vanaccess.bms.reports.V17Test" time="0.019"/>
+  <testcase name="statistics" classname="com.vanaccess.bms.reports.V17Test" time="0.005"/>
+  <testcase name="alarmValues" classname="com.vanaccess.bms.reports.V17Test" time="0.0"/>
+  <testcase name="normalRiseIsNoJump" classname="com.vanaccess.bms.reports.V17Test" time="0.001"/>
+  <testcase name="cellThatCausedTheCutNotTheOneAfterIt" classname="com.vanaccess.bms.reports.V17Test" time="0.005"/>
+  <testcase name="jumpAtTheCutIsNotHidden" classname="com.vanaccess.bms.reports.V17Test" time="0.003"/>
+  <testcase name="learnsFromPastCharges" classname="com.vanaccess.bms.reports.V17Test" time="0.006"/>
+  <testcase name="highestCellsOverTheCharge" classname="com.vanaccess.bms.reports.V17Test" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

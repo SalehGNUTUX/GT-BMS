@@ -735,9 +735,10 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
                 // A finished capacity test is the most reliable measurement; else a qualifying charge
                 val testAh = capTest.resultAh?.takeIf { capTest.phase == com.vanaccess.bms.reports.CapacityTest.Phase.DONE }
                 val measuredAh = testAh ?: health.measuredAh
-                if (measuredAh != null && lim.designAh != null) {
+                val designAh = lim.designAh
+                if (measuredAh != null && designAh != null) {
                     hCard.addView(text(ctx.getString(R.string.health_measured, measuredAh,
-                        (measuredAh / lim.designAh * 100).toInt(), lim.designAh), cGreen, 14f, true))
+                        (measuredAh / designAh * 100).toInt(), designAh), cGreen, 14f, true))
                 }
                 renderCapacityTest(hCard, capTest, lowCal)
                 // Facts

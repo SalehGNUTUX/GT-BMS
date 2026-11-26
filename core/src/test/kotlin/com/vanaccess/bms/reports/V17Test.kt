@@ -1,0 +1,217 @@
+package com.vanaccess.bms.reports
+
+import com.vanaccess.bms.alarm.AlarmCheck
+import com.vanaccess.bms.reports.ChargePredictor.Kind
+import com.vanaccess.bms.reports.ChargeWatch.Stop
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class V17Test {
+    private fun cells(max: Double, delta: Double = 0.07) = List(23) { if (it == 8) max else if (it == 11) max - delta else max - 0.035 }
+
+    /** The charge of 2026-11-23 as filmed: 76 % at the start, 6.92 Ah in, 94 % shown, cut at 3.635 V. */
+    private fun filmed(): ChargeWatch {
+        val w = ChargeWatch(0, 76, 22.8)
+        var t = 4_500_000L; var max = 3.43
+        // ten minutes of slow rise, then 2.24 mV/s
+        repeat(580) { max += 0.00022; t += 1000; w.charging(t, 94, 28.4, 29.9, 5.1, max * 23 - 0.8, cells(max), true, 6.0 + (t - 4_500_000) * 5.1 / 3.6e6) }
+        while (max < 3.612) { max += 0.00224; t += 1000; w.charging(t, 94, 28.4, 29.9, 5.1, max * 23 - 0.8, cells(max), true, 6.90) }
+        last = t
+        return w
+    }
+    private var last = 0L
+
+    @Test fun jumpAtTheCutIsNotHidden() {
+        val w = filmed()
+        w.charging(last + 1000, 100, 29.9, 29.9, 5.1, 82.75, cells(3.635), true, 6.92)
+        val r = w.stopped(last + 31_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
+        assertEquals(Stop.PROTECTION, r.reason)
+        assertEquals(94, r.socBefore); assertEquals(100, r.socShown); assertEquals(99, r.socCounted)
+        assertEquals(9, r.maxIdx); assertEquals(12, r.minIdx); assertEquals(70, r.deltaMv)
+        assertTrue(r.earlyCell!! in 3.45..3.60)
+    }
+
+    @Test fun cutAnnouncedInTheLastSecondsNotIn42Minutes() {
+        val w = filmed()
+        val p = ChargePredictor.predict(94, 29.9, 5.1, ChargeLearn(true), w, 28.4, 3.63)!!
+        assertEquals(Kind.CUT_SOON, p.kind); assertEquals(9, p.cell); assertTrue(p.hours * 3600 < 60)
+    }
+
+    @Test fun constantCurrentEstimateCountsTheChargePutIn() {
+        val w = ChargeWatch(0, 76, 22.8)
+        w.charging(60_000, 90, 27.0, 29.9, 5.1, 79.0, cells(3.43), true, 5.5)
+        val p = ChargePredictor.predict(90, 29.9, 5.1, ChargeLearn(true), w, 27.0, 3.63)!!
+        assertEquals(Kind.CUT, p.kind)
+        assertEquals((29.9 - 22.8 - 5.5) / 5.1, p.hours, 1e-6)          // 19 min, the taper formula said 70
+        // a charger that tapers keeps the old estimate
+        assertEquals(Kind.FULL, ChargePredictor.predict(90, 29.9, 5.1, ChargeLearn(false), w, 27.0, 3.63)!!.kind)
+        assertNull(ChargePredictor.predict(90, 29.9, 0.0, ChargeLearn(true), w, 27.0, 3.63))
+    }
+
+    @Test fun normalRiseIsNoJump() {
+        val w = ChargeWatch(0, 50, 15.0)
+        for (k in 1..60) w.charging(k * 10_000L, 50 + k / 12, 15.0 + k * 5.1 * 10 / 3600, 29.9, 5.1, 77.0, cells(3.36), true, k * 5.1 * 10 / 3600)
+        // one hour without readings, the BMS went on counting
+        w.charging(600_000 + 3_600_000L, 72, 20.9, 29.9, 5.1, 77.5, cells(3.37), true, 0.9)
+        val r = w.stopped(4_260_000, 72, 20.9, 29.9, true, emptyList(), 3.63)
+        assertEquals(72, r.socBefore); assertEquals(Stop.INTERRUPTED, r.reason)
+    }
+
+    @Test fun otherStops() {
+        fun run(i: (Int) -> Double, soc: Int, fet: Boolean, alarms: List<String> = emptyList()): Stop {
+            val w = ChargeWatch(0, 80, 24.0)
+            for (k in 0..300) w.charging(k * 1000L, soc, 0.0, 29.9, i(k), 78.0, cells(3.45), true, 1.0)
+            return w.stopped(330_000, soc, 0.0, 29.9, fet, alarms, 3.63).reason
+        }
+        assertEquals(Stop.CHARGER, run({ if (it < 100) 5.0 else 0.6 }, 97, true))
+        assertEquals(Stop.INTERRUPTED, run({ 5.0 }, 85, true))
+        // cut at only 81.86 V (history 2026-11-21): the charge switch tells, not a voltage threshold
+        assertEquals(Stop.PROTECTION, run({ 5.0 }, 95, false))
+        assertEquals(Stop.PROTECTION, run({ 5.0 }, 95, true, listOf("Cell overvoltage")))
+        assertEquals(Stop.INTERRUPTED, run({ 5.0 }, 85, true, listOf("Discharge overcurrent")))
+    }
+
+    private fun charge(protection: Boolean, full: Boolean, idx: Int = 9, extra: JSONObject.() -> Unit = {}) =
+        Session(1, Session.TYPE_CHARGE, 0, 80 * 60_000L, "", JSONObject().put("ended_by_protection", protection)
+            .put("reached_full", full).put("max_cell_idx", idx).put("max_delta_mv", 90).apply(extra))
+
+    @Test fun learnsFromPastCharges() {
+        val pts = (0..4800 step 2).map { Point(it * 1000L, 76 + it / 4800.0 * 6.7, 5.1, 80, null, null, null) }
+        val v5 = ChargeLearn.packBefore(pts)!!
+        assertEquals(76 + 4500 / 4800.0 * 6.7, v5, 0.01)
+        val l = ChargeLearn.from(listOf(charge(true, true), charge(true, true), charge(false, false)), 23) { pts }
+        assertEquals(true, l.cutByProtection); assertEquals(v5 / 23, l.earlyCellV!!, 1e-6)
+        assertEquals(3.61, l.copy(earlyCellV = 3.70).alarmCellV(3.63), 1e-9)      // always below the protection
+        assertEquals(3.45, ChargeLearn().alarmCellV(3.63), 1e-9)
+        assertNull(ChargeLearn.from(emptyList(), 23) { pts }.cutByProtection)
+    }
+
+    @Test fun statistics() {
+        val trips = List(30) { Session(1, Session.TYPE_TRIP, 0, 0, "", JSONObject().put("min_cell_idx", 12).put("max_current", 40.0)) }
+        val s = ChargeStats.from(listOf(charge(true, true), charge(true, true) { put("eta_first_min", 120.0) },
+            charge(true, true, 6), charge(false, false)), trips)!!
+        assertEquals(4, s.total); assertEquals(3, s.byProtection); assertEquals(0, s.byCharger); assertEquals(1, s.early)
+        assertEquals(9, s.cutCell); assertEquals(2, s.cutCellTimes)
+        assertEquals(12, s.weakCell); assertEquals(30, s.weakCellTimes); assertEquals(40, s.avgEtaErrorMin)
+    }
+
+    @Test fun alarmValues() {
+        assertNotNull(AlarmCheck.highVoltage(83.8, 23, 3630))               // above the protection (83.49)
+        assertNull(AlarmCheck.highVoltage(81.6, 23, 3630)); assertNull(AlarmCheck.highVoltage(0.0, 23, 3630))
+        assertNull(AlarmCheck.highVoltage(14.0, 0, 0))                      // unknown battery: not judged
+        assertNull(AlarmCheck.lowVoltage(68.0, 23, 3630, 2500)); assertNotNull(AlarmCheck.lowVoltage(80.0, 23, 3630, 2500))
+        assertNotNull(AlarmCheck.cellVoltage(3.63, 3630)); assertNull(AlarmCheck.cellVoltage(3.5, 3630))
+        assertEquals(81.6, AlarmCheck.effectiveHighVoltage(83.8, 23, 3630), 1e-9)
+        assertEquals(81.0, AlarmCheck.effectiveHighVoltage(81.0, 23, 3630), 1e-9)
+    }
+
+    @Test fun recognisesOtherBatteries() {
+        val M = BatteryModel
+        assertEquals(M.LFP, M.chemistry(3.33, 3.33, 88, true))
+        assertEquals(M.LION, M.chemistry(4.10, 3.70, 50, false))
+        assertEquals(M.LION, M.chemistry(3.60, 3.60, 40, true))
+        assertEquals(M.LTO, M.chemistry(2.40, 2.30, 60, true))
+        assertNull(M.chemistry(3.42, 3.42, 95, true))          // full LFP or low Li-ion: proves nothing
+        assertNull(M.chemistry(3.33, 3.33, 50, false))         // under load
+        // 13S Li-ion e-bike: its own ranges, not those of a 23S LFP
+        assertNull(AlarmCheck.highVoltage(53.0, 13, 4250)); assertNotNull(AlarmCheck.highVoltage(81.6, 13, 4250))
+        assertEquals(4.20, ChargeLearn().alarmCellV(4.25), 1e-9)
+        // 4S LFP
+        assertNull(AlarmCheck.highVoltage(14.2, 4, 3650)); assertNotNull(AlarmCheck.highVoltage(14.6, 4, 3650))
+        // unknown chemistry: nothing is judged
+        assertNull(AlarmCheck.highVoltage(81.6, 13, 0)); assertNull(AlarmCheck.lowVoltage(1.0, 13, 0, null))
+        assertEquals(100.0, RangeEstimator.estimate(10.0, 0.0, 50.0, 13, null, 5.0, null, 0.0)!!.km, 1e-9)
+        assertTrue(!BmsLimits().lfp && !BmsLimits().lion)
+    }
+
+    @Test fun drivingThresholdsFollowTheBattery() {
+        // 10 A scooter: 0 → 6 A pulls are shocks for it, though far below 15 A
+        val pts = (0 until 60).map { Point(it * 2000L, 36.0, if (it % 10 in 1..4) -6.0 else 0.0, 50, null, null, null) }
+        assertEquals(6, DrivingAnalyzer.analyze(pts, 10).shocks)
+        assertEquals(0, DrivingAnalyzer.analyze(pts, 50).shocks)
+    }
+
+    private val tz = java.util.TimeZone.getTimeZone("Africa/Casablanca")
+    private fun at(d: Int, h: Int, m: Int = 0) = java.util.Calendar.getInstance(tz).apply { clear(); set(2026, 10, d, h, m) }.timeInMillis
+    private fun trip(from: Long, to: Long, s0: Int, s1: Int, km: Double, wh: Double, perKm: Boolean = true) = Session(1, Session.TYPE_TRIP, from, to, "",
+        JSONObject().put("soc_start", s0).put("soc_end", s1).put("distance_km", km).put("wh", wh).put("ah", wh / 75)
+            .put("moving_s", (to - from) / 1000.0).put("max_speed", 45.0).put("avg_speed", 20.0).apply { if (perKm) put("wh_per_km", wh / km) else put("wh_per_km", JSONObject.NULL) })
+
+    @Test fun dailyReportRunsMidnightToMidnight() {
+        val night = trip(at(24, 23, 30), at(25, 0, 30), 60, 50, 10.0, 200.0)
+        val all = listOf(trip(at(24, 0, 0), at(24, 0, 20), 80, 78, 2.0, 40.0), trip(at(24, 10), at(24, 11), 78, 64, 12.8, 272.0),
+            trip(at(24, 12), at(24, 12, 10), 64, 63, 1.0, 5.0, perKm = false), night, trip(at(25, 8), at(25, 9), 50, 45, 5.0, 100.0),
+            trip(at(23, 22), at(23, 23, 59), 90, 80, 8.0, 170.0))
+        val days = DayReport.all(all, tz)
+        assertEquals(listOf(at(25, 0), at(24, 0), at(23, 0)), days.map { it.startMs })
+        val d = days[1]
+        assertEquals(at(25, 0), d.endMs)
+        assertEquals(4, d.tripCount)                                   // the night trip counts where it began…
+        assertEquals(2.0 + 12.8 + 1.0 + 5.0, d.km, 1e-6)               // …and half of it belongs to each day
+        assertEquals(40.0 + 272 + 5 + 100, d.wh, 1e-6)
+        assertEquals(80, d.socStart); assertEquals(55, d.socEnd)
+        assertEquals((40 + 272 + 100) / (2 + 12.8 + 5), d.whPerKm!!, 1e-6)   // incomplete energy left out
+        assertEquals(1, days[0].tripCount); assertEquals(10.0, days[0].km, 1e-6); assertEquals(55, days[0].socStart)
+        assertEquals(1, days[2].tripCount)
+        assertNull(DayReport.of(all, at(20, 0), tz))
+    }
+
+    @Test fun nothingDrawnWhileSilentMeansComplete() {
+        assertTrue(TripGap.known(18.2, 18.2, 29.9)); assertTrue(TripGap.known(18.2, 18.3, 29.9)); assertTrue(TripGap.known(18.2, 17.0, 29.9))
+        assertTrue(!TripGap.known(18.2, 25.0, 29.9)); assertTrue(!TripGap.known(0.0, 18.0, 29.9))
+    }
+
+    @Test fun chargeOutOfRange() {
+        // 2026-11-24: 42.7 min without Bluetooth at 5.1 A, BMS counter 23.4 → 26.9 Ah
+        assertEquals(3.5, TripGap.chargedAh(23.4, 26.9, 5.1, 2563.0), 1e-9)
+        // cut meanwhile: the jump to full is not counted as charge put in
+        assertEquals(5.1 * 60 / 3600 * 1.05, TripGap.chargedAh(28.4, 29.9, 5.1, 60.0), 1e-9)
+        assertEquals(0.0, TripGap.chargedAh(28.0, 27.0, 5.1, 600.0), 0.0); assertEquals(0.0, TripGap.chargedAh(0.0, 27.0, 5.1, 600.0), 0.0)
+    }
+
+    @Test fun dayShowsWhatWasNotRecorded() {
+        // 2026-11-24: 97 % at 06:52, 90 % at 07:28; trip 32 has more distance than its time allows
+        val bad = trip(at(24, 6, 50), at(24, 6, 52), 98, 97, 2.02, 31.4).also { it.data.put("avg_speed", 53.4).put("max_speed", 42.9) }
+        val good = trip(at(24, 7, 28), at(24, 7, 52), 90, 81, 9.34, 195.8)
+        val next = trip(at(24, 7, 59), at(24, 8, 3), 80, 79, 0.65, 9.8)
+        val chg = Session(1, Session.TYPE_CHARGE, at(24, 14), at(24, 16), "", JSONObject().put("soc_start", 79).put("soc_end", 100).put("ah", 6.0))
+        val d = DayReport.of(listOf(bad, good, next, chg), at(24, 0), tz)!!
+        assertEquals(7, d.unrecorded); assertEquals(11.0, d.socUsed, 1e-9); assertEquals(21, d.socCharged); assertTrue(d.partial)
+        assertEquals((195.8 + 9.8) / (9.34 + 0.65), d.whPerKm!!, 1e-6)
+    }
+
+    /** Filmed 2026-11-23: 82.75 V at 5.1 A, then one reading at 1.3 A with the cells already falling. */
+    @Test fun cellThatCausedTheCutNotTheOneAfterIt() {
+        val w = filmed()
+        w.charging(last + 1000, 100, 29.9, 29.9, 5.1, 82.75, cells(3.635), true, 6.92)
+        val falling = List(23) { if (it == 5) 3.602 else if (it == 8) 3.600 else if (it == 11) 3.525 else 3.575 }
+        w.charging(last + 2000, 100, 29.9, 29.9, 1.3, 82.26, falling, false, 6.92)
+        val r = w.stopped(last + 32_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
+        assertEquals(9, r.maxIdx); assertEquals(3.635, r.maxCell, 1e-9); assertEquals(82.75, r.packV, 1e-9)
+    }
+
+    /** Filmed 2026-11-24: 2.53 Ah in, 5 min announced, the cut came after 1.5 min (2.65 Ah). */
+    @Test fun timeLeftLearnsWhatCutsLeaveOut() {
+        val w = ChargeWatch(0, 90, 27.0)
+        for (k in 0..120) w.charging(k * 1000L, 94, 28.4, 29.9, if (k % 3 == 0) 5.0 else 5.1, 80.56, cells(3.505), true, 2.53)
+        assertEquals(5.07, w.avgCurrent()!!, 0.02)
+        val before = ChargePredictor.predict(94, 29.9, 5.0, ChargeLearn(true), w, 28.4, 3.63)!!
+        val after = ChargePredictor.predict(94, 29.9, 5.0, ChargeLearn(true, null, 0.25), w, 28.4, 3.63)!!
+        assertEquals(4.4, before.hours * 60, 0.1); assertEquals(1.4, after.hours * 60, 0.1)
+        // a wild value can't hide a whole charge
+        assertTrue(ChargePredictor.predict(50, 29.9, 5.0, ChargeLearn(true, null, 20.0), ChargeWatch(0, 50, 15.0), 15.0, 3.63)!!.hours > 2)
+    }
+
+    @Test fun highestCellsOverTheCharge() {
+        val w = ChargeWatch(0, 42, 12.5)
+        var t = 0L
+        fun run(n: Int, idx: Int, v: Double) = repeat(n) { t += 1000; w.charging(t, 60, 18.0, 29.9, 5.1, 78.0, List(23) { if (it == idx - 1) v else v - 0.02 }, true, 1.0) }
+        run(100, 20, 3.345); run(600, 21, 3.45); run(200, 17, 3.54); run(60, 9, 3.632)
+        val r = w.stopped(t + 30_000, 100, 29.9, 29.9, false, emptyList(), 3.63)
+        assertEquals(20, r.topStart); assertEquals(21, r.topMain); assertEquals(9, r.maxIdx); assertEquals(63, r.topMainPct)
+    }
+}

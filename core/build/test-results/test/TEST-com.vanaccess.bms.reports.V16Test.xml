@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.reports.V16Test" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.675Z" hostname="mx" time="0.042">
+  <properties/>
+  <testcase name="coldReducesRange" classname="com.vanaccess.bms.reports.V16Test" time="0.005"/>
+  <testcase name="drivingShocksVersusSmooth" classname="com.vanaccess.bms.reports.V16Test" time="0.004"/>
+  <testcase name="bestSpeedBand" classname="com.vanaccess.bms.reports.V16Test" time="0.002"/>
+  <testcase name="capacityTestFullCycle" classname="com.vanaccess.bms.reports.V16Test" time="0.012"/>
+  <testcase name="chargeTimeTo80And100" classname="com.vanaccess.bms.reports.V16Test" time="0.002"/>
+  <testcase name="protectionRepeatsFromHistory" classname="com.vanaccess.bms.reports.V16Test" time="0.003"/>
+  <testcase name="energyCost" classname="com.vanaccess.bms.reports.V16Test" time="0.002"/>
+  <testcase name="capacityTestInterrupted" classname="com.vanaccess.bms.reports.V16Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

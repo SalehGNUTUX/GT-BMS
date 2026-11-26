@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.reports.RegenMeterTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:09.629Z" hostname="mx" time="0.024">
+  <properties/>
+  <testcase name="withoutGpsItCountsUnsplit" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.005"/>
+  <testcase name="shortPauseInABrakeIsNoSlope" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.002"/>
+  <testcase name="share" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.0"/>
+  <testcase name="descentEndingInABrake" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.004"/>
+  <testcase name="oldTripsAndSaving" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.002"/>
+  <testcase name="brakingAndDescentAreTold" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.005"/>
+  <testcase name="chargerIsNotRecuperation" classname="com.vanaccess.bms.reports.RegenMeterTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

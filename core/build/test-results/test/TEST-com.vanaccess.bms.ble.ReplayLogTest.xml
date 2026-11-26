@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vanaccess.bms.ble.ReplayLogTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-26T10:27:08.680Z" hostname="mx" time="0.298">
+  <properties/>
+  <testcase name="bestwayParserOnRealTraffic" classname="com.vanaccess.bms.ble.ReplayLogTest" time="0.275"/>
+  <testcase name="readsTheReportOldestFirst" classname="com.vanaccess.bms.ble.ReplayLogTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
