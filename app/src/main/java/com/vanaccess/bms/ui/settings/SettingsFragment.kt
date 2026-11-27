@@ -33,6 +33,12 @@ import org.json.JSONObject
 
 class SettingsFragment : Fragment() {
 
+    companion object {
+        private var lastSection: String? = null
+        private var restoreSection: String? = null
+        private var restoreScroll = 0
+    }
+
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var prefs: AppPreferences
@@ -186,7 +192,10 @@ class SettingsFragment : Fragment() {
 
     private data class Section(val key: String, val icon: Int, val title: Int, val sub: Int, val cards: List<View>)
 
-    private var openSection: String? = null
+    /** Kept for the whole app session: going to Live and back returns to the same section and place. */
+    private var openSection: String?
+        get() = lastSection
+        set(v) { lastSection = v }
     private lateinit var sections: List<Section>
 
     /** Settings start as a grid of tiles; a tile opens one section with a back arrow. */
@@ -275,7 +284,14 @@ class SettingsFragment : Fragment() {
         binding.tvSettingsTitle.text = getString(sec?.title ?: R.string.lbl_settings)
         sections.flatMap { it.cards }.forEach { it.visibility = View.GONE }
         sec?.cards?.forEach { it.visibility = View.VISIBLE }
-        binding.settingsScroll.scrollTo(0, 0)
+        val y = if (key != null && key == restoreSection) restoreScroll else 0
+        restoreSection = null
+        binding.settingsScroll.post { _binding?.settingsScroll?.scrollTo(0, y) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        _binding?.let { restoreSection = openSection; restoreScroll = it.settingsScroll.scrollY }
     }
 
     /** ⓘ on fields whose meaning isn't obvious: tap for an explanation. */
@@ -552,6 +568,7 @@ class SettingsFragment : Fragment() {
         if (until > System.currentTimeMillis()) {
             text(getString(R.string.pc_yielded_until, hm.format(java.util.Date(until))), 14f, "#F5B83D", bold = true, top = 8)
             button(getString(R.string.pc_resume)) { svc?.resumeLink() }
+            text(getString(R.string.pc_yield_guard), 12f, "#9BA3B8")
         } else button(getString(R.string.pc_yield)) {
             val mins = intArrayOf(30, 60, 120, 240)
             com.vanaccess.bms.ui.AppDialog.show(ctx, getString(R.string.pc_yield_title),
@@ -1080,7 +1097,7 @@ class SettingsFragment : Fragment() {
         )
         // Live tab design
         val designs = listOf("segments" to R.string.design_segments, "classic" to R.string.design_classic, "ring" to R.string.design_ring,
-            "liquid" to R.string.design_liquid, "cells" to R.string.design_cells, "horizontal" to R.string.design_horizontal,
+            "liquid" to R.string.design_liquid, "cells" to R.string.design_cells, "cells_mono" to R.string.design_cells_mono, "horizontal" to R.string.design_horizontal,
             "arc" to R.string.design_arc, "compact" to R.string.design_compact, "ride" to R.string.design_ride)
         binding.radioLiveDesign.removeAllViews()
         designs.forEachIndexed { i, (id, label) ->

@@ -37,7 +37,7 @@
     </string-array>
     <string name="design_title">Live screen design</string>
     <string name="design_desc">How the Live tab shows your battery.</string>
-    <string name="design_classic">Classic — battery drawing (default)</string>
+    <string name="design_classic">Classic — battery drawing</string>
     <string name="design_ring">Ring — circular gauge</string>
     <string name="design_compact">Compact — more values, smaller</string>
     <string name="design_ride">Riding — very large numbers, screen stays on (also landscape)</string>
@@ -54,5 +54,5 @@
     <string name="balance_reminder_title">Time for a full charge</string>
     <string name="balance_reminder_switch">Remind me to charge to 100 % (balancing)</string>
     <string name="rep_delete_msg">The report and its chart will be removed. This cannot be undone.</string>
-    <string name="design_segments">Segments — coloured bars, top bar pulses with the current</string>
+    <string name="design_segments">Segments (default) — coloured bars, top bar pulses with the current</string>
 </resources>

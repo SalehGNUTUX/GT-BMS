@@ -17,10 +17,12 @@ import kotlin.math.sin
 
 /**
  * More Live designs, drawn by one view ([style]):
- *  - "liquid": the battery holds a liquid whose surface waves while current flows (faster with
- *    more current); bubbles rise while charging;
- *  - "cells": a grid of 20 small blocks (5 % each), the next block blinks while charging and the
- *    top one while discharging;
+ *  - "liquid": blue liquid, deeper blue the fuller it is and paler as it empties; its surface
+ *    always waves a little (more with the current), leans and sloshes as the phone tilts
+ *    (gravity sensor, only while shown); bubbles rise while charging;
+ *  - "cells": a grid of 20 small blocks (5 % each) coloured by height like the segments (red at
+ *    the bottom up to green); "cells_mono": the same blocks in one colour that changes at 50 %,
+ *    25 % and 15 %; the next block blinks while charging and the top one while discharging;
  *  - "horizontal": a wide battery filled from the start side of the reading direction;
  *  - "arc": a dial with red, orange, yellow and green zones and a needle at the charge.
  * Colours follow the level as in the other designs: red below 25 %, orange, yellow, green from 50 %.
@@ -30,7 +32,7 @@ class StyledGaugeView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     var style: String = "liquid"
-        set(v) { field = v; invalidate() }
+        set(v) { field = v; updateSensor(); invalidate() }
 
     var level: Int = 0
         set(v) { field = v.coerceIn(0, 100); invalidate() }
@@ -51,6 +53,54 @@ class StyledGaugeView @JvmOverloads constructor(
     private var phase = 0f
     private var animator: ValueAnimator? = null
 
+    // Liquid: the surface leans with the phone (radians), with a little spring so it sloshes
+    private var tilt = 0f
+    private var tiltSpeed = 0f
+    private var tiltTarget = 0f
+    private var idle = 0f
+    private val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
+    private val gravity = sensors?.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY)
+        ?: sensors?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+    private var listening = false
+    private val tiltListener = object : android.hardware.SensorEventListener {
+        override fun onSensorChanged(e: android.hardware.SensorEvent) {
+            // Screen x leans against gravity: the liquid stays level with the ground
+            val gx = e.values[0]; val gy = e.values[1]
+            tiltTarget = kotlin.math.atan2(gx, kotlin.math.abs(gy).coerceAtLeast(0.5f)).coerceIn(-0.6f, 0.6f)
+        }
+        override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
+    }
+    private val frame = object : Runnable {
+        override fun run() {
+            if (!listening) return
+            // spring towards the phone's lean, with damping: a short slosh after each move
+            tiltSpeed += (tiltTarget - tilt) * 0.08f
+            tiltSpeed *= 0.86f
+            tilt += tiltSpeed
+            idle = (idle + 0.012f) % 1f
+            invalidate()
+            postOnAnimation(this)
+        }
+    }
+
+    private fun updateSensor() {
+        val want = style == "liquid" && animate && isAttachedToWindow && isShown && windowVisibility == VISIBLE
+        if (want == listening) return
+        listening = want
+        if (want) {
+            gravity?.let { sensors?.registerListener(tiltListener, it, android.hardware.SensorManager.SENSOR_DELAY_UI) }
+            postOnAnimation(frame)
+        } else {
+            sensors?.unregisterListener(tiltListener)
+            removeCallbacks(frame)
+        }
+    }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); updateSensor() }
+    override fun onVisibilityChanged(changedView: View, v: Int) { super.onVisibilityChanged(changedView, v); updateSensor() }
+    // Screen off or app in the background: the sensor stops
+    override fun onWindowVisibilityChanged(v: Int) { super.onWindowVisibilityChanged(v); updateSensor() }
+
     private fun levelColor(p: Int) = when { p < 15 -> RED; p < 25 -> ORANGE; p < 50 -> YELLOW; else -> GREEN }
 
     private fun updateMotion() {
@@ -66,11 +116,18 @@ class StyledGaugeView @JvmOverloads constructor(
         }
     }
 
-    override fun onDetachedFromWindow() { animator?.cancel(); super.onDetachedFromWindow() }
+    override fun onDetachedFromWindow() {
+        animator?.cancel()
+        updateSensorOff()
+        super.onDetachedFromWindow()
+    }
+
+    private fun updateSensorOff() { listening = false; sensors?.unregisterListener(tiltListener); removeCallbacks(frame) }
 
     override fun onDraw(canvas: Canvas) {
         when (style) {
-            "cells" -> drawCells(canvas)
+            "cells" -> drawCells(canvas, ladder = true)
+            "cells_mono" -> drawCells(canvas, ladder = false)
             "horizontal" -> drawHorizontal(canvas)
             "arc" -> drawArc(canvas)
             else -> drawLiquid(canvas)
@@ -92,17 +149,29 @@ class StyledGaugeView @JvmOverloads constructor(
         return RectF(pad + inset, capH + inset, w - pad - inset, h - pad - inset)
     }
 
+    /** Deep blue when full, paler and more transparent as it empties. */
+    private fun liquidColor(p: Int): Int {
+        val f = 0.35f + 0.65f * p / 100f
+        val r = (110 - 80 * f).toInt(); val g = (175 - 65 * f).toInt()
+        return Color.argb((90 + 165 * f).toInt(), r, g, 255)
+    }
+
     private fun drawLiquid(canvas: Canvas) {
         val inner = body(canvas)
         val surface = inner.bottom - inner.height() * level / 100f
         val flowing = abs(current) > 0.3
-        val amp = if (flowing && level in 1..99) 4 * d else 0f
+        // Always a gentle wave; more with the current
+        val amp = if (level in 1..99) (if (flowing) 4.5f else 2f) * d else 0f
+        val t0 = if (flowing) phase else idle
+        val lean = kotlin.math.tan(tilt.toDouble()).toFloat()
+        val cx = inner.centerX()
         path.reset()
         path.moveTo(inner.left, inner.bottom)
-        val steps = 24
+        val steps = 28
         for (k in 0..steps) {
             val x = inner.left + inner.width() * k / steps
-            val y = surface + amp * sin((k.toFloat() / steps * 2 * Math.PI + phase * 2 * Math.PI)).toFloat()
+            val wave = amp * sin((k.toFloat() / steps * 2 * Math.PI + t0 * 2 * Math.PI)).toFloat()
+            val y = surface + (x - cx) * lean + wave
             path.lineTo(x, y.coerceIn(inner.top, inner.bottom))
         }
         path.lineTo(inner.right, inner.bottom); path.close()
@@ -110,25 +179,32 @@ class StyledGaugeView @JvmOverloads constructor(
         r.set(inner); val clip = Path().apply { addRoundRect(r, 8 * d, 8 * d, Path.Direction.CW) }
         canvas.clipPath(clip)
         fill.color = Color.parseColor("#14FFFFFF"); canvas.drawRect(inner, fill)
-        fill.color = levelColor(level); canvas.drawPath(path, fill)
-        // A lighter band under the surface gives it depth
-        fill.color = Color.WHITE; fill.alpha = 40
-        canvas.drawRect(inner.left, surface + amp, inner.right, (surface + amp + 6 * d).coerceAtMost(inner.bottom), fill)
-        fill.alpha = 255
+        // Deeper at the bottom
+        fill.shader = android.graphics.LinearGradient(0f, surface, 0f, inner.bottom,
+            liquidColor((level - 10).coerceAtLeast(0)), liquidColor((level + 25).coerceAtMost(100)), android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawPath(path, fill)
+        fill.shader = null
+        // A light line on the surface
+        stroke.color = Color.WHITE; stroke.alpha = 90; stroke.strokeWidth = 2 * d
+        if (level in 1..99) canvas.drawLine(inner.left, surface + (inner.left - cx) * lean, inner.right, surface + (inner.right - cx) * lean, stroke)
+        stroke.alpha = 255
         // Bubbles rise while charging
         if (current > 0.3 && level > 3) {
-            fill.color = Color.WHITE; fill.alpha = 110
-            for (b in 0 until 4) {
-                val t = (phase + b / 4f) % 1f
-                val x = inner.left + inner.width() * (0.2f + 0.2f * b)
-                val y = inner.bottom - (inner.bottom - surface) * t
-                canvas.drawCircle(x, y, (2.2f + b % 2) * d, fill)
+            fill.color = Color.WHITE; fill.alpha = 120
+            for (bb in 0 until 4) {
+                val t = (phase + bb / 4f) % 1f
+                val x = inner.left + inner.width() * (0.2f + 0.2f * bb)
+                val top = surface + (x - cx) * lean
+                val y = inner.bottom - (inner.bottom - top) * t
+                canvas.drawCircle(x, y, (2.2f + bb % 2) * d, fill)
             }
         }
         canvas.restore()
     }
 
-    private fun drawCells(canvas: Canvas) {
+    private fun ladder(row: Int) = when (row) { 0, 1 -> RED; 2 -> ORANGE; 3, 4 -> YELLOW; else -> GREEN }
+
+    private fun drawCells(canvas: Canvas, ladder: Boolean) {
         val inner = body(canvas)
         val cols = 2; val rows = 10; val gap = 3 * d
         val cw = (inner.width() - gap * (cols - 1)) / cols
@@ -143,7 +219,7 @@ class StyledGaugeView @JvmOverloads constructor(
             r.set(x1, y1, x1 + cw, y2)
             when {
                 i < filled -> {
-                    fill.color = levelColor(level)
+                    fill.color = if (ladder) ladder(row) else levelColor(level)
                     fill.alpha = if (blink && current < 0 && i == filled - 1) (255 * on).toInt() else 255
                 }
                 blink && current > 0 && i == filled -> { fill.color = GREEN; fill.alpha = (200 * on).toInt() }
@@ -216,6 +292,6 @@ class StyledGaugeView @JvmOverloads constructor(
         private val YELLOW = Color.parseColor("#F5B83D")
         private val GREEN = Color.parseColor("#43D17A")
         private val BLUE = Color.parseColor("#4DA3FF")
-        val STYLES = listOf("liquid", "cells", "horizontal", "arc")
+        val STYLES = listOf("liquid", "cells", "cells_mono", "horizontal", "arc")
     }
 }

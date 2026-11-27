@@ -29,8 +29,12 @@
     <string name="standby_day">Allumé à l\'arrêt</string>
     <string name="dur_m">%1$d min</string>
     <string name="dur_s">%1$d s</string>
-    <string name="design_liquid">Liquide — la batterie se remplit d\'un liquide qui bouge avec le courant</string>
-    <string name="design_cells" formatted="false">Cellules — 20 petits blocs de 5 %, le suivant clignote en charge</string>
+    <string name="design_liquid">Liquide — liquide bleu, plus pâle en se vidant ; il ondule et penche avec le téléphone</string>
+    <string name="design_cells" formatted="false">Cellules — 20 petits blocs colorés du rouge en bas au vert</string>
     <string name="design_horizontal">Horizontal — une large batterie remplie dans le sens de lecture</string>
     <string name="design_arc">Cadran — zones colorées et aiguille sur la charge</string>
+    <string name="pc_yield_free">L\'ordinateur n\'utilise pas la batterie : le téléphone l\'a reprise.</string>
+    <string name="pc_yield_left">Le téléphone a quitté le Wi-Fi de la maison : il a repris la batterie.</string>
+    <string name="pc_yield_guard">Reprise automatique si l\'ordinateur ne l\'utilise pas ou si vous quittez le Wi-Fi.</string>
+    <string name="design_cells_mono" formatted="false">Cellules, une couleur — jaunes sous 50 %, orange sous 25 %, rouges sous 15 %</string>
 </resources>

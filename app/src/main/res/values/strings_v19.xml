@@ -29,8 +29,12 @@
     <string name="standby_day">On without moving</string>
     <string name="dur_m">%1$d min</string>
     <string name="dur_s">%1$d s</string>
-    <string name="design_liquid">Liquid — the battery fills like a liquid that moves with the current</string>
-    <string name="design_cells" formatted="false">Cells — 20 small blocks of 5 %, the next one blinks while charging</string>
+    <string name="design_liquid">Liquid — blue liquid, paler as it empties; it waves and leans as the phone tilts</string>
+    <string name="design_cells" formatted="false">Cells — 20 small blocks coloured from red at the bottom to green</string>
     <string name="design_horizontal">Horizontal — a wide battery filling in the reading direction</string>
     <string name="design_arc">Dial — coloured zones and a needle at the charge</string>
+    <string name="pc_yield_free">The computer is not using the battery: the phone took it back.</string>
+    <string name="pc_yield_left">The phone left the home Wi-Fi: it took the battery back.</string>
+    <string name="pc_yield_guard">Taken back by itself when the computer does not use the battery or when you leave the home Wi-Fi.</string>
+    <string name="design_cells_mono" formatted="false">Cells, one colour — the blocks turn yellow below 50 %, orange below 25 %, red below 15 %</string>
 </resources>

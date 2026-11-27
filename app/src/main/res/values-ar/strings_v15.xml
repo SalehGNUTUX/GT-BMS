@@ -37,7 +37,7 @@
     </string-array>
     <string name="design_title">تصميم شاشة «مباشر»</string>
     <string name="design_desc">طريقة عرض بطاريتك في تبويب «مباشر».</string>
-    <string name="design_classic">كلاسيكي — رسم البطارية (الافتراضي)</string>
+    <string name="design_classic">كلاسيكي — رسم البطارية</string>
     <string name="design_ring">حلقة — مقياس دائري</string>
     <string name="design_compact">مدمج — قيم أكثر وأصغر</string>
     <string name="design_ride">القيادة — أرقام كبيرة جداً، والشاشة تبقى مضاءة (ويعمل أفقياً)</string>
@@ -54,5 +54,5 @@
     <string name="balance_reminder_title">حان وقت شحنة كاملة</string>
     <string name="balance_reminder_switch">ذكّرني بالشحن حتى 100٪ (للموازنة)</string>
     <string name="rep_delete_msg">سيُحذف التقرير ورسمه البياني نهائياً، ولا يمكن التراجع.</string>
-    <string name="design_segments">شرطات — بطارية بشرطات ملونة، والشرطة العليا تنبض مع التيار</string>
+    <string name="design_segments">شرطات (الافتراضي) — بطارية بشرطات ملونة، والشرطة العليا تنبض مع التيار</string>
 </resources>

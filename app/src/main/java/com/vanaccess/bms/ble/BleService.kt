@@ -274,6 +274,7 @@ class BleService : LifecycleService() {
             userDisconnected = true
             linkYield.postValue(yielded)
             handler.postDelayed(resumeRunnable, yielded - System.currentTimeMillis())
+            handler.post { watchYield() }
         } else if (!savedAddress.isNullOrEmpty()) {
             connectToDevice(savedAddress)
         }
@@ -682,6 +683,7 @@ class BleService : LifecycleService() {
             handler.removeCallbacks(resumeRunnable)
             handler.postDelayed(resumeRunnable, until - System.currentTimeMillis())
             showYieldNotice(until)
+            watchYield()
             log("link left to the computer for $minutes min")
         }
         return until
@@ -689,6 +691,7 @@ class BleService : LifecycleService() {
 
     fun resumeLink() {
         handler.post {
+            unwatchYield()
             handler.removeCallbacks(resumeRunnable)
             val was = prefs.linkYieldUntil != 0L
             prefs.linkYieldUntil = 0L
@@ -697,6 +700,63 @@ class BleService : LifecycleService() {
             if (was) log("link taken back from the computer")
             prefs.selectedDeviceAddress?.takeIf { it.isNotEmpty() }?.let { connectToDevice(it) }
         }
+    }
+
+    // ── Guards while the link is left to the computer ─────────────────────────
+    // A forgotten yield must not cost a trip: the phone takes the battery back by itself when
+    //  - the battery advertises again (no one holds its link: the computer is not using it), or
+    //  - the phone leaves the Wi-Fi network it was on (the owner went out).
+    private var yieldScan: android.bluetooth.le.ScanCallback? = null
+    private var yieldNet: android.net.ConnectivityManager.NetworkCallback? = null
+    private var freeSeenMs = 0L
+
+    private fun endYield(reasonRes: Int, why: String) {
+        if (prefs.linkYieldUntil == 0L) return
+        log("yield ended: $why")
+        com.vanaccess.bms.data.NotifLog.add(this, getString(R.string.pc_yield_title), getString(reasonRes))
+        resumeLink()
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun watchYield() {
+        unwatchYield()
+        freeSeenMs = 0L
+        val addr = prefs.selectedDeviceAddress
+        if (!addr.isNullOrEmpty()) runCatching {
+            val cb = object : android.bluetooth.le.ScanCallback() {
+                override fun onScanResult(type: Int, r: android.bluetooth.le.ScanResult?) {
+                    val now = System.currentTimeMillis()
+                    // Seen free twice at least a minute apart: nobody uses it
+                    if (freeSeenMs == 0L) freeSeenMs = now
+                    else if (now - freeSeenMs >= 60_000L) handler.post { endYield(R.string.pc_yield_free, "battery advertising, computer not connected") }
+                }
+            }
+            BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner?.startScan(
+                listOf(android.bluetooth.le.ScanFilter.Builder().setDeviceAddress(addr).build()),
+                android.bluetooth.le.ScanSettings.Builder().setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_POWER).build(), cb)
+            yieldScan = cb
+        }.onFailure { log("yield scan: $it") }
+        runCatching {
+            val cm = getSystemService(android.net.ConnectivityManager::class.java)
+            val wifi = cm.allNetworks.firstOrNull { cm.getNetworkCapabilities(it)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true }
+            if (wifi != null) {
+                val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+                    override fun onLost(network: android.net.Network) {
+                        if (network == wifi) handler.post { endYield(R.string.pc_yield_left, "left the Wi-Fi network") }
+                    }
+                }
+                cm.registerNetworkCallback(android.net.NetworkRequest.Builder().addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI).build(), cb)
+                yieldNet = cb
+            }
+        }.onFailure { log("yield wifi watch: $it") }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun unwatchYield() {
+        yieldScan?.let { cb -> runCatching { BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner?.stopScan(cb) } }
+        yieldScan = null
+        yieldNet?.let { cb -> runCatching { getSystemService(android.net.ConnectivityManager::class.java).unregisterNetworkCallback(cb) } }
+        yieldNet = null
     }
 
     private fun showYieldNotice(until: Long) {
@@ -1824,6 +1884,7 @@ class BleService : LifecycleService() {
 
     override fun onDestroy() {
         closeSyncNow()
+        unwatchYield()
         log("service destroyed")
         prefs.monitoring = false
         instance = null

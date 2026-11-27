@@ -33,8 +33,12 @@
     <string name="standby_day">التشغيل دون حركة</string>
     <string name="dur_m">%1$d د</string>
     <string name="dur_s">%1$d ث</string>
-    <string name="design_liquid">سائل — البطارية تمتلئ كسائل يتحرك مع التيار</string>
-    <string name="design_cells" formatted="false">خلايا — 20 مربعاً صغيراً كل منها 5٪، والتالي يومض أثناء الشحن</string>
+    <string name="design_liquid">سائل — سائل أزرق يبهت كلما قلّ الشحن، يتموج ويميل مع ميل الهاتف</string>
+    <string name="design_cells" formatted="false">خلايا ملونة — 20 مربعاً ملوّنة من الأحمر في الأسفل إلى الأخضر</string>
     <string name="design_horizontal">أفقي — بطارية عريضة تمتلئ باتجاه القراءة</string>
     <string name="design_arc">عدّاد — مناطق ملونة ومؤشر عند نسبة الشحن</string>
+    <string name="pc_yield_free">الحاسوب لا يستعمل البطارية: استعادها الهاتف.</string>
+    <string name="pc_yield_left">غادر الهاتف شبكة البيت: استعاد البطارية.</string>
+    <string name="pc_yield_guard">يستعيدها الهاتف وحده إن لم يستعملها الحاسوب أو غادرتَ شبكة البيت.</string>
+    <string name="design_cells_mono" formatted="false">خلايا بلون واحد — تصفرّ تحت 50٪ وتبرتقل تحت 25٪ وتحمرّ تحت 15٪</string>
 </resources>

@@ -37,7 +37,7 @@
     </string-array>
     <string name="design_title">Style de l\'écran Direct</string>
     <string name="design_desc">Comment l\'onglet Direct affiche votre batterie.</string>
-    <string name="design_classic">Classique — dessin de batterie (par défaut)</string>
+    <string name="design_classic">Classique — dessin de batterie</string>
     <string name="design_ring">Anneau — jauge circulaire</string>
     <string name="design_compact">Compact — plus de valeurs, plus petites</string>
     <string name="design_ride">Conduite — très grands chiffres, écran toujours allumé (paysage aussi)</string>
@@ -54,5 +54,5 @@
     <string name="balance_reminder_title">C\'est le moment d\'une charge complète</string>
     <string name="balance_reminder_switch">Me rappeler de charger à 100 % (équilibrage)</string>
     <string name="rep_delete_msg">Le rapport et son graphique seront supprimés. Cette action est irréversible.</string>
-    <string name="design_segments">Segments — barres colorées, la barre du haut pulse avec le courant</string>
+    <string name="design_segments">Segments (par défaut) — barres colorées, la barre du haut pulse avec le courant</string>
 </resources>
