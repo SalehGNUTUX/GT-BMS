@@ -1,0 +1,1 @@
+1.9.3: values read correctly in every language and direction (ranges in time order, short durations in minutes); new battery designs: liquid, cells, horizontal, dial; segments is the default.

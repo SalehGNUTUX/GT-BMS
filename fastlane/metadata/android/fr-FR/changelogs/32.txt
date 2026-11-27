@@ -1,0 +1,1 @@
+1.9.3 : valeurs lisibles dans chaque langue et sens d'écriture (plages dans l'ordre du temps, durées courtes en minutes) ; nouveaux designs de batterie : liquide, cellules, horizontal, cadran ; segments par défaut.
