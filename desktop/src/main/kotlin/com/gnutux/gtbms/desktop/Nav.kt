@@ -52,7 +52,11 @@ fun App(monitor: Monitor, initialPlace: Place = Place.LIVE, initialTab: Int = 0,
                             place == Place.SETTINGS -> SettingsScreen(monitor, onImport, initialSection)
                             place == Place.BATTERY && tab == 1 -> ReportsScreen(monitor)
                             place == Place.BATTERY && tab == 2 -> NotifsScreen(monitor)
-                            b == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(Tr["waiting"], color = Palette.grey) }
+                            b == null -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                Text(st.problem ?: Tr["waiting"], color = Palette.grey, fontSize = 16.sp)
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = { SettingsMemory.open = "secSource"; place = Place.SETTINGS }) { Text(Tr["secSource"]) }
+                            }
                             place == Place.BATTERY -> CellsScreen(st.cells, b.balanceBits)
                             else -> LiveScreen(st, monitor)
                         }

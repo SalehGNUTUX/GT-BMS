@@ -25,6 +25,18 @@ class Settings(private val file: File) {
     var systemNotify: Boolean get() = o.optBoolean("alarm_notify", true); set(v) { o.put("alarm_notify", v); save() }
     var phoneHost: String get() = o.optString("phone_host", ""); set(v) { o.put("phone_host", v); save() }
     var phonePort: Int get() = o.optInt("phone_port", 0); set(v) { o.put("phone_port", v); save() }
+    /** What the Live screen reads at start: "ble" (the battery), "phone", "sim" or "" (the last reading kept). */
+    var source: String get() = o.optString("source", ""); set(v) { o.put("source", v); save() }
+    /** The protocol that answered last time, per battery address. */
+    fun driverFor(address: String): String? = o.optJSONObject("drivers")?.optString(address)?.ifEmpty { null }
+    fun setDriverFor(address: String, id: String) { o.put("drivers", (o.optJSONObject("drivers") ?: JSONObject()).put(address, id)); save() }
+    /** The battery drawing on the Live screen (the phone's designs). */
+    var design: String get() = o.optString("live_design", "segments"); set(v) { o.put("live_design", v); save() }
+    /** Energy cost: price of a kWh (0 = not shown), currency, and the fuel comparison (0 = off). */
+    var priceKwh: Double get() = o.optDouble("price_kwh", 0.0); set(v) { o.put("price_kwh", v); save() }
+    var currency: String get() = o.optString("currency", "MAD"); set(v) { o.put("currency", v); save() }
+    var fuelPrice: Double get() = o.optDouble("fuel_price", 0.0); set(v) { o.put("fuel_price", v); save() }
+    var fuelL100: Double get() = o.optDouble("fuel_l100", 0.0); set(v) { o.put("fuel_l100", v); save() }
     var lastPushMs: Long get() = o.optLong("last_push", 0); set(v) { o.put("last_push", v); save() }
     fun lastPullMs(host: String): Long = o.optJSONObject("last_pull")?.optLong(host, 0) ?: 0
     fun setLastPull(host: String, t: Long) { o.put("last_pull", (o.optJSONObject("last_pull") ?: JSONObject()).put(host, t)); save() }
@@ -42,6 +54,16 @@ class Settings(private val file: File) {
         b.optInt("alarm_high_soc").takeIf { it > 0 }?.let { highSoc = it }
         if (b.has("alarm_low_enabled")) lowEnabled = b.optBoolean("alarm_low_enabled")
         b.optInt("alarm_low_soc").takeIf { it > 0 }?.let { lowSoc = it }
+        takeShared { k -> if (b.has(k)) b.get(k).toString() else null }
+    }
+
+    /** Prices and the design, the same keys in the phone's sync answer and in its backup. */
+    private fun takeShared(v: (String) -> String?) {
+        v("price_kwh")?.toDoubleOrNull()?.let { priceKwh = it }
+        v("currency")?.takeIf { it.isNotBlank() }?.let { currency = it }
+        v("fuel_price")?.toDoubleOrNull()?.let { fuelPrice = it }
+        v("fuel_l100")?.toDoubleOrNull()?.let { fuelL100 = it }
+        v("live_design")?.takeIf { it.isNotBlank() }?.let { design = it }
     }
 
     private fun save() = runCatching { file.parentFile?.mkdirs(); file.writeText(o.toString(2)) }
@@ -62,5 +84,6 @@ class Settings(private val file: File) {
         v("bms_limits")?.let { s -> runCatching { BmsLimits.fromJson(s.replace("&quot;", "\"").replace("&amp;", "&")) }.getOrNull()?.let { if (it.cellOvMv != null) limits = it } }
         // a limit learned from a real cut, when the BMS doesn't report it
         v("bms_cell_ov_mv")?.toIntOrNull()?.takeIf { it > 0 && limits.cellOvMv == null }?.let { limits = limits.copy(cellOvMv = it) }
+        takeShared { map[it] }
     }
 }

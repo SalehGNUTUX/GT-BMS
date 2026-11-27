@@ -67,12 +67,18 @@ internal fun LiveScreen(st: Monitor.State, monitor: Monitor) {
     val state = when { b.current > 0.1 -> "st_charging" to Palette.green; b.current < -0.1 -> "st_discharging" to Palette.blue; else -> "st_idle" to Palette.grey }
     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Card(Modifier.weight(1f)) {
-                Text(Tr["soc"], color = Palette.grey, fontSize = 14.sp)
-                Text("${b.soc}%", color = socColor(b.soc), fontSize = 64.sp, fontWeight = FontWeight.Bold)
-                LinearProgressIndicator(progress = { b.soc / 100f }, color = socColor(b.soc), trackColor = Palette.tile, modifier = Modifier.fillMaxWidth().height(10.dp))
-                Spacer(Modifier.height(10.dp))
-                Text(Res.s(state.first), color = state.second, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Card(Modifier.weight(1.2f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(Tr["soc"], color = Palette.grey, fontSize = 14.sp)
+                        Text(iso("${b.soc}%"), color = socColor(b.soc), fontSize = 64.sp, fontWeight = FontWeight.Bold)
+                        Text(Res.s(state.first), color = state.second, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        // How old the values are, when they are not live
+                        if (st.kept || st.problem != null) Text(String.format(java.util.Locale.US, Tr["readAt"], iso(SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(st.clock)))),
+                            color = Palette.orange, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    BatteryGauge(monitor.settings.design, b.soc, if (st.kept) 0.0 else b.current, height = 170.dp)
+                }
             }
             Column(Modifier.weight(2f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -91,6 +97,13 @@ internal fun LiveScreen(st: Monitor.State, monitor: Monitor) {
                     Metric(Tr["delta"], if (st.cells.size > 1) f("%.0f mV", (st.cells.max() - st.cells.min()) * 1000) else "—", modifier = Modifier.weight(1f))
                 }
             }
+        }
+        // What the charge left still covers, at this vehicle's consumption learned from its trips
+        val version by monitor.reportsVersion.collectAsState()
+        val whKm = remember(version) { runCatching { com.vanaccess.bms.reports.TripLearn.consumption(monitor.store.list(200).filter { it.type == com.vanaccess.bms.reports.Session.TYPE_TRIP }.take(20))?.first }.getOrNull() }
+        if (whKm != null && whKm > 0 || st.cells.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (whKm != null && whKm > 0) Metric(Res.s("m_range"), f("≈ %.0f km", b.remainCapacity * b.packVoltage / whKm), Palette.green, Modifier.weight(1f))
+            if (st.cells.isNotEmpty()) Card(Modifier.weight(3f)) { CellsStrip(st.cells, b.balanceBits) }
         }
         ChargeCard(st, monitor)
     }
@@ -158,15 +171,36 @@ internal fun CellsScreen(cells: List<Double>, balance: Long) {
     }
 }
 
+/** All cells at a glance: a bar each, highest red, lowest blue, ⚖ while balancing. */
+@Composable
+internal fun CellsStrip(cells: List<Double>, balance: Long) {
+    val mx = cells.max(); val mn = cells.min()
+    val lo = mn - 0.02; val hi = mx + 0.005
+    Text(para(line(String.format(Locale.US, Tr["count"], cells.size), f("%.3f V", mn), f("%.3f V", mx), f("%.0f mV", (mx - mn) * 1000))), color = Palette.grey, fontSize = 13.sp)
+    Spacer(Modifier.height(6.dp))
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(Modifier.fillMaxWidth().height(70.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+            cells.forEachIndexed { i, v ->
+                val frac = ((v - lo) / (hi - lo)).toFloat().coerceIn(0.05f, 1f)
+                val c = when (v) { mx -> Palette.red; mn -> Palette.blue; else -> Palette.green }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().fillMaxHeight(frac * 0.8f).background(c.copy(alpha = if (balance and (1L shl i) != 0L) 0.55f else 0.9f), RoundedCornerShape(3.dp)))
+                    Text("${i + 1}", color = Palette.grey, fontSize = 9.sp)
+                }
+            }
+        }
+    }
+}
+
 // ── Reports ────────────────────────────────────────────────────────────────
 
-private fun kind(s: Session) = when (s.type) {
+internal fun kind(s: Session) = when (s.type) {
     Session.TYPE_CHARGE -> Triple("🔌", "rep_charge", Palette.green)
     Session.TYPE_DISCHARGE -> Triple("🔋", "rep_discharge", Palette.orange)
     else -> Triple("🛵", "rep_trip", Palette.blue)
 }
 
-private fun summary(s: Session): String = when (s.type) {
+internal fun summary(s: Session): String = when (s.type) {
     Session.TYPE_CHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), Res.dur((s.endMs - s.startMs) / 1000.0),
         iso(f("+%.2f Ah", s.d("ah"))), iso(f("⌀ %.1f A", s.avgA))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
     Session.TYPE_DISCHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh")))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
@@ -174,10 +208,10 @@ private fun summary(s: Session): String = when (s.type) {
         iso(f("%.0f Wh", s.d("wh"))), if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) iso(f("%.1f Wh/km", s.d("wh_per_km"))) else null).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
 }
 
-private fun line(vararg parts: String?) = com.vanaccess.bms.text.Bidi.joinAll(parts.toList())
+internal fun line(vararg parts: String?) = com.vanaccess.bms.text.Bidi.joinAll(parts.toList())
 
 /** Recovered energy and free descent of one trip, as the phone shows them. */
-private fun regenRows(s: Session, row: (String, String) -> Unit) {
+internal fun regenRows(s: Session, row: (String, String) -> Unit) {
     val wh = s.d("regen_wh")
     if (s.d("coast_km") >= 0.05) row("coast_row", line(f("%.2f km", s.d("coast_km")), Res.dur(s.d("coast_s"))))
     if (wh < 0.05) return
@@ -191,7 +225,7 @@ private fun regenRows(s: Session, row: (String, String) -> Unit) {
 }
 
 /** The short warnings under a report (energy partly missed, Bluetooth gaps, protection). */
-private fun badges(s: Session) = buildList {
+internal fun badges(s: Session) = buildList {
     if (s.b("energy_partial")) add("⚠ " + (if (s.d("energy_km") > 0) Res.s("rep_energy_part_km", s.d("energy_km"), s.d("distance_km")) else Res.s("rep_energy_partial")))
     else if (s.d("gap_s") >= 30) add("📶 " + Res.s("rep_gap", s.i("gap_s") / 60.0))
     if (s.b("ended_by_protection")) add("⚠ " + Res.s("rep_by_protection"))
@@ -201,7 +235,7 @@ private fun badges(s: Session) = buildList {
     }
 }
 
-private fun rows(s: Session): List<Pair<String, String>> {
+internal fun rows(s: Session): List<Pair<String, String>> {
     val r = mutableListOf<Pair<String, String>>()
     fun row(k: String, v: String) { r += Res.s(k) to v }
     row("rep_duration", Res.dur((s.endMs - s.startMs) / 1000.0))
@@ -265,7 +299,7 @@ private fun rows(s: Session): List<Pair<String, String>> {
 }
 
 /** The same recommendations as the phone, learned from the reports on this computer. */
-private fun advice(s: Session, monitor: Monitor): List<Advisor.Rec> {
+internal fun advice(s: Session, monitor: Monitor): List<Advisor.Rec> {
     val lim = monitor.settings.limits
     return runCatching {
         val same = monitor.reports().list(5000).filter { it.battery == s.battery || it.battery.isBlank() }
@@ -283,49 +317,8 @@ private fun advice(s: Session, monitor: Monitor): List<Advisor.Rec> {
     }.getOrDefault(emptyList())
 }
 
-private fun levelColor(l: Advisor.Level) = when (l) {
+internal fun levelColor(l: Advisor.Level) = when (l) {
     Advisor.Level.CRITICAL -> Palette.red; Advisor.Level.WARNING -> Palette.orange; Advisor.Level.INFO -> Palette.blue; Advisor.Level.OK -> Palette.green
-}
-
-@Composable
-internal fun ReportsScreen(monitor: Monitor) {
-    val version by monitor.reportsVersion.collectAsState()
-    val simulated = monitor.state.collectAsState().value.simulated
-    val list = remember(version, simulated) { runCatching { monitor.reports().list() }.getOrDefault(emptyList()) }
-    var picked by remember(version) { mutableStateOf(list.firstOrNull()) }
-    if (list.isEmpty()) { Text(Res.s("rep_empty"), color = Palette.grey); return }
-    val date = SimpleDateFormat("yyyy-MM-dd  HH:mm", Locale.US)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        LazyColumn(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(list) { s ->
-                val (icon, label, color) = kind(s)
-                Column(Modifier.fillMaxWidth().background(if (s == picked) Palette.tile else Palette.card, RoundedCornerShape(14.dp))
-                    .clickable { picked = s }.padding(12.dp)) {
-                    Row { Text("$icon " + Res.s(label), color = color, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(iso(date.format(Date(s.startMs))), color = Palette.grey, fontSize = 12.sp) }
-                    Text(para(summary(s)), color = Palette.text, fontSize = 13.sp)
-                    badges(s).takeIf { it.isNotEmpty() }?.let { Text(para(com.vanaccess.bms.text.Bidi.joinAll(it)), color = Palette.orange, fontSize = 12.sp) }
-                }
-            }
-        }
-        Column(Modifier.weight(1.3f).fillMaxHeight().background(Palette.card, RoundedCornerShape(18.dp)).padding(16.dp).verticalScroll(rememberScrollState())) {
-            val s = picked
-            if (s == null) { Text(Tr["noReport"], color = Palette.grey); return@Column }
-            val (icon, label, color) = kind(s)
-            Text("$icon " + Res.s(label) + "  " + iso(date.format(Date(s.startMs))), color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(when (s.data.optString("source")) { "desktop" -> Tr["fromPc"]; "simulation" -> Tr["simCharge"]; else -> Tr["fromPhone"] }, color = Palette.grey, fontSize = 12.sp)
-            badges(s).forEach { Text(para(it), color = Palette.orange, fontSize = 13.sp) }
-            Spacer(Modifier.height(8.dp))
-            rows(s).forEach { (k, v) ->
-                Row(Modifier.padding(vertical = 3.dp)) {
-                    Text(k, color = Palette.grey, modifier = Modifier.weight(1f))
-                    Text(para(v), color = Palette.text, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            advice(s, monitor).forEach { r -> Text(Res.advice(r), color = levelColor(r.level), fontSize = 14.sp, modifier = Modifier.padding(vertical = 3.dp)) }
-        }
-    }
 }
 
 // ── The ringing alarm ─────────────────────────────────────────────────────

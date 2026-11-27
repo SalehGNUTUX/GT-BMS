@@ -27,7 +27,7 @@ class PhoneLink(private val monitor: Monitor) {
     fun discover() = work {
         val found = SyncClient.discover(2000, broadcastTargets())
         state.value = state.value.copy(found = found)
-        if (found.isEmpty()) Tr["syncNone"] to false else String.format(Tr["syncFound"], found.size) to true
+        if (found.isEmpty()) Tr["syncNone"] to false else String.format(java.util.Locale.US, Tr["syncFound"], found.size) to true
     }
 
     /** Take the phone's reports and values, give it this computer's charges. */
@@ -47,7 +47,7 @@ class PhoneLink(private val monitor: Monitor) {
         last = Triple(host, port, code.filter { it.isDigit() })
         // From now on the Live screen shows the phone's reading (until the sync closes on the phone)
         monitor.startPhoneLive(host, port, code.filter { it.isDigit() })
-        val msg = String.format(Tr["syncDone"], got, notes, sent)
+        val msg = String.format(java.util.Locale.US, Tr["syncDone"], got, notes, sent)
         monitor.log.add(Tr["syncTitle"], msg)
         msg to true
     }
@@ -55,7 +55,7 @@ class PhoneLink(private val monitor: Monitor) {
     /** Ask the phone to leave the battery to this computer for [minutes]. */
     fun askYield(host: String, port: Int, code: String, minutes: Int) = work {
         val until = SyncClient(host, port, code.filter { it.isDigit() }, computerName()).yieldLink(minutes)
-        val msg = String.format(Tr["yieldDone"], java.text.SimpleDateFormat("HH:mm").format(java.util.Date(until)))
+        val msg = String.format(java.util.Locale.US, Tr["yieldDone"], java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(until)))
         monitor.log.add(Tr["syncTitle"], msg)
         msg to true
     }
@@ -71,7 +71,7 @@ class PhoneLink(private val monitor: Monitor) {
         Thread {
             val (msg, ok) = runCatching(job).getOrElse { e ->
                 (if (e is SyncClient.Refused && e.status == 401) Tr["syncBadCode"] else if (e is SyncClient.Refused && e.status == 403) Tr["syncClosed"]
-                else String.format(Tr["syncFail"], e.message ?: e.javaClass.simpleName)) to false
+                else String.format(java.util.Locale.US, Tr["syncFail"], e.message ?: e.javaClass.simpleName)) to false
             }
             state.value = state.value.copy(busy = false, message = msg, ok = ok)
         }.apply { isDaemon = true; start() }

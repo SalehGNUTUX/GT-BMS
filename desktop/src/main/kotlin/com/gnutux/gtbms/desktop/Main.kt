@@ -23,13 +23,27 @@ import java.io.File
 
 fun main(args: Array<String>) {
     // Headless checks: --home DIR (own settings and reports), --sim-charge, --wait SECONDS, --snapshot out.png [--tab N]
+    // Diagnostics: --ble-scan SECONDS lists the Bluetooth LE devices this computer sees, then exits
+    args.indexOf("--ble-scan").takeIf { it >= 0 }?.let { i ->
+        val r = runCatching { BlueZ.open().use { it.scan(args.getOrNull(i + 1)?.toIntOrNull() ?: 10) } }
+        r.onSuccess { l -> println("${l.size} device(s)"); l.forEach { println("${it.address}  ${it.name}  ${it.rssi ?: "-"} dBm  connected=${it.connected}") } }
+            .onFailure { println("Bluetooth: ${it.message ?: it}") }
+        System.exit(if (r.isSuccess) 0 else 1)
+    }
     val home = args.indexOf("--home").takeIf { it >= 0 }?.let { File(args[it + 1]) } ?: File(System.getProperty("user.home"))
     val monitor = Monitor(home)
+    args.indexOf("--filter").takeIf { it >= 0 }?.let { ReportsMemory.filter = args[it + 1] }
     if ("--snapshot" in args) monitor.alarms.quiet = true
     args.indexOf("--import").takeIf { it >= 0 }?.let { println("imported " + monitor.importPhoneBackup(File(args[it + 1]))) }
     if ("--sim-charge" in args) monitor.startChargeSim(args.indexOf("--speed").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 10,
         args.indexOf("--sim-soc").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 69)
-    else monitor.startReplay(args.indexOf("--replay").takeIf { it >= 0 }?.let { File(args[it + 1]).readText() })
+    else if ("--snapshot" in args || "--replay" in args) monitor.startReplay(args.indexOf("--replay").takeIf { it >= 0 }?.let { File(args[it + 1]).readText() })
+    // Otherwise what was used last: the battery over Bluetooth, the recording, or the last reading kept
+    else when (monitor.settings.source) {
+        "ble" -> monitor.startBattery()
+        "sim" -> monitor.startReplay()
+        else -> monitor.showLast()
+    }
     args.indexOf("--snapshot").takeIf { it >= 0 }?.let { i ->
         Thread.sleep((args.indexOf("--wait").takeIf { it >= 0 }?.let { args[it + 1].toLong() } ?: 3L) * 1000)
         snapshot(monitor, File(args[i + 1]), args.indexOf("--place").takeIf { it >= 0 }?.let { Place.valueOf(args[it + 1]) } ?: Place.LIVE,
@@ -43,7 +57,7 @@ fun main(args: Array<String>) {
             App(monitor, onImport = {
                 Thread {
                     val f = FilePicker.open(Tr["import"], "zip") ?: return@Thread
-                    val msg = runCatching { String.format(Tr["imported"], monitor.importPhoneBackup(f)) }.getOrElse { Tr["importFail"] }
+                    val msg = runCatching { String.format(java.util.Locale.US, Tr["imported"], monitor.importPhoneBackup(f)) }.getOrElse { Tr["importFail"] }
                     monitor.log.add(Tr["import"], msg)
                     monitor.notice.value = msg
                 }.apply { isDaemon = true; start() }

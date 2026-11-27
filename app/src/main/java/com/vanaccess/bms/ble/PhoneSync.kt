@@ -34,6 +34,9 @@ class PhoneSync(private val ctx: Context, private val service: BleService) : Syn
         .put("bms_limits", prefs.limits.toJson()).put("bms_cell_ov_mv", prefs.knownOvMv).put("cells", prefs.bmsCellCount)
         .put("alarm_high_enabled", prefs.alarmHighEnabled).put("alarm_high_soc", prefs.alarmHighSoc)
         .put("alarm_low_enabled", prefs.alarmLowEnabled).put("alarm_low_soc", prefs.alarmLowSoc)
+        // shown the same way on the computer: energy cost, fuel comparison, the Live design
+        .put("price_kwh", prefs.pricePerKwh.toDouble()).put("currency", prefs.currency)
+        .put("fuel_price", prefs.fuelPrice.toDouble()).put("fuel_l100", prefs.fuelL100.toDouble()).put("live_design", prefs.liveDesign)
 
     override fun yieldLink(minutes: Int): Long = service.yieldLink(minutes)
     override fun resumeLink() = service.resumeLink()
