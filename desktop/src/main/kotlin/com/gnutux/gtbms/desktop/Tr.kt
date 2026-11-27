@@ -102,6 +102,7 @@ object Tr {
         "consFuel" to listOf("المسافة نفسها بالوقود", "The same distance with fuel", "La même distance en carburant"),
         "consSaved" to listOf("الفرق لصالح الكهرباء", "Saved with electricity", "Économie avec l\u2019électricité"),
         "consSetPrices" to listOf("لحساب التكلفة والمقارنة بالوقود: أدخل الأسعار في الإعدادات › التفضيلات، أو زامن مع الهاتف.", "For cost and the fuel comparison: enter the prices in Settings › Preferences, or sync with the phone.", "Pour le coût et la comparaison carburant : saisissez les prix dans Paramètres › Préférences, ou synchronisez."),
+        "consAtTheirPrices" to listOf("كل تقرير بأسعار يومه: تغيير السعر يسري على ما بعده فقط.", "Each report at the prices of its day: a new price applies from now on.", "Chaque rapport aux prix de son jour : un nouveau prix vaut pour la suite."),
         "consMonths" to listOf("شهراً بشهر", "Month by month", "Mois par mois"),
         "chartSoc" to listOf("نسبة الشحن", "Charge", "Charge"),
         "chartCurrent" to listOf("التيار", "Current", "Courant"),

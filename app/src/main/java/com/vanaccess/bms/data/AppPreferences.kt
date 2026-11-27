@@ -286,6 +286,26 @@ class AppPreferences(context: Context) {
         get() = prefs.getFloat("fuel_l100", 0f)
         set(value) = prefs.edit().putFloat("fuel_l100", value).apply()
 
+    /** Prices over time (core PriceBook): a report is costed at the prices of its day. */
+    var priceBook: String?
+        get() = prefs.getString("price_book", null)
+        set(value) = prefs.edit().putString("price_book", value).apply()
+
+    private fun currentPrices(from: Long = 0) = com.vanaccess.bms.reports.Prices(from, pricePerKwh.toDouble(), currency, fuelPrice.toDouble(), fuelL100.toDouble())
+
+    /** The prices in force at [ms] (today's when nothing was ever changed). */
+    fun pricesAt(ms: Long): com.vanaccess.bms.reports.Prices =
+        com.vanaccess.bms.reports.PriceBook.at(com.vanaccess.bms.reports.PriceBook.parse(priceBook), ms) ?: currentPrices()
+
+    /** Sets new prices from now on; what was recorded before keeps the old ones. */
+    fun setPrices(kwh: Float, cur: String, fuel: Float, l100: Float, now: Long = System.currentTimeMillis()) {
+        val before = currentPrices()
+        val book = com.vanaccess.bms.reports.PriceBook.change(com.vanaccess.bms.reports.PriceBook.parse(priceBook), now,
+            com.vanaccess.bms.reports.Prices(now, kwh.toDouble(), cur, fuel.toDouble(), l100.toDouble()), before)
+        priceBook = com.vanaccess.bms.reports.PriceBook.toJson(book)
+        pricePerKwh = kwh; currency = cur; fuelPrice = fuel; fuelL100 = l100
+    }
+
     // ── Smart summaries ──────────────────────────────────────────────────────
     var notifySessionSummary: Boolean
         get() = prefs.getBoolean("notify_session_summary", true)

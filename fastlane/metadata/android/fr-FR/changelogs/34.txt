@@ -1,0 +1,1 @@
+1.9.5 : un nouveau prix d'énergie ou de carburant vaut pour la suite, les anciens rapports gardent les prix de leur jour ; le design liquide est bleu et ondule ; la synchro envoie les prix et le design à l'ordinateur.

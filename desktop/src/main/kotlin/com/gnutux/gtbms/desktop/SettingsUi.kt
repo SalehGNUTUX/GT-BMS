@@ -241,18 +241,22 @@ private fun PrefsPage(monitor: Monitor) {
     Page {
         Text(Res.s("cost_title"), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Text(Res.s("cost_desc"), color = Palette.grey, fontSize = 13.sp)
+        Text(Tr["consAtTheirPrices"], color = Palette.grey, fontSize = 13.sp)
         fun num(v: Double) = if (v > 0) v.toString().removeSuffix(".0") else ""
         var price by remember { mutableStateOf(num(s.priceKwh)) }
         var cur by remember { mutableStateOf(s.currency) }
         var fuel by remember { mutableStateOf(num(s.fuelPrice)) }
         var l100 by remember { mutableStateOf(num(s.fuelL100)) }
+        fun d(t: String) = t.replace(',', '.').toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+        // from now on only: reports already recorded keep the prices of their day
+        fun save() = s.setPrices(d(price), cur.ifBlank { s.currency }, d(fuel), d(l100))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(price, { price = it; s.priceKwh = it.replace(',', '.').toDoubleOrNull() ?: 0.0 }, label = { Text(Res.s("cost_price_hint")) }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(cur, { cur = it.take(8); s.currency = cur }, label = { Text(Res.s("cost_currency_hint")) }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(price, { price = it; save() }, label = { Text(Res.s("cost_price_hint")) }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(cur, { cur = it.take(8); save() }, label = { Text(Res.s("cost_currency_hint")) }, singleLine = true, modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(fuel, { fuel = it; s.fuelPrice = it.replace(',', '.').toDoubleOrNull() ?: 0.0 }, label = { Text(Res.s("cost_fuel_price_title")) }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(l100, { l100 = it; s.fuelL100 = it.replace(',', '.').toDoubleOrNull() ?: 0.0 }, label = { Text(Res.s("cost_fuel_l100_title")) }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(fuel, { fuel = it; save() }, label = { Text(Res.s("cost_fuel_price_title")) }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(l100, { l100 = it; save() }, label = { Text(Res.s("cost_fuel_l100_title")) }, singleLine = true, modifier = Modifier.weight(1f))
         }
     }
 }

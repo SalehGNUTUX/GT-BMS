@@ -292,11 +292,12 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (d.maxCurrent > 0) rows += R.string.rep_max_current to f("%.1f A", d.maxCurrent)
         if (d.minCellV > 0) rows += R.string.rep_min_cell to ctx.getString(R.string.cell_at, d.minCellV, d.minCellIdx)
         d.maxTemp?.let { rows += R.string.rep_max_temp to f("%.0f °C", it) }
-        val cp = com.vanaccess.bms.data.AppPreferences(ctx)
-        if (cp.pricePerKwh > 0 && d.wh > 0) {
-            rows += R.string.cost_row to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.cost(d.wh, cp.pricePerKwh.toDouble()), cp.currency)
-            if (d.km > 0 && cp.fuelPrice > 0 && cp.fuelL100 > 0) rows += R.string.cost_fuel to f("%.2f %s",
-                com.vanaccess.bms.reports.EnergyCost.fuel(d.km, cp.fuelL100.toDouble(), cp.fuelPrice.toDouble()), cp.currency)
+        // at the prices of that day
+        val cp = com.vanaccess.bms.data.AppPreferences(ctx).pricesAt(d.startMs)
+        if (cp.hasEnergy && d.wh > 0) {
+            rows += R.string.cost_row to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.cost(d.wh, cp.kwh), cp.currency)
+            if (d.km > 0 && cp.hasFuel) rows += R.string.cost_fuel to f("%.2f %s",
+                com.vanaccess.bms.reports.EnergyCost.fuel(d.km, cp.l100, cp.fuel), cp.currency)
         }
         return rows
     }
@@ -425,15 +426,15 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         }
         if (!s.data.isNull("max_temp")) rows += R.string.rep_max_temp to f("%.0f °C", s.d("max_temp"))
         // Energy cost (if a price is set in Settings → Vehicle & trips)
-        val cp = com.vanaccess.bms.data.AppPreferences(ctx)
-        if (cp.pricePerKwh > 0 && s.d("wh") > 0) {
+        // at the prices in force when it was recorded: a later change does not rewrite it
+        val cp = com.vanaccess.bms.data.AppPreferences(ctx).pricesAt(s.startMs)
+        if (cp.hasEnergy && s.d("wh") > 0) {
             val cur = cp.currency
-            rows += R.string.cost_row to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.cost(s.d("wh"), cp.pricePerKwh.toDouble()), cur)
+            rows += R.string.cost_row to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.cost(s.d("wh"), cp.kwh), cur)
             if (!charge && !s.data.isNull("wh_per_km") && s.d("distance_km") > 0) {
-                rows += R.string.cost_per_km to f("%.3f %s", com.vanaccess.bms.reports.EnergyCost.perKm(s.d("wh_per_km"), cp.pricePerKwh.toDouble()), cur)
-                if (cp.fuelPrice > 0 && cp.fuelL100 > 0)
-                    rows += R.string.cost_fuel to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.fuel(s.d("distance_km"),
-                        cp.fuelL100.toDouble(), cp.fuelPrice.toDouble()), cur)
+                rows += R.string.cost_per_km to f("%.3f %s", com.vanaccess.bms.reports.EnergyCost.perKm(s.d("wh_per_km"), cp.kwh), cur)
+                if (cp.hasFuel)
+                    rows += R.string.cost_fuel to f("%.2f %s", com.vanaccess.bms.reports.EnergyCost.fuel(s.d("distance_km"), cp.l100, cp.fuel), cur)
             }
         }
         rows.forEach { (k, v) -> col.addView(row(ctx.getString(k), v)) }

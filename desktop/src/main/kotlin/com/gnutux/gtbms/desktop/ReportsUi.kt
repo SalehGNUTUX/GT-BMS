@@ -113,12 +113,12 @@ private fun Rows(rows: List<Pair<String, String>>) = rows.forEach { (k, v) ->
 /** Energy cost of one report, and the same trip with fuel (prices from the phone or Settings › Prefs). */
 internal fun costRows(s: Session, set: Settings): List<Pair<String, String>> {
     val out = mutableListOf<Pair<String, String>>()
-    if (set.priceKwh <= 0 || s.d("wh") <= 0) return out
-    out += Res.s("cost_row") to f("%.2f %s", EnergyCost.cost(s.d("wh"), set.priceKwh), set.currency)
+    val p = set.pricesAt(s.startMs)   // the prices of its day: a later change does not rewrite it
+    if (!p.hasEnergy || s.d("wh") <= 0) return out
+    out += Res.s("cost_row") to f("%.2f %s", EnergyCost.cost(s.d("wh"), p.kwh), p.currency)
     if (s.type != Session.TYPE_CHARGE && !s.data.isNull("wh_per_km") && s.d("distance_km") > 0) {
-        out += Res.s("cost_per_km") to f("%.3f %s", EnergyCost.perKm(s.d("wh_per_km"), set.priceKwh), set.currency)
-        if (set.fuelPrice > 0 && set.fuelL100 > 0)
-            out += Res.s("cost_fuel") to f("%.2f %s", EnergyCost.fuel(s.d("distance_km"), set.fuelL100, set.fuelPrice), set.currency)
+        out += Res.s("cost_per_km") to f("%.3f %s", EnergyCost.perKm(s.d("wh_per_km"), p.kwh), p.currency)
+        if (p.hasFuel) out += Res.s("cost_fuel") to f("%.2f %s", EnergyCost.fuel(s.d("distance_km"), p.l100, p.fuel), p.currency)
     }
     return out
 }
@@ -185,9 +185,10 @@ private fun dayRows(d: DayReport, set: Settings): List<Pair<String, String>> {
     if (d.maxCurrent > 0) row("rep_max_current", f("%.1f A", d.maxCurrent))
     if (d.minCellV > 0) row("rep_min_cell", Res.s("cell_at", d.minCellV, d.minCellIdx))
     d.maxTemp?.let { row("rep_max_temp", f("%.0f °C", it)) }
-    if (set.priceKwh > 0 && d.wh > 0) {
-        row("cost_row", f("%.2f %s", EnergyCost.cost(d.wh, set.priceKwh), set.currency))
-        if (d.km > 0 && set.fuelPrice > 0 && set.fuelL100 > 0) row("cost_fuel", f("%.2f %s", EnergyCost.fuel(d.km, set.fuelL100, set.fuelPrice), set.currency))
+    val p = set.pricesAt(d.startMs)
+    if (p.hasEnergy && d.wh > 0) {
+        row("cost_row", f("%.2f %s", EnergyCost.cost(d.wh, p.kwh), p.currency))
+        if (d.km > 0 && p.hasFuel) row("cost_fuel", f("%.2f %s", EnergyCost.fuel(d.km, p.l100, p.fuel), p.currency))
     }
     return rows
 }
@@ -221,17 +222,22 @@ private fun ConsumptionPage(all: List<Session>, monitor: Monitor) {
         whKm?.let { rows += Res.s("rep_consumption") to f("%.1f Wh/km", it) }
         if (regen >= 0.5) rows += Res.s("regen_energy") to line(f("%.0f Wh", regen), RegenMeter.sharePct(regen, wh)?.let { f("%.1f%%", it) })
         rows += Res.s("rep_charges") to line("${charges.size}", f("%.1f Ah", charges.sumOf { it.d("ah") }), f("%.0f Wh", charges.sumOf { it.d("wh") }))
-        if (set.priceKwh > 0) {
-            val elec = EnergyCost.cost(wh, set.priceKwh)
-            rows += Res.s("cost_row") to f("%.2f %s", elec, set.currency)
-            whKm?.let { rows += Res.s("cost_per_km") to f("%.3f %s", EnergyCost.perKm(it, set.priceKwh), set.currency) }
-            if (set.fuelPrice > 0 && set.fuelL100 > 0 && km > 0) {
-                val fuel = EnergyCost.fuel(km, set.fuelL100, set.fuelPrice)
-                rows += Tr["consFuel"] to line(f("%.2f %s", fuel, set.currency), f("%.1f L", km * set.fuelL100 / 100))
-                rows += Tr["consSaved"] to f("%.2f %s", fuel - elec, set.currency)
+        // each trip at the prices of its day
+        val priced = trips.map { it to set.pricesAt(it.startMs) }
+        val cur = set.pricesAt(now).currency
+        if (priced.any { it.second.hasEnergy }) {
+            val elec = priced.sumOf { (t, p) -> if (p.hasEnergy) EnergyCost.cost(t.d("wh"), p.kwh) else 0.0 }
+            rows += Res.s("cost_row") to f("%.2f %s", elec, cur)
+            if (km > 0) rows += Res.s("cost_per_km") to f("%.3f %s", elec / km, cur)
+            if (priced.any { it.second.hasFuel } && km > 0) {
+                val fuel = priced.sumOf { (t, p) -> if (p.hasFuel) EnergyCost.fuel(t.d("distance_km"), p.l100, p.fuel) else 0.0 }
+                val litres = priced.sumOf { (t, p) -> t.d("distance_km") * p.l100 / 100 }
+                rows += Tr["consFuel"] to line(f("%.2f %s", fuel, cur), f("%.1f L", litres))
+                rows += Tr["consSaved"] to f("%.2f %s", fuel - elec, cur)
             }
         }
         Rows(rows)
+        Text(Tr["consAtTheirPrices"], color = Palette.grey, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         if (set.priceKwh <= 0 || set.fuelPrice <= 0) Text(Tr["consSetPrices"], color = Palette.grey, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
         // Month by month
         val months = trips.groupBy { SimpleDateFormat("yyyy-MM", Locale.US).format(Date(it.startMs)) }.toSortedMap(compareByDescending { it })
@@ -239,9 +245,11 @@ private fun ConsumptionPage(all: List<Session>, monitor: Monitor) {
             Text(Tr["consMonths"], color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
             months.forEach { (m, l) ->
                 val mkm = l.sumOf { it.d("distance_km") }; val mwh = l.sumOf { it.d("wh") }
+                val pr = l.map { it to set.pricesAt(it.startMs) }
+                val me = pr.sumOf { (t, p) -> if (p.hasEnergy) EnergyCost.cost(t.d("wh"), p.kwh) else 0.0 }
+                val mf = pr.sumOf { (t, p) -> if (p.hasFuel) EnergyCost.fuel(t.d("distance_km"), p.l100, p.fuel) else 0.0 }
                 Rows(listOf(iso(m) to line(f("%.1f km", mkm), f("%.0f Wh", mwh),
-                    if (set.priceKwh > 0) f("%.2f %s", EnergyCost.cost(mwh, set.priceKwh), set.currency) else null,
-                    if (set.fuelPrice > 0 && set.fuelL100 > 0) "⛽ " + f("%.2f %s", EnergyCost.fuel(mkm, set.fuelL100, set.fuelPrice), set.currency) else null)))
+                    if (me > 0) f("%.2f %s", me, cur) else null, if (mf > 0) "⛽ " + f("%.2f %s", mf, cur) else null)))
             }
         }
     }

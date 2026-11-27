@@ -77,7 +77,7 @@ class StyledGaugeView @JvmOverloads constructor(
             tiltSpeed += (tiltTarget - tilt) * 0.08f
             tiltSpeed *= 0.86f
             tilt += tiltSpeed
-            idle = (idle + 0.012f) % 1f
+            idle = (idle + 0.008f) % 1f
             invalidate()
             postOnAnimation(this)
         }
@@ -161,7 +161,7 @@ class StyledGaugeView @JvmOverloads constructor(
         val surface = inner.bottom - inner.height() * level / 100f
         val flowing = abs(current) > 0.3
         // Always a gentle wave; more with the current
-        val amp = if (level in 1..99) (if (flowing) 4.5f else 2f) * d else 0f
+        val amp = if (level in 1..99) (if (flowing) 5f else 3f) * d else 0f
         val t0 = if (flowing) phase else idle
         val lean = kotlin.math.tan(tilt.toDouble()).toFloat()
         val cx = inner.centerX()
@@ -179,15 +179,24 @@ class StyledGaugeView @JvmOverloads constructor(
         r.set(inner); val clip = Path().apply { addRoundRect(r, 8 * d, 8 * d, Path.Direction.CW) }
         canvas.clipPath(clip)
         fill.color = Color.parseColor("#14FFFFFF"); canvas.drawRect(inner, fill)
-        // Deeper at the bottom
+        // Deeper at the bottom (the paint must be opaque: its alpha would fade the gradient)
+        fill.color = Color.WHITE; fill.alpha = 255
         fill.shader = android.graphics.LinearGradient(0f, surface, 0f, inner.bottom,
             liquidColor((level - 10).coerceAtLeast(0)), liquidColor((level + 25).coerceAtMost(100)), android.graphics.Shader.TileMode.CLAMP)
         canvas.drawPath(path, fill)
         fill.shader = null
-        // A light line on the surface
-        stroke.color = Color.WHITE; stroke.alpha = 90; stroke.strokeWidth = 2 * d
-        if (level in 1..99) canvas.drawLine(inner.left, surface + (inner.left - cx) * lean, inner.right, surface + (inner.right - cx) * lean, stroke)
-        stroke.alpha = 255
+        // A light line along the waving surface
+        if (level in 1..99) {
+            val top = Path()
+            for (k in 0..steps) {
+                val x = inner.left + inner.width() * k / steps
+                val y = surface + (x - cx) * lean + amp * sin((k.toFloat() / steps * 2 * Math.PI + t0 * 2 * Math.PI)).toFloat()
+                if (k == 0) top.moveTo(x, y) else top.lineTo(x, y)
+            }
+            stroke.color = Color.WHITE; stroke.alpha = 110; stroke.strokeWidth = 2 * d
+            canvas.drawPath(top, stroke)
+            stroke.alpha = 255
+        }
         // Bubbles rise while charging
         if (current > 0.3 && level > 3) {
             fill.color = Color.WHITE; fill.alpha = 120

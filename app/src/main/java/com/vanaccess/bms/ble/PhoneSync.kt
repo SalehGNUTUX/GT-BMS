@@ -37,6 +37,7 @@ class PhoneSync(private val ctx: Context, private val service: BleService) : Syn
         // shown the same way on the computer: energy cost, fuel comparison, the Live design
         .put("price_kwh", prefs.pricePerKwh.toDouble()).put("currency", prefs.currency)
         .put("fuel_price", prefs.fuelPrice.toDouble()).put("fuel_l100", prefs.fuelL100.toDouble()).put("live_design", prefs.liveDesign)
+        .put("price_book", prefs.priceBook ?: "")
 
     override fun yieldLink(minutes: Int): Long = service.yieldLink(minutes)
     override fun resumeLink() = service.resumeLink()

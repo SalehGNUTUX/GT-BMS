@@ -37,6 +37,18 @@ class Settings(private val file: File) {
     var currency: String get() = o.optString("currency", "MAD"); set(v) { o.put("currency", v); save() }
     var fuelPrice: Double get() = o.optDouble("fuel_price", 0.0); set(v) { o.put("fuel_price", v); save() }
     var fuelL100: Double get() = o.optDouble("fuel_l100", 0.0); set(v) { o.put("fuel_l100", v); save() }
+    /** Prices over time (core PriceBook): each report is costed at the prices of its day. */
+    var priceBook: String? get() = o.optString("price_book", "").ifEmpty { null }; set(v) { o.put("price_book", v ?: ""); save() }
+    fun pricesAt(ms: Long): com.vanaccess.bms.reports.Prices =
+        com.vanaccess.bms.reports.PriceBook.at(com.vanaccess.bms.reports.PriceBook.parse(priceBook), ms)
+            ?: com.vanaccess.bms.reports.Prices(0, priceKwh, currency, fuelPrice, fuelL100)
+    /** New prices from now on; reports already recorded keep theirs. */
+    fun setPrices(kwh: Double, cur: String, fuel: Double, l100: Double, now: Long = System.currentTimeMillis()) {
+        val book = com.vanaccess.bms.reports.PriceBook.change(com.vanaccess.bms.reports.PriceBook.parse(priceBook), now,
+            com.vanaccess.bms.reports.Prices(now, kwh, cur, fuel, l100), com.vanaccess.bms.reports.Prices(0, priceKwh, currency, fuelPrice, fuelL100))
+        priceBook = com.vanaccess.bms.reports.PriceBook.toJson(book)
+        priceKwh = kwh; currency = cur; fuelPrice = fuel; fuelL100 = l100
+    }
     var lastPushMs: Long get() = o.optLong("last_push", 0); set(v) { o.put("last_push", v); save() }
     fun lastPullMs(host: String): Long = o.optJSONObject("last_pull")?.optLong(host, 0) ?: 0
     fun setLastPull(host: String, t: Long) { o.put("last_pull", (o.optJSONObject("last_pull") ?: JSONObject()).put(host, t)); save() }
@@ -64,6 +76,8 @@ class Settings(private val file: File) {
         v("fuel_price")?.toDoubleOrNull()?.let { fuelPrice = it }
         v("fuel_l100")?.toDoubleOrNull()?.let { fuelL100 = it }
         v("live_design")?.takeIf { it.isNotBlank() }?.let { design = it }
+        // the phone's price history wins: it is where prices are usually changed
+        v("price_book")?.replace("&quot;", "\"")?.replace("&amp;", "&")?.takeIf { it.startsWith("[") }?.let { priceBook = it }
     }
 
     private fun save() = runCatching { file.parentFile?.mkdirs(); file.writeText(o.toString(2)) }

@@ -1,0 +1,1 @@
+1.9.5: a new energy or fuel price applies from now on, older reports keep the prices of their day; the liquid design is blue and waves; sync sends prices and the design to the computer.

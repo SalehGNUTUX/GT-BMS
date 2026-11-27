@@ -397,10 +397,9 @@ class SettingsFragment : Fragment() {
         if (_binding == null) return
         parseNum(binding.etConsumption.text)?.let { prefs.consumptionWhKm = it.toFloat().coerceIn(0f, 1000f) }
         fun num(t: CharSequence?) = parseNum(t)?.toFloat()?.coerceAtLeast(0f) ?: 0f
-        prefs.pricePerKwh = num(binding.etPriceKwh.text)
-        prefs.currency = binding.etCurrency.text?.toString()?.trim()?.ifEmpty { null } ?: prefs.currency
-        prefs.fuelPrice = num(binding.etFuelPrice.text)
-        prefs.fuelL100 = num(binding.etFuelL100.text)
+        // New prices count from now on: reports already recorded keep theirs
+        prefs.setPrices(num(binding.etPriceKwh.text), binding.etCurrency.text?.toString()?.trim()?.ifEmpty { null } ?: prefs.currency,
+            num(binding.etFuelPrice.text), num(binding.etFuelL100.text))
         val rc = binding.etRatedCycles.text?.toString()?.trim().orEmpty()
         prefs.ratedCycles = if (rc.isEmpty()) 0 else (parseNum(rc)?.toInt()?.coerceIn(0, 20000) ?: prefs.ratedCycles)
     }
