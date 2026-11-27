@@ -217,7 +217,7 @@ class AppPreferences(context: Context) {
 
     /** Live tab design: classic (default), ring, compact, ride. */
     var liveDesign: String
-        get() = prefs.getString("live_design", "classic") ?: "classic"
+        get() = prefs.getString("live_design", "segments") ?: "segments"
         set(value) = prefs.edit().putString("live_design", value).apply()
 
     /** Latest reading for the widget / notification. */

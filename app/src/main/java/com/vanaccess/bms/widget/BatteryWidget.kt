@@ -44,6 +44,10 @@ class BatteryWidget : AppWidgetProvider() {
                     view = com.vanaccess.bms.ui.battery.RingGaugeView(context).apply { level = soc; charging = current > 0.1 }
                     76 to 76
                 }
+                in com.vanaccess.bms.ui.battery.StyledGaugeView.STYLES -> {
+                    view = com.vanaccess.bms.ui.battery.StyledGaugeView(context).apply { style = design; animate = false; level = soc; this.current = current }
+                    when (design) { "horizontal" -> 76 to 36; "arc" -> 76 to 66; else -> 42 to 72 }
+                }
                 "segments" -> {
                     view = com.vanaccess.bms.ui.battery.SegmentGaugeView(context).apply { animate = false; level = soc; this.current = current }
                     42 to 72
@@ -75,14 +79,14 @@ class BatteryWidget : AppWidgetProvider() {
                 v.setImageViewBitmap(R.id.w_gauge, gaugeBitmap(context, design, s.soc, s.current))
                 // The ring already shows the percentage inside it
                 v.setViewVisibility(R.id.w_soc, if (design == "ring") View.GONE else View.VISIBLE)
-                v.setTextViewText(R.id.w_soc, "${s.soc}%")
+                v.setTextViewText(R.id.w_soc, com.vanaccess.bms.text.Bidi.ltr("${s.soc}%"))
                 v.setTextColor(R.id.w_soc, Color.parseColor(when {
                     s.soc >= 50 -> "#43D17A"; s.soc >= 25 -> "#F5B83D"; else -> "#F0544F"
                 }))
-                v.setTextViewText(R.id.w_line, String.format(Locale.US, "%.2f V • %+.1f A", s.voltage, s.current))
+                v.setTextViewText(R.id.w_line, com.vanaccess.bms.ui.Fmt.line(context, String.format(Locale.US, "%.2f V", s.voltage), String.format(Locale.US, "%+.1f A", s.current)))
                 if (s.rangeKm != null) {
                     v.setViewVisibility(R.id.w_range, View.VISIBLE)
-                    v.setTextViewText(R.id.w_range, String.format(Locale.US, "≈ %.0f km", s.rangeKm))
+                    v.setTextViewText(R.id.w_range, com.vanaccess.bms.text.Bidi.ltr(String.format(Locale.US, "≈ %.0f km", s.rangeKm)))
                 } else v.setViewVisibility(R.id.w_range, View.GONE)
                 v.setTextViewText(R.id.w_time, SimpleDateFormat("HH:mm", Locale.US).format(Date(s.timeMs)))
             }

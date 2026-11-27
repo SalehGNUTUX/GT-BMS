@@ -177,6 +177,14 @@
                             android:layout_marginEnd="18dp"
                             android:visibility="gone" />
 
+                        <!-- Liquid / cells / horizontal / arc designs (size set by the design) -->
+                        <com.vanaccess.bms.ui.battery.StyledGaugeView
+                            android:id="@+id/styled"
+                            android:layout_width="84dp"
+                            android:layout_height="150dp"
+                            android:layout_marginEnd="18dp"
+                            android:visibility="gone" />
+
                         <!-- "Ring" design gauge (hidden in the other designs) -->
                         <com.vanaccess.bms.ui.battery.RingGaugeView
                             android:id="@+id/ring"

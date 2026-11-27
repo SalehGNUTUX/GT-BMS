@@ -126,10 +126,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private fun f(p: String, vararg a: Any) = String.format(Locale.US, p, *a)
     private fun date(ms: Long) = SimpleDateFormat("yyyy-MM-dd  HH:mm", Locale.US).format(Date(ms))
-    private fun dur(s: Double): String {
-        val m = (s / 60).toInt()
-        return ctx.getString(R.string.dur_hm, m / 60, m % 60)
-    }
+    private fun dur(s: Double): String = com.vanaccess.bms.ui.Fmt.dur(ctx, s)
 
     /** Wraps numbers/units so they keep left-to-right order inside Arabic text. */
     private fun iso(t: String) = "\u2066$t\u2069"
@@ -137,8 +134,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
      * A range, start first in the reading direction: each end is kept whole on its own, the order
      * follows the interface (start on the right in Arabic, like the dates).
      */
-    private fun range(a: String, b: String) = iso(a) + " – " + iso(b)
-    private fun line(vararg parts: String?) = parts.filterNotNull().filter { it.isNotBlank() }.joinToString("  •  ")
+    private fun range(a: String, b: String) = com.vanaccess.bms.text.Bidi.range(a, b)
+    private fun line(vararg parts: String?) = com.vanaccess.bms.text.Bidi.joinAll(parts.toList())
 
     private fun kind(s: Session): Triple<String, Int, Int> = when (s.type) {
         Session.TYPE_CHARGE -> Triple("🔌", R.string.rep_charge, cGreen)
@@ -196,7 +193,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             head.addView(ltr(date(s.startMs), cGrey, 12f))
             h.box.addView(head)
             summary(s).forEach { (t, c) -> h.box.addView(text(t, c, 13f, false).apply { setPadding(0, (3 * dp).toInt(), 0, 0) }) }
-            badges(s).takeIf { it.isNotEmpty() }?.let { h.box.addView(text(it.joinToString("  •  "), cOrange, 12f, false)) }
+            badges(s).takeIf { it.isNotEmpty() }?.let { h.box.addView(text(com.vanaccess.bms.text.Bidi.joinAll(it), cOrange, 12f, false)) }
             h.box.setOnClickListener { showDetail(s) }
             h.box.setOnLongClickListener { confirmDelete(s); true }
         }
@@ -283,7 +280,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             (com.vanaccess.bms.reports.RegenMeter.sharePct(d.regenWh, d.wh)?.let { f("  •  %.1f%%", it) } ?: "") +
             (d.whPerKm?.takeIf { it > 0 }?.let { f("  •  ≈ %.2f km", d.regenWh / it) } ?: "")
         if (d.socStart != null && d.socEnd != null) rows += R.string.day_soc_row to range("${d.socStart}%", "${d.socEnd}%")
-        if (d.standbyS >= 60) rows += R.string.standby_day to dur(d.standbyS) + f("  •  %.1f Wh", d.standbyWh)
+        if (d.standbyS >= 60) rows += R.string.standby_day to line(dur(d.standbyS), f("%.1f Wh", d.standbyWh))
         if (d.socUsed >= 0.5) rows += R.string.day_used to f("%.0f%%", d.socUsed)
         if (d.unrecorded > 0) rows += R.string.day_unrecorded to "${d.unrecorded}%"
         if (d.socCharged > 0) rows += R.string.day_soc_charged to "${d.socCharged}%"
@@ -346,11 +343,11 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     private fun regenRows(s: Session): List<Pair<Int, String>> {
         val wh = s.d("regen_wh")
         val rows = mutableListOf<Pair<Int, String>>()
-        if (s.d("coast_km") >= 0.05) rows += R.string.coast_row to f("%.2f km  •  ", s.d("coast_km")) + dur(s.d("coast_s"))
+        if (s.d("coast_km") >= 0.05) rows += R.string.coast_row to line(f("%.2f km", s.d("coast_km")), dur(s.d("coast_s")))
         if (wh < 0.05) return rows
         rows += R.string.regen_energy to f("%.1f Wh  •  %.3f Ah", wh, s.d("regen_ah"))
         com.vanaccess.bms.reports.RegenMeter.sharePct(wh, s.d("wh"))?.let { rows += R.string.regen_share to f("%.1f%%", it) }
-        rows += R.string.regen_times to "${s.i("regen_n")}  •  " + (if (s.d("regen_s") < 60) f("%.0f s", s.d("regen_s")) else dur(s.d("regen_s")))
+        rows += R.string.regen_times to line("${s.i("regen_n")}", dur(s.d("regen_s")))
         rows += R.string.regen_peak to f("%.1f A  •  %.0f W", s.d("regen_max_a"), s.d("regen_max_w"))
         if (s.d("regen_brake_wh") >= 0.05) rows += R.string.regen_brake to f("≈ %.1f Wh", s.d("regen_brake_wh"))
         if (s.d("regen_hill_wh") >= 0.05) rows += R.string.regen_hill to f("≈ %.1f Wh", s.d("regen_hill_wh"))
@@ -893,6 +890,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
 
     private fun text(t: String, color: Int, size: Float, bold: Boolean) = TextView(ctx).apply {
         text = t; setTextColor(color); textSize = size
+        // Laid out in the interface's direction, whatever letter comes first
+        textDirection = View.TEXT_DIRECTION_LOCALE
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
@@ -903,8 +902,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         orientation = LinearLayout.HORIZONTAL
         setPadding(0, (5 * dp).toInt(), 0, (5 * dp).toInt())
         addView(text(k, cGrey, 13f, false), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        // Force left-to-right only for pure numbers/units; Arabic phrases keep their own direction
-        addView(text(if (v.any { it in '\u0600'..'\u06FF' }) v else "\u2066$v\u2069", Color.WHITE, 13f, true).apply { gravity = Gravity.END },
+        // Each part whole, the parts in the interface's order (core Bidi)
+        addView(text(com.vanaccess.bms.text.Bidi.value(v), Color.WHITE, 13f, true).apply { gravity = Gravity.END },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f))
     }
 }

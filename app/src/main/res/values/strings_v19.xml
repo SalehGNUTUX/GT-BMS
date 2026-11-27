@@ -27,4 +27,10 @@
     <string name="standby_desc">Rings when you walk away from the vehicle while it is on and still (lights, display). Learns its own standby current.</string>
     <string name="standby_live">Switched on, not moving, since %1$s · %2$s</string>
     <string name="standby_day">On without moving</string>
+    <string name="dur_m">%1$d min</string>
+    <string name="dur_s">%1$d s</string>
+    <string name="design_liquid">Liquid — the battery fills like a liquid that moves with the current</string>
+    <string name="design_cells" formatted="false">Cells — 20 small blocks of 5 %, the next one blinks while charging</string>
+    <string name="design_horizontal">Horizontal — a wide battery filling in the reading direction</string>
+    <string name="design_arc">Dial — coloured zones and a needle at the charge</string>
 </resources>

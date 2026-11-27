@@ -1777,9 +1777,10 @@ class BleService : LifecycleService() {
                 info.current < -0.1 -> R.string.st_discharging
                 else -> R.string.st_idle
             })
-            val title = String.format(java.util.Locale.US, "🔋 %d%%  •  %.2f V", info.soc, info.packVoltage)
-            val text = String.format(java.util.Locale.US, "%s  •  %+.1f A  •  %.0f W", state, info.current,
-                kotlin.math.abs(info.powerWatts)) + (range?.let { String.format(java.util.Locale.US, "  •  ≈ %.0f km", it) } ?: "")
+            fun f(p: String, vararg a: Any) = String.format(java.util.Locale.US, p, *a)
+            val title = com.vanaccess.bms.ui.Fmt.line(this, f("🔋 %d%%", info.soc), f("%.2f V", info.packVoltage))
+            val text = com.vanaccess.bms.ui.Fmt.line(this, state, f("%+.1f A", info.current), f("%.0f W", kotlin.math.abs(info.powerWatts)),
+                range?.let { f("≈ %.0f km", it) })
             updateNotification(title, text)
         }
         if (now - lastWidgetMs >= 30_000L) {

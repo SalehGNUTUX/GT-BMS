@@ -27,4 +27,10 @@
     <string name="standby_desc">Sonne si vous vous éloignez du véhicule allumé et à l\'arrêt (feux, écran). Apprend son propre courant à l\'arrêt.</string>
     <string name="standby_live">Allumé à l’arrêt depuis %1$s · %2$s</string>
     <string name="standby_day">Allumé à l\'arrêt</string>
+    <string name="dur_m">%1$d min</string>
+    <string name="dur_s">%1$d s</string>
+    <string name="design_liquid">Liquide — la batterie se remplit d\'un liquide qui bouge avec le courant</string>
+    <string name="design_cells" formatted="false">Cellules — 20 petits blocs de 5 %, le suivant clignote en charge</string>
+    <string name="design_horizontal">Horizontal — une large batterie remplie dans le sens de lecture</string>
+    <string name="design_arc">Cadran — zones colorées et aiguille sur la charge</string>
 </resources>

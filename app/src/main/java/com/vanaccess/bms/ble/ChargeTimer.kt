@@ -75,9 +75,9 @@ object ChargeTimer {
     private fun show(ctx: Context, p: ChargePlan) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, ctx.getString(R.string.away_channel), NotificationManager.IMPORTANCE_LOW))
-        val times = listOfNotNull(
+        val times = com.vanaccess.bms.ui.Fmt.line(ctx,
             p.targetAt?.takeIf { p.targetSoc < 100 }?.let { ctx.getString(R.string.away_target_at, p.targetSoc, hm(it)) },
-            ctx.getString(R.string.away_full_at, hm(p.fullAt))).joinToString("  •  ")
+            ctx.getString(R.string.away_full_at, hm(p.fullAt)))
         val text = times + "\n" + ctx.getString(R.string.away_note)
         val open = PendingIntent.getActivity(ctx, 70, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(ctx, CHANNEL).setSmallIcon(R.drawable.ic_battery)

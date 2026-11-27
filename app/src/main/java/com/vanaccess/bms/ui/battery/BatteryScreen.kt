@@ -153,7 +153,7 @@ class BatteryScreen(
             val current = saved.indexOfFirst { it.address == prefs.selectedDeviceAddress }
             com.vanaccess.bms.ui.AppDialog.show(ctx, ctx.getString(R.string.switch_battery),
                 items = saved.map { sb ->
-                    sb.name + "  •  " + (com.vanaccess.bms.ble.drivers.BmsDrivers.byId(sb.protocol)?.displayName ?: sb.protocol)
+                    com.vanaccess.bms.text.Bidi.join(sb.name, com.vanaccess.bms.ble.drivers.BmsDrivers.byId(sb.protocol)?.displayName ?: sb.protocol)
                 },
                 checked = current,
                 onItem = { i ->
@@ -334,8 +334,8 @@ class BatteryScreen(
         val driver = BleService.activeDriverName.value?.takeIf { connected }
         // While the battery is out of reach, say how old the shown data is
         val age = BleService.lastDataMs.takeIf { !connected && it > 0 }?.let { lastUpdateText(it) }
-        b.tvConnLine.text = "● " + ctx.getString(txt) + (driver?.let { "  •  $it" } ?: "") +
-            (age?.let { "  •  $it" } ?: "")
+        b.tvConnLine.textDirection = View.TEXT_DIRECTION_LOCALE
+        b.tvConnLine.text = "● " + com.vanaccess.bms.text.Bidi.join(ctx.getString(txt), driver, age)
         b.tvConnLine.setTextColor(col)
         // Stale data is dimmed until live readings resume
         b.liveContent.alpha = if (connected || BleService.lastDataMs == 0L) 1f else 0.55f
@@ -378,7 +378,9 @@ class BatteryScreen(
         b.ring.charging = charging
         b.segments.level = info.soc
         b.segments.current = info.current
-        b.tvSoc.text = "${info.soc}%"
+        b.styled.level = info.soc
+        b.styled.current = info.current
+        b.tvSoc.text = com.vanaccess.bms.text.Bidi.ltr("${info.soc}%")
         b.tvSoc.setTextColor(b.gauge.colorFor(info.soc))
 
         val (stateTxt, stateCol) = when {
@@ -396,7 +398,7 @@ class BatteryScreen(
             discharging && info.remainCapacity > 0 -> info.remainCapacity / abs(info.current)
             else -> null
         }
-        fun dur(h: Double) = ctx.getString(R.string.dur_hm, h.toInt(), ((h - h.toInt()) * 60).toInt())
+        fun dur(h: Double) = com.vanaccess.bms.ui.Fmt.dur(ctx, h * 3600)
         val R1 = com.vanaccess.bms.reports.SessionRecorder
         val chargeEta = if (charging) com.vanaccess.bms.reports.ChargePredictor.predict(info.soc, info.fullCapacity, info.current,
             R1.chargeLearn, R1.chargeWatch, info.remainCapacity, if (prefs.knownOvMv > 0) prefs.knownOvMv / 1000.0 else 99.0) else null
@@ -411,7 +413,7 @@ class BatteryScreen(
                 if (chargeEta.kind == com.vanaccess.bms.reports.ChargePredictor.Kind.CUT)
                     (if (chargeEta.hours < 3 / 60.0) ctx.getString(R.string.eta_end_soon)
                      else ctx.getString(R.string.eta_end, dur(chargeEta.hours)))
-                else ctx.getString(R.string.eta_100, dur(chargeEta.hours))).joinToString("  •  ")
+                else ctx.getString(R.string.eta_100, dur(chargeEta.hours))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
             else -> hours?.takeIf { it in 0.0..500.0 }?.let { h ->
                 ctx.getString(if (charging) R.string.time_to_full else R.string.time_to_empty, dur(h))
             } ?: ""
@@ -573,7 +575,7 @@ class BatteryScreen(
                 ctx.getString(R.string.standby_live, time.format(java.util.Date(sb.sinceMs)), "\u2066" + fmt("%.1f A", sb.amps) + "\u2069") } to cOrange
             trip != null -> ctx.getString(R.string.live_trip,
                 "\u2066" + fmt("%.2f km", trip.distanceKm) + "\u2069", trip.wh) +
-                (if (trip.regenWh >= 0.5) "  ·  ♻ \u2066" + fmt("%.1f Wh", trip.regenWh) + "\u2069" else "") to cBlue
+                (if (trip.regenWh >= 0.5) com.vanaccess.bms.text.Bidi.SEP + "♻ \u2066" + fmt("%.1f Wh", trip.regenWh) + "\u2069" else "") to cBlue
             chg != null -> ctx.getString(if (chg.stopped) R.string.live_charge_stopped else R.string.live_charge,
                 time.format(java.util.Date(chg.startMs)), chg.ah) to cGreen
             dis != null -> ctx.getString(R.string.live_discharge,
@@ -655,8 +657,8 @@ class BatteryScreen(
             line(ctx.getString(title), cGrey, true, 6)
             if (l.isEmpty()) line(ctx.getString(R.string.cell_trend_none), cGrey)
             l.forEach { w ->
-                line(ctx.getString(R.string.cell_trend_mv, w.cell, w.mv) +
-                    (w.lowestPct?.let { "  •  " + ctx.getString(R.string.cell_trend_pct, it) } ?: ""),
+                line(com.vanaccess.bms.text.Bidi.join(ctx.getString(R.string.cell_trend_mv, w.cell, w.mv),
+                    w.lowestPct?.let { ctx.getString(R.string.cell_trend_pct, it) }),
                     if (w.cell == marked) cOrange else Color.WHITE, w.cell == marked)
             }
         }
@@ -876,9 +878,9 @@ class BatteryScreen(
                 h.box.addView(label("⚠ " + L10n.t(ctx, e), col, 14f, bold = true))
             }
             if (states.isNotEmpty()) h.box.addView(label(
-                ctx.getString(R.string.history_state, states.joinToString(" • ") { L10n.t(ctx, it) }), cBlue, 12f))
+                ctx.getString(R.string.history_state, com.vanaccess.bms.text.Bidi.joinAll(states.map { L10n.t(ctx, it) })), cBlue, 12f))
             // Isolate the LTR "82.45 V • 100%" so RTL layout does not reorder it
-            if (r.extra.isNotBlank()) h.box.addView(label("\u2066" + r.extra + "\u2069", cGrey, 12f))
+            if (r.extra.isNotBlank()) h.box.addView(label(com.vanaccess.bms.text.Bidi.value(r.extra), cGrey, 12f))
         }
     }
 
@@ -922,6 +924,13 @@ class BatteryScreen(
         b.gauge.visibility = if (d == "classic") View.VISIBLE else View.GONE
         b.ring.visibility = if (d == "ring") View.VISIBLE else View.GONE
         b.segments.visibility = if (d == "segments") View.VISIBLE else View.GONE
+        val styled = d in StyledGaugeView.STYLES
+        b.styled.visibility = if (styled) View.VISIBLE else View.GONE
+        if (styled) {
+            b.styled.style = d
+            val (wDp, hDp) = when (d) { "horizontal" -> 150 to 70; "arc" -> 160 to 140; else -> 84 to 150 }
+            b.styled.layoutParams = b.styled.layoutParams.apply { width = (wDp * dp).toInt(); height = (hDp * dp).toInt() }
+        }
         b.tvSoc.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSocLabel.visibility = if (d == "ring") View.GONE else View.VISIBLE
         b.tvSoc.textSize = when (d) { "compact" -> 38f; "ride" -> 84f; else -> 52f }
@@ -962,7 +971,7 @@ class BatteryScreen(
             metricViews[key] = v
             v
         }
-        tv.text = value
+        tv.text = com.vanaccess.bms.text.Bidi.value(value)
         tv.setTextColor(color ?: Color.WHITE)
     }
 
@@ -973,7 +982,7 @@ class BatteryScreen(
             background = GradientDrawable().apply { cornerRadius = 14 * dp; setColor(if (small) cTile else Color.parseColor("#1E2130")) }
         }
         box.addView(label(title, cGrey, 12f))
-        box.addView(label(value, color ?: Color.WHITE, if (small) 17f else 20f, bold = true))
+        box.addView(label(com.vanaccess.bms.text.Bidi.value(value), color ?: Color.WHITE, if (small) 17f else 20f, bold = true))
         grid.addView(box, gridParams())
     }
 
@@ -1004,9 +1013,8 @@ class BatteryScreen(
             setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
         }
         r.addView(label(k, cGrey, 13f), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        r.addView(label(v, Color.WHITE, 14f, bold = true).apply {
-            // numbers/units/serials read left-to-right; Arabic phrases keep their own direction
-            textDirection = if (v.any { it in '\u0600'..'\u06FF' }) View.TEXT_DIRECTION_LOCALE else View.TEXT_DIRECTION_LTR
+        r.addView(label(com.vanaccess.bms.text.Bidi.value(v), Color.WHITE, 14f, bold = true).apply {
+            // each part whole, the parts in the interface's order (core Bidi)
             gravity = Gravity.END
             setTextIsSelectable(selectable)
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.2f))

@@ -44,7 +44,9 @@ internal fun socColor(soc: Int) = when { soc >= 50 -> Palette.green; soc >= 20 -
 /** Numbers and units keep their left-to-right order inside Arabic text. */
 internal fun iso(s: String) = "⁦$s⁩"
 /** A range: each end whole, the order following the interface (start on the right in Arabic). */
-internal fun range(a: String, b: String) = iso(a) + " – " + iso(b)
+internal fun range(a: String, b: String) = com.vanaccess.bms.text.Bidi.range(a, b)
+/** A value laid out in the interface's direction, each part whole (core Bidi). */
+internal fun para(s: String) = com.vanaccess.bms.text.Bidi.paragraph(com.vanaccess.bms.text.Bidi.value(s), Tr.rtl)
 
 @Composable
 internal fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
@@ -111,7 +113,7 @@ private fun ChargeCard(st: Monitor.State, monitor: Monitor) {
             p == null -> null
             p.kind == ChargePredictor.Kind.CUT_SOON -> if (p.hours < 2 / 60.0) Res.s("eta_cut_now", p.cell) else Res.s("eta_cut_soon", Math.ceil(p.hours * 60).toInt(), p.cell)
             else -> listOfNotNull(p.to80h?.let { Res.s("eta_80", Res.dur(it * 3600)) },
-                if (p.kind == ChargePredictor.Kind.CUT) Res.s("eta_end", Res.dur(p.hours * 3600)) else Res.s("eta_100", Res.dur(p.hours * 3600))).joinToString("  •  ")
+                if (p.kind == ChargePredictor.Kind.CUT) Res.s("eta_end", Res.dur(p.hours * 3600)) else Res.s("eta_100", Res.dur(p.hours * 3600))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
         }
         eta?.let { Text(it, color = if (p?.kind == ChargePredictor.Kind.CUT_SOON) Palette.orange else Palette.blue, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp)) }
         Spacer(Modifier.height(10.dp))
@@ -166,23 +168,23 @@ private fun kind(s: Session) = when (s.type) {
 
 private fun summary(s: Session): String = when (s.type) {
     Session.TYPE_CHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), Res.dur((s.endMs - s.startMs) / 1000.0),
-        iso(f("+%.2f Ah", s.d("ah"))), iso(f("⌀ %.1f A", s.avgA))).joinToString("  •  ")
-    Session.TYPE_DISCHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh")))).joinToString("  •  ")
+        iso(f("+%.2f Ah", s.d("ah"))), iso(f("⌀ %.1f A", s.avgA))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
+    Session.TYPE_DISCHARGE -> listOf(range("${s.i("soc_start")}%", "${s.i("soc_end")}%"), iso(f("−%.2f Ah", s.d("ah"))), iso(f("%.0f Wh", s.d("wh")))).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
     else -> listOfNotNull(if (s.d("distance_km") > 0) iso(f("%.2f km", s.d("distance_km"))) else null, Res.dur((s.endMs - s.startMs) / 1000.0),
-        iso(f("%.0f Wh", s.d("wh"))), if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) iso(f("%.1f Wh/km", s.d("wh_per_km"))) else null).joinToString("  •  ")
+        iso(f("%.0f Wh", s.d("wh"))), if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) iso(f("%.1f Wh/km", s.d("wh_per_km"))) else null).let { com.vanaccess.bms.text.Bidi.joinAll(it) }
 }
 
-private fun line(vararg parts: String?) = parts.filterNotNull().filter { it.isNotBlank() }.joinToString("  •  ")
+private fun line(vararg parts: String?) = com.vanaccess.bms.text.Bidi.joinAll(parts.toList())
 
 /** Recovered energy and free descent of one trip, as the phone shows them. */
 private fun regenRows(s: Session, row: (String, String) -> Unit) {
     val wh = s.d("regen_wh")
-    if (s.d("coast_km") >= 0.05) row("coast_row", iso(f("%.2f km", s.d("coast_km"))) + "  •  " + Res.dur(s.d("coast_s")))
+    if (s.d("coast_km") >= 0.05) row("coast_row", line(f("%.2f km", s.d("coast_km")), Res.dur(s.d("coast_s"))))
     if (wh < 0.05) return
-    row("regen_energy", iso(f("%.1f Wh  •  %.3f Ah", wh, s.d("regen_ah"))))
+    row("regen_energy", f("%.1f Wh  •  %.3f Ah", wh, s.d("regen_ah")))
     com.vanaccess.bms.reports.RegenMeter.sharePct(wh, s.d("wh"))?.let { row("regen_share", iso(f("%.1f%%", it))) }
-    row("regen_times", iso("${s.i("regen_n")}") + "  •  " + (if (s.d("regen_s") < 60) iso(f("%.0f s", s.d("regen_s"))) else Res.dur(s.d("regen_s"))))
-    row("regen_peak", iso(f("%.1f A  •  %.0f W", s.d("regen_max_a"), s.d("regen_max_w"))))
+    row("regen_times", line("${s.i("regen_n")}", Res.dur(s.d("regen_s"))))
+    row("regen_peak", f("%.1f A  •  %.0f W", s.d("regen_max_a"), s.d("regen_max_w")))
     if (s.d("regen_brake_wh") >= 0.05) row("regen_brake", iso(f("≈ %.1f Wh", s.d("regen_brake_wh"))))
     if (s.d("regen_hill_wh") >= 0.05) row("regen_hill", iso(f("≈ %.1f Wh", s.d("regen_hill_wh"))))
     if (!s.data.isNull("wh_per_km") && s.d("wh_per_km") > 0 && wh / s.d("wh_per_km") >= 0.01) row("regen_km", iso(f("≈ %.2f km", wh / s.d("wh_per_km"))))
@@ -204,7 +206,7 @@ private fun rows(s: Session): List<Pair<String, String>> {
     fun row(k: String, v: String) { r += Res.s(k) to v }
     row("rep_duration", Res.dur((s.endMs - s.startMs) / 1000.0))
     row("rep_soc", range("${s.i("soc_start")}%", "${s.i("soc_end")}%"))
-    row("rep_energy", iso(f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh"))))
+    row("rep_energy", f("%.2f Ah  •  %.0f Wh", s.d("ah"), s.d("wh")))
     if (s.type == Session.TYPE_CHARGE) {
         row("rep_avg_current", iso(f("%.1f A", s.avgA)))
         row("rep_charging_cur", iso(f("%.1f A", s.d("max_current"))))
@@ -228,7 +230,7 @@ private fun rows(s: Session): List<Pair<String, String>> {
             }
             if (s.i("top_main") > 0) row("rep_top", Res.s("rep_top_val", s.i("top_start"), s.i("top_main"), s.i("top_main_pct"), s.i("stop_max_idx")))
             if (s.d("gap_s") >= 30) row("rep_gap_row", Res.s("stats_min", Math.round(s.d("gap_s") / 60).toInt().coerceAtLeast(1)))
-            if (s.data.has("rest_v")) row("rep_rest", iso(f("%.2f V  •  %d mV", s.d("rest_v"), s.i("rest_delta_mv"))))
+            if (s.data.has("rest_v")) row("rep_rest", f("%.2f V  •  %d mV", s.d("rest_v"), s.i("rest_delta_mv")))
             if (s.data.has("target_v") || s.data.has("target_soc")) {
                 val ok = (s.d("target_v") > 0 && s.d("max_v") >= s.d("target_v")) || (s.i("target_soc") > 0 && s.i("soc_before_stop") >= s.i("target_soc"))
                 row("rep_target", line(s.d("target_v").takeIf { it > 0 }?.let { iso(f("%.1f V", it)) }, s.i("target_soc").takeIf { it > 0 }?.let { iso("$it%") },
@@ -249,7 +251,7 @@ private fun rows(s: Session): List<Pair<String, String>> {
             row("rep_moving", Res.dur(s.d("moving_s")))
             row("rep_max_speed", iso(f("%.0f km/h", s.d("max_speed"))))
             row("rep_avg_speed", iso(f("%.1f km/h", s.d("avg_speed"))))
-            if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) row("rep_consumption", iso(f("%.1f Wh/km  •  %.3f Ah/km", s.d("wh_per_km"), s.d("ah_per_km"))))
+            if (!s.data.isNull("wh_per_km") && s.data.has("wh_per_km")) row("rep_consumption", f("%.1f Wh/km  •  %.3f Ah/km", s.d("wh_per_km"), s.d("ah_per_km")))
             row("rep_hard_accel", iso("${s.i("hard_accel")}"))
         }
         if (s.type == Session.TYPE_TRIP) regenRows(s, ::row)
@@ -301,8 +303,8 @@ internal fun ReportsScreen(monitor: Monitor) {
                     .clickable { picked = s }.padding(12.dp)) {
                     Row { Text("$icon " + Res.s(label), color = color, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text(iso(date.format(Date(s.startMs))), color = Palette.grey, fontSize = 12.sp) }
-                    Text(summary(s), color = Palette.text, fontSize = 13.sp)
-                    badges(s).takeIf { it.isNotEmpty() }?.let { Text(it.joinToString("  •  "), color = Palette.orange, fontSize = 12.sp) }
+                    Text(para(summary(s)), color = Palette.text, fontSize = 13.sp)
+                    badges(s).takeIf { it.isNotEmpty() }?.let { Text(para(com.vanaccess.bms.text.Bidi.joinAll(it)), color = Palette.orange, fontSize = 12.sp) }
                 }
             }
         }
@@ -312,12 +314,12 @@ internal fun ReportsScreen(monitor: Monitor) {
             val (icon, label, color) = kind(s)
             Text("$icon " + Res.s(label) + "  " + iso(date.format(Date(s.startMs))), color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(when (s.data.optString("source")) { "desktop" -> Tr["fromPc"]; "simulation" -> Tr["simCharge"]; else -> Tr["fromPhone"] }, color = Palette.grey, fontSize = 12.sp)
-            badges(s).forEach { Text(it, color = Palette.orange, fontSize = 13.sp) }
+            badges(s).forEach { Text(para(it), color = Palette.orange, fontSize = 13.sp) }
             Spacer(Modifier.height(8.dp))
             rows(s).forEach { (k, v) ->
                 Row(Modifier.padding(vertical = 3.dp)) {
                     Text(k, color = Palette.grey, modifier = Modifier.weight(1f))
-                    Text(v, color = Palette.text, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
+                    Text(para(v), color = Palette.text, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
                 }
             }
             Spacer(Modifier.height(10.dp))

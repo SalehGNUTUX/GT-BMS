@@ -172,7 +172,7 @@ class SettingsFragment : Fragment() {
             BmsDrivers.AUTO -> {
                 val detected = BleService.activeDriverName.value
                 if (detected.isNullOrBlank()) getString(R.string.protocol_auto)
-                else getString(R.string.protocol_auto) + " • " + detected
+                else com.vanaccess.bms.text.Bidi.join(getString(R.string.protocol_auto), detected)
             }
             "123bms" -> "123SmartBMS"
             else -> BmsDrivers.byId(sel)?.displayName ?: sel
@@ -1079,8 +1079,9 @@ class SettingsFragment : Fragment() {
             else binding.radioFahrenheit.id
         )
         // Live tab design
-        val designs = listOf("classic" to R.string.design_classic, "segments" to R.string.design_segments, "ring" to R.string.design_ring,
-            "compact" to R.string.design_compact, "ride" to R.string.design_ride)
+        val designs = listOf("segments" to R.string.design_segments, "classic" to R.string.design_classic, "ring" to R.string.design_ring,
+            "liquid" to R.string.design_liquid, "cells" to R.string.design_cells, "horizontal" to R.string.design_horizontal,
+            "arc" to R.string.design_arc, "compact" to R.string.design_compact, "ride" to R.string.design_ride)
         binding.radioLiveDesign.removeAllViews()
         designs.forEachIndexed { i, (id, label) ->
             binding.radioLiveDesign.addView(android.widget.RadioButton(requireContext()).apply {

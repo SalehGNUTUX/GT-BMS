@@ -139,7 +139,7 @@ fun NotifsScreen(monitor: Monitor) {
             items(items.size) { i ->
                 val e = items[i]
                 Column(Modifier.fillMaxWidth().background(Palette.tile, RoundedCornerShape(14.dp)).padding(12.dp)) {
-                    Text(iso(fmt.format(Date(e.tMs))) + if (e.fromPhone) "  •  📱 " + Tr["fromPhone"] else "", color = Palette.grey, fontSize = 12.sp)
+                    Text(para(com.vanaccess.bms.text.Bidi.join(iso(fmt.format(Date(e.tMs))), if (e.fromPhone) "📱 " + Tr["fromPhone"] else null)), color = Palette.grey, fontSize = 12.sp)
                     Text(e.title, color = Palette.text, fontWeight = FontWeight.Bold)
                     Text(e.text, color = Color(0xFFC9CFDD), fontSize = 13.sp)
                 }

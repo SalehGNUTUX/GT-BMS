@@ -193,12 +193,12 @@ object AdviceText {
     /** One line for a day: trips, distance, energy, charge. */
     fun dayLine(ctx: Context, d: com.vanaccess.bms.reports.DayReport): String {
         fun f(p: String, v: Double) = String.format(java.util.Locale.US, p, v)
-        return listOfNotNull(
+        return com.vanaccess.bms.ui.Fmt.line(ctx,
             if (d.tripCount > 0) ctx.resources.getQuantityString(R.plurals.day_trips, d.tripCount, d.tripCount) else null,
             if (d.km > 0) f("%.2f km", d.km) else null,
             if (d.wh > 0) f("%.0f Wh", d.wh) else null,
             if (d.chargeCount > 0) ctx.resources.getQuantityString(R.plurals.day_charges, d.chargeCount, d.chargeCount) else null,
-        ).joinToString("  •  ")
+        )
     }
 
     /** After midnight: the finished day, silently. Waits for a trip that crosses midnight. */

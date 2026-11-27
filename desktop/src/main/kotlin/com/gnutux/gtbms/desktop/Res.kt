@@ -73,5 +73,6 @@ object Res {
         }) + " " + t
     }
 
-    fun dur(seconds: Double): String { val h = (seconds / 3600).toInt(); return s("dur_hm", h, ((seconds - h * 3600) / 60).toInt()) }
+    /** Under an hour only minutes, under a minute only seconds (core Bidi). */
+    fun dur(seconds: Double): String = com.vanaccess.bms.text.Bidi.duration(seconds, s("dur_hm"), s("dur_m"), s("dur_s"))
 }

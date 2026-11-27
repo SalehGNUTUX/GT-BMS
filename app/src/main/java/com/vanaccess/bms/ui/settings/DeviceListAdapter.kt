@@ -36,9 +36,9 @@ class DeviceListAdapter(
         holder.tvName.text = if (device.name.isNotBlank() && device.name != "Unknown") device.name
             else ctx.getString(R.string.lbl_unknown_device)
         val known = knownDriver(device)
-        holder.tvAddress.text = if (known != null) "${device.address}  •  ✓ ${known.displayName}" else device.address
+        holder.tvAddress.text = if (known != null) com.vanaccess.bms.text.Bidi.join(device.address, "✓ ${known.displayName}") else com.vanaccess.bms.text.Bidi.ltr(device.address)
         holder.tvAddress.setTextColor(android.graphics.Color.parseColor(if (known != null) "#43D17A" else "#9BA3B8"))
-        holder.tvRssi.text = "${device.rssi} dBm"
+        holder.tvRssi.text = com.vanaccess.bms.text.Bidi.ltr("${device.rssi} dBm")
 
         // Signal strength icon color
         val signalColor = when {
