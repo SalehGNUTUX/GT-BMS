@@ -334,7 +334,7 @@ class BatteryScreen(
         val driver = BleService.activeDriverName.value?.takeIf { connected }
         // While the battery is out of reach, say how old the shown data is
         val age = BleService.lastDataMs.takeIf { !connected && it > 0 }?.let { lastUpdateText(it) }
-        b.tvConnLine.textDirection = View.TEXT_DIRECTION_LOCALE
+        b.tvConnLine.textDirection = com.vanaccess.bms.ui.Fmt.dir(ctx)
         b.tvConnLine.text = "● " + com.vanaccess.bms.text.Bidi.join(ctx.getString(txt), driver, age)
         b.tvConnLine.setTextColor(col)
         // Stale data is dimmed until live readings resume
@@ -897,7 +897,7 @@ class BatteryScreen(
             text = t; setTextColor(color); textSize = sizeSp
             if (bold) setTypeface(typeface, Typeface.BOLD)
             if (center) gravity = Gravity.CENTER
-            textDirection = View.TEXT_DIRECTION_LOCALE
+            textDirection = com.vanaccess.bms.ui.Fmt.dir(ctx)
         }
 
     private fun gridParams() = GridLayout.LayoutParams(

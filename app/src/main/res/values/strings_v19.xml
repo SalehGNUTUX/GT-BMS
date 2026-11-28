@@ -37,4 +37,22 @@
     <string name="pc_yield_left">The phone left the home Wi-Fi: it took the battery back.</string>
     <string name="pc_yield_guard">Taken back by itself when the computer does not use the battery or when you leave the home Wi-Fi.</string>
     <string name="design_cells_mono" formatted="false">Cells, one colour — the blocks turn yellow below 50 %, orange below 25 %, red below 15 %</string>
+    <string name="rec_choose">Whose record</string>
+    <string name="rec_connected">connected</string>
+    <plurals name="rec_count"><item quantity="one">%d report</item><item quantity="other">%d reports</item></plurals>
+    <string name="share_title">Share with another phone</string>
+    <string name="share_desc">Home network only. On the phone that has the reports: Send. On the other: Receive, and type the code shown. Its reports become that battery\'s own record here; nothing is sent back.</string>
+    <string name="share_send">Send to a phone</string>
+    <string name="share_receive">Receive from a phone</string>
+    <string name="share_sending">Open: on the other phone press «Receive from a phone» and type the code above.</string>
+    <string name="share_searching">Looking for the sending phone…</string>
+    <string name="share_none">No phone found: type its address (shown under its code).</string>
+    <string name="share_found">Found: %1$s</string>
+    <string name="share_addr_hint">Address (e.g. 192.168.1.22:44457)</string>
+    <string name="share_take">Receive</string>
+    <string name="share_bad_input">Type the address and the 6-digit code shown on the other phone.</string>
+    <string name="share_bad_code">Wrong code</string>
+    <string name="share_closed">The other phone closed after wrong codes: open it again</string>
+    <string name="share_failed">Failed: %1$s</string>
+    <string name="share_done">%1$d new reports of %2$d received (battery %3$s). Browse them from the battery chip in Reports.</string>
 </resources>

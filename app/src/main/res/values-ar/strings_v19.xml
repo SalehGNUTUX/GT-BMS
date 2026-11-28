@@ -41,4 +41,22 @@
     <string name="pc_yield_left">غادر الهاتف شبكة البيت: استعاد البطارية.</string>
     <string name="pc_yield_guard">يستعيدها الهاتف وحده إن لم يستعملها الحاسوب أو غادرتَ شبكة البيت.</string>
     <string name="design_cells_mono" formatted="false">خلايا بلون واحد — تصفرّ تحت 50٪ وتبرتقل تحت 25٪ وتحمرّ تحت 15٪</string>
+    <string name="rec_choose">سجل أي بطارية</string>
+    <string name="rec_connected">متصلة</string>
+    <plurals name="rec_count"><item quantity="zero">لا تقارير</item><item quantity="one">تقرير واحد</item><item quantity="two">تقريران</item><item quantity="few">%d تقارير</item><item quantity="many">%d تقريراً</item><item quantity="other">%d تقرير</item></plurals>
+    <string name="share_title">المشاركة مع هاتف آخر</string>
+    <string name="share_desc">على شبكة البيت فقط. على الهاتف صاحب التقارير: «إرسال إلى هاتف». وعلى الآخر: «استقبال من هاتف» واكتب الرمز الظاهر. تصبح تقاريره سجلاً مستقلاً لبطاريته هنا، ولا يُرسل شيء في الاتجاه المعاكس.</string>
+    <string name="share_send">إرسال إلى هاتف</string>
+    <string name="share_receive">استقبال من هاتف</string>
+    <string name="share_sending">مفتوح للإرسال: على الهاتف الآخر اضغط «استقبال من هاتف» واكتب الرمز أعلاه.</string>
+    <string name="share_searching">البحث عن الهاتف المرسِل…</string>
+    <string name="share_none">لم يُعثر على هاتف: اكتب عنوانه (يظهر تحت رمزه).</string>
+    <string name="share_found">عُثر على: %1$s</string>
+    <string name="share_addr_hint">العنوان (مثل 192.168.1.22:44457)</string>
+    <string name="share_take">استقبال</string>
+    <string name="share_bad_input">اكتب العنوان والرمز المكوّن من 6 أرقام الظاهرين على الهاتف الآخر.</string>
+    <string name="share_bad_code">رمز خاطئ</string>
+    <string name="share_closed">أغلق الهاتف الآخر بعد رموز خاطئة: افتحه من جديد</string>
+    <string name="share_failed">تعذّر: %1$s</string>
+    <string name="share_done">استُقبل %1$d تقريراً جديداً من %2$d (بطارية %3$s). تصفّحها من زر البطارية في التقارير.</string>
 </resources>

@@ -73,7 +73,7 @@
     <string name="day_switch">تقرير يومي بعد منتصف الليل (صامت)</string>
     <string name="day_so_far">اليوم حتى الآن</string>
     <string name="day_24h">من منتصف الليل إلى منتصف الليل</string>
-    <string name="day_soc_row">البطارية: البداية – النهاية</string>
+    <string name="day_soc_row">البطارية من أول اليوم إلى آخره</string>
     <string name="day_used">الشحن المستهلك</string>
     <string name="day_charged">الشحن</string>
     <string name="day_shocks">قفزات التيار المفاجئة</string>

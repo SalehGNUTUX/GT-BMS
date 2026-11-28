@@ -222,6 +222,11 @@ class BleService : LifecycleService() {
             wake(brief = true)
         }
         keepAlive.start()
+        // Reports from before they carried their battery: they are this battery's (once, in the background)
+        prefs.selectedDeviceAddress?.takeIf { it.isNotEmpty() }?.let { addr ->
+            Thread { runCatching { com.vanaccess.bms.reports.ReportStore.get(this).claimUnowned(addr) }
+                .onSuccess { if (it > 0) log("$it older reports given to $addr") } }.start()
+        }
         androidx.core.content.ContextCompat.registerReceiver(this, btReceiver,
             android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)

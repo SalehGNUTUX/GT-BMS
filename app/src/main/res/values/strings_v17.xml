@@ -73,7 +73,7 @@
     <string name="day_switch">Daily report after midnight (silent)</string>
     <string name="day_so_far">Today, so far</string>
     <string name="day_24h">From midnight to midnight</string>
-    <string name="day_soc_row">Battery, start – end</string>
+    <string name="day_soc_row">Battery, start to end of the day</string>
     <string name="day_used">Charge used</string>
     <string name="day_charged">Charges</string>
     <string name="day_shocks">Sudden current jumps</string>

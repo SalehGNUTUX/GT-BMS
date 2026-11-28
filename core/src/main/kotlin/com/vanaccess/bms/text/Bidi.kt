@@ -30,8 +30,9 @@ object Bidi {
         return when {
             t.isEmpty() -> t
             t[0] in LRI..FSI -> t
-            hasRtl(t) -> "$FSI$t$PDI"
-            else -> ltr(t)
+            // a part never breaks across lines: "0.52 km" stays whole
+            hasRtl(t) -> "$FSI${t.replace(' ', '\u00A0')}$PDI"
+            else -> ltr(t.replace(' ', '\u00A0'))
         }
     }
 

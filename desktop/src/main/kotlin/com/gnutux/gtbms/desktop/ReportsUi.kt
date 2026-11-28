@@ -39,12 +39,24 @@ private enum class Filter(val label: () -> String) {
 internal fun ReportsScreen(monitor: Monitor) {
     val version by monitor.reportsVersion.collectAsState()
     val simulated = monitor.state.collectAsState().value.simulated
-    val all = remember(version, simulated) { runCatching { monitor.reports().list(5000) }.getOrDefault(emptyList()) }
+    // Each battery its own record (the one this computer knows first); others can be browsed
+    val known = remember(version, simulated) { runCatching {
+        monitor.settings.battery.takeIf { it.isNotEmpty() }?.let { monitor.reports().claimUnowned(it) }
+        monitor.reports().batteries() }.getOrDefault(emptyMap()) }
+    var viewed by remember { mutableStateOf(ReportsMemory.battery ?: monitor.settings.battery.ifEmpty { null }) }
+    LaunchedEffect(viewed) { ReportsMemory.battery = viewed }
+    val all = remember(version, simulated, viewed) { runCatching { monitor.reports().list(5000).filter { viewed == null || it.battery == viewed } }.getOrDefault(emptyList()) }
     var filter by remember { mutableStateOf(runCatching { Filter.valueOf(ReportsMemory.filter) }.getOrDefault(Filter.ALL)) }
     LaunchedEffect(filter) { ReportsMemory.filter = filter.name }
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
             Filter.entries.forEach { f -> FilterChip(selected = filter == f, onClick = { filter = f }, label = { Text(f.label()) }) }
+        }
+        if (known.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+            known.forEach { (addr, n) ->
+                val name = if (addr == monitor.settings.battery) monitor.settings.batteryName.ifEmpty { addr } else addr
+                FilterChip(selected = viewed == addr, onClick = { viewed = addr }, label = { Text("🔋 " + para(line(name, "$n"))) })
+            }
         }
         if (all.isEmpty()) { Text(Res.s("rep_empty"), color = Palette.grey); return@Column }
         when (filter) {
@@ -58,7 +70,7 @@ internal fun ReportsScreen(monitor: Monitor) {
 }
 
 /** The list shown last, kept while visiting other screens (and set by --filter for checks). */
-object ReportsMemory { var filter = "ALL" }
+object ReportsMemory { var filter = "ALL"; var battery: String? = null }
 
 private val DATE = SimpleDateFormat("yyyy-MM-dd  HH:mm", Locale.US)
 

@@ -73,7 +73,7 @@
     <string name="day_switch">Rapport quotidien après minuit (silencieux)</string>
     <string name="day_so_far">Aujourd\'hui, jusqu\'ici</string>
     <string name="day_24h">De minuit à minuit</string>
-    <string name="day_soc_row">Batterie : début – fin</string>
+    <string name="day_soc_row">Batterie, du début à la fin de la journée</string>
     <string name="day_used">Charge utilisée</string>
     <string name="day_charged">Recharges</string>
     <string name="day_shocks">À-coups de courant</string>

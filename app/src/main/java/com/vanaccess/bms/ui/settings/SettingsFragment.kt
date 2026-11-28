@@ -574,6 +574,14 @@ class SettingsFragment : Fragment() {
                 items = mins.map { if (it < 60) getString(R.string.stats_min, it) else resources.getQuantityString(R.plurals.pc_hours, it / 60, it / 60) },
                 onItem = { i -> svc?.yieldLink(mins[i]) })
         }
+
+        // Another phone: one sends, the other receives (two buttons, so it is clear which way)
+        text(getString(R.string.share_title), 16f, "#FFFFFF", bold = true, top = 18)
+        text(getString(R.string.share_desc), 12f, "#9BA3B8")
+        if (st == null) button(getString(R.string.share_send)) {
+            if (svc != null) svc.openSync() else Toast.makeText(ctx, R.string.pc_no_service, Toast.LENGTH_SHORT).show()
+        } else text(getString(R.string.share_sending), 13f, "#7CB342", bold = true, top = 6)
+        button(getString(R.string.share_receive)) { PhoneShare.receive(ctx) { } }
     }
 
     // ── Battery alarms ──────────────────────────────────────────────────────

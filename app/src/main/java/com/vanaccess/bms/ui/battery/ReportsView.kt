@@ -55,8 +55,60 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     private val adapter = Adapter()
     private val dayAdapter = DayAdapter()
 
+    // ── Which battery's record is shown ──────────────────────────────────────
+    // Each battery has its own record; the one connected is shown, and any other can be browsed
+    // without changing the connection.
+    private var viewed: String? = null
+    private var viewedFor: String? = null
+    private var batteryChip: Chip? = null
+
+    /** The battery whose reports are shown (follows the connected one when that changes). */
+    private fun bat(): String? {
+        val sel = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
+        if (sel != viewedFor) { viewedFor = sel; viewed = sel }
+        return viewed ?: sel
+    }
+
+    private fun batteryName(addr: String?): String {
+        val p = com.vanaccess.bms.data.AppPreferences(ctx)
+        return p.savedBatteries.firstOrNull { it.address == addr }?.name ?: addr ?: ctx.getString(R.string.lbl_battery)
+    }
+
+    private fun refreshBatteryChip() {
+        val chip = batteryChip ?: return
+        thread {
+            val known = runCatching { ReportStore.get(ctx).batteries() }.getOrDefault(emptyMap())
+            fragment.activity?.runOnUiThread {
+                val addr = bat()
+                chip.visibility = if (known.size > 1 || (addr != null && addr !in known && known.isNotEmpty())) View.VISIBLE else View.GONE
+                chip.text = "🔋 " + batteryName(addr) + "  ▾"
+            }
+        }
+    }
+
+    private fun chooseBattery() {
+        thread {
+            val known = runCatching { ReportStore.get(ctx).batteries() }.getOrDefault(emptyMap())
+            val sel = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
+            val list = (listOfNotNull(sel) + known.keys).distinct()
+            fragment.activity?.runOnUiThread {
+                com.vanaccess.bms.ui.AppDialog.show(ctx, ctx.getString(R.string.rec_choose),
+                    items = list.map { a -> com.vanaccess.bms.text.Bidi.join(batteryName(a),
+                        known[a]?.let { ctx.resources.getQuantityString(R.plurals.rec_count, it.first, it.first) },
+                        if (a == sel) ctx.getString(R.string.rec_connected) else null) },
+                    checked = list.indexOf(bat()),
+                    onItem = { i -> viewed = list[i]; refreshBatteryChip(); reload() },
+                    buttons = listOf(com.vanaccess.bms.ui.AppDialog.Btn(ctx.getString(R.string.btn_cancel), com.vanaccess.bms.ui.AppDialog.GREY)))
+            }
+        }
+    }
+
     fun setup() {
         b.rvReports.layoutManager = LinearLayoutManager(ctx)
+        b.chipsReports.addView(Chip(ctx).apply {
+            isCheckable = false; visibility = View.GONE
+            setOnClickListener { chooseBattery() }
+        }.also { batteryChip = it })
         b.rvReports.adapter = adapter
         // One filter for energy taken out of the battery: called "Trips" for vehicles and
         // "Discharge" for home/storage or stationary use — it lists both kinds of session.
@@ -90,6 +142,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     }
 
     fun reload() {
+        refreshBatteryChip()
         val store = ReportStore.get(ctx)
         val f = filter
         val levels = f == LEVELS
@@ -99,7 +152,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (f == DAILY) {
             thread {
                 val days = com.vanaccess.bms.reports.DayReport.all(
-                    store.list(null, 1000, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress))
+                    store.list(null, 1000, bat()))
                 fragment.activity?.runOnUiThread {
                     if (fragment.view == null || filter != DAILY) return@runOnUiThread
                     b.rvReports.adapter = dayAdapter
@@ -110,7 +163,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             return
         }
         thread {
-            val bat = com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress
+            val bat = bat()
             val list = if (f == DISCHARGES) store.listTypes(listOf(Session.TYPE_DISCHARGE, Session.TYPE_TRIP), battery = bat)
                 else store.list(f, battery = bat).filter { it.type != Session.TYPE_STANDBY }
             fragment.activity?.runOnUiThread {
@@ -284,7 +337,8 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         if (d.socUsed >= 0.5) rows += R.string.day_used to f("%.0f%%", d.socUsed)
         if (d.unrecorded > 0) rows += R.string.day_unrecorded to "${d.unrecorded}%"
         if (d.socCharged > 0) rows += R.string.day_soc_charged to "${d.socCharged}%"
-        if (d.chargeCount > 0 || d.chargedAh > 0) rows += R.string.day_charged to "${d.chargeCount}  •  " + f("%.2f Ah  •  %.0f Wh", d.chargedAh, d.chargedWh)
+        if (d.chargeCount > 0 || d.chargedAh > 0) rows += R.string.day_charged to line(ctx.resources.getQuantityString(R.plurals.day_charges, d.chargeCount, d.chargeCount),
+            f("%.2f Ah", d.chargedAh), f("%.0f Wh", d.chargedWh))
         if (d.trips.isNotEmpty()) {
             rows += R.string.rep_hard_accel to "${d.hardAccel}"
             rows += R.string.day_shocks to "${d.shocks}"
@@ -674,11 +728,11 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
             val store = ReportStore.get(app)
             val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
             val text: String? = if (gpx) {
-                val trips = store.list(Session.TYPE_TRIP, 500).map { it to store.points(it.id) }
+                val trips = store.list(Session.TYPE_TRIP, 500, bat()).map { it to store.points(it.id) }
                     .filter { (_, p) -> p.any { it.lat != null } }
                 if (trips.isEmpty()) null else com.vanaccess.bms.reports.Exporter.gpx(trips)
             } else {
-                val all = store.list(null, 5000)
+                val all = store.list(null, 5000, bat())
                 if (all.isEmpty()) null else com.vanaccess.bms.reports.Exporter.csv(all)
             }
             fragment.activity?.runOnUiThread {
@@ -711,20 +765,20 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
         thread {
             val store = ReportStore.get(ctx)
             val now = System.currentTimeMillis()
-            val levels = store.levels(now - 14 * 86_400_000L, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
-            val charges = store.list(Session.TYPE_CHARGE, 300, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
+            val levels = store.levels(now - 14 * 86_400_000L, bat())
+            val charges = store.list(Session.TYPE_CHARGE, 300, bat())
             val lim = com.vanaccess.bms.ui.AdviceText.limits(ctx)
             val info = com.vanaccess.bms.ble.BleService.basicInfo.value
             val fullAh = info?.fullCapacity ?: levels.lastOrNull()?.fullAh
             val health = com.vanaccess.bms.reports.Advisor.health(fullAh, lim, charges)
             val lastFull = charges.firstOrNull { it.b("reached_full") || it.b("ended_by_protection") }
             val lowCal = (lim.socLowCalMv ?: if (lim.lion) 3300 else if (lim.lfp) 3050 else lim.cellUvMv ?: 2500) / 1000.0
-            val allLevels = store.levels(0, com.vanaccess.bms.data.AppPreferences(ctx).selectedDeviceAddress)
+            val allLevels = store.levels(0, bat())
             val lastDeep = allLevels.lastOrNull { it.soc <= 10 || (it.minCell > 0 && it.minCell <= lowCal) }
             val cycles = info?.cycleCount ?: levels.lastOrNull()?.cycles
             val prefs0 = com.vanaccess.bms.data.AppPreferences(ctx)
-            val trips = store.list(Session.TYPE_TRIP, 60, prefs0.selectedDeviceAddress)
-            val repeats = com.vanaccess.bms.reports.HistoryCache.load(ctx, prefs0.selectedDeviceAddress)
+            val trips = store.list(Session.TYPE_TRIP, 60, bat())
+            val repeats = com.vanaccess.bms.reports.HistoryCache.load(ctx, bat())
                 ?.let { com.vanaccess.bms.reports.DrivingAnalyzer.protectionRepeats(it.records) } ?: 0
             val capTest = com.vanaccess.bms.reports.CapacityTest.State.fromJson(
                 com.vanaccess.bms.data.AppPreferences(ctx).capacityTestJson)
@@ -892,7 +946,7 @@ class ReportsView(private val fragment: Fragment, private val b: FragmentBattery
     private fun text(t: String, color: Int, size: Float, bold: Boolean) = TextView(ctx).apply {
         text = t; setTextColor(color); textSize = size
         // Laid out in the interface's direction, whatever letter comes first
-        textDirection = View.TEXT_DIRECTION_LOCALE
+        textDirection = com.vanaccess.bms.ui.Fmt.dir(ctx)
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 

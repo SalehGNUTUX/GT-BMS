@@ -52,6 +52,19 @@ class Store(file: File) {
         } catch (e: Exception) { db.rollback(); throw e } finally { db.autoCommit = true }
     }
 
+    /** Reports without a battery (older phone ones) belong to [address]. */
+    @Synchronized
+    fun claimUnowned(address: String): Int = db.prepareStatement("UPDATE sessions SET battery=? WHERE battery='' OR battery IS NULL").use { p ->
+        p.setString(1, address); p.executeUpdate()
+    }
+
+    /** Batteries with reports here, most recent first: address → count. */
+    @Synchronized
+    fun batteries(): Map<String, Int> = db.createStatement().use { st ->
+        val r = st.executeQuery("SELECT battery, COUNT(*) FROM sessions WHERE battery != '' GROUP BY battery ORDER BY MAX(start_ms) DESC")
+        val out = LinkedHashMap<String, Int>(); while (r.next()) out[r.getString(1)] = r.getInt(2); out
+    }
+
     @Synchronized
     fun list(limit: Int = 500): List<Session> = db.prepareStatement(
         "SELECT id,type,start_ms,end_ms,battery,data FROM sessions ORDER BY start_ms DESC LIMIT ?").use { p ->

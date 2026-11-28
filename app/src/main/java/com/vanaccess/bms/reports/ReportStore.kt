@@ -59,7 +59,7 @@ class ReportStore private constructor(ctx: Context) :
     @Synchronized
     fun levels(sinceMs: Long, battery: String? = null): List<Level> {
         readableDatabase.rawQuery(
-            "SELECT t_ms, soc, v, remain_ah, full_ah, cycles, min_cell, max_cell FROM levels WHERE t_ms >= ? AND (? = '' OR battery = ? OR battery = '') ORDER BY t_ms",
+            "SELECT t_ms, soc, v, remain_ah, full_ah, cycles, min_cell, max_cell FROM levels WHERE t_ms >= ? AND (? = '' OR battery = ?) ORDER BY t_ms",
             arrayOf(sinceMs.toString(), battery ?: "", battery ?: "")
         ).use { c ->
             val out = mutableListOf<Level>()
@@ -112,7 +112,8 @@ class ReportStore private constructor(ctx: Context) :
     fun list(type: String? = null, limit: Int = 200, battery: String? = null): List<Session> {
         val conds = mutableListOf<String>(); val a = mutableListOf<String>()
         if (type != null) { conds += "type = ?"; a += type }
-        if (!battery.isNullOrBlank()) { conds += "(battery = ? OR battery = '' OR battery IS NULL)"; a += battery }
+        // each battery its own record: nothing of another battery shows here
+        if (!battery.isNullOrBlank()) { conds += "battery = ?"; a += battery }
         val where = if (conds.isEmpty()) "" else "WHERE " + conds.joinToString(" AND ")
         val args = if (a.isEmpty()) null else a.toTypedArray()
         readableDatabase.rawQuery(
@@ -125,6 +126,27 @@ class ReportStore private constructor(ctx: Context) :
             }
             return out
         }
+    }
+
+    /**
+     * Reports recorded before they carried their battery belong to the battery the app used then:
+     * given once to [address], so they stop showing under every battery.
+     */
+    @Synchronized
+    fun claimUnowned(address: String): Int {
+        val v = ContentValues().apply { put("battery", address) }
+        runCatching { writableDatabase.update("levels", v, "battery = '' OR battery IS NULL", null) }
+        return writableDatabase.update("sessions", v, "battery = '' OR battery IS NULL", null)
+    }
+
+    /** The batteries that have reports here: address → (count, last report). */
+    @Synchronized
+    fun batteries(): Map<String, Pair<Int, Long>> {
+        val out = LinkedHashMap<String, Pair<Int, Long>>()
+        readableDatabase.rawQuery("SELECT battery, COUNT(*), MAX(start_ms) FROM sessions WHERE battery != '' GROUP BY battery ORDER BY MAX(start_ms) DESC", null).use { c ->
+            while (c.moveToNext()) out[c.getString(0)] = c.getInt(1) to c.getLong(2)
+        }
+        return out
     }
 
     /** Sessions of several types, newest first. */

@@ -37,4 +37,22 @@
     <string name="pc_yield_left">Le téléphone a quitté le Wi-Fi de la maison : il a repris la batterie.</string>
     <string name="pc_yield_guard">Reprise automatique si l\'ordinateur ne l\'utilise pas ou si vous quittez le Wi-Fi.</string>
     <string name="design_cells_mono" formatted="false">Cellules, une couleur — jaunes sous 50 %, orange sous 25 %, rouges sous 15 %</string>
+    <string name="rec_choose">Quel historique</string>
+    <string name="rec_connected">connectée</string>
+    <plurals name="rec_count"><item quantity="one">%d rapport</item><item quantity="other">%d rapports</item></plurals>
+    <string name="share_title">Partager avec un autre téléphone</string>
+    <string name="share_desc">Réseau local uniquement. Sur le téléphone qui a les rapports : Envoyer. Sur l\'autre : Recevoir, et saisir le code affiché. Ses rapports deviennent l\'historique propre de sa batterie ici ; rien n\'est renvoyé.</string>
+    <string name="share_send">Envoyer à un téléphone</string>
+    <string name="share_receive">Recevoir d\'un téléphone</string>
+    <string name="share_sending">Ouvert : sur l\'autre téléphone, appuyez sur « Recevoir d\'un téléphone » et saisissez le code ci-dessus.</string>
+    <string name="share_searching">Recherche du téléphone qui envoie…</string>
+    <string name="share_none">Aucun téléphone trouvé : saisissez son adresse (sous son code).</string>
+    <string name="share_found">Trouvé : %1$s</string>
+    <string name="share_addr_hint">Adresse (ex. 192.168.1.22:44457)</string>
+    <string name="share_take">Recevoir</string>
+    <string name="share_bad_input">Saisissez l\'adresse et le code à 6 chiffres de l\'autre téléphone.</string>
+    <string name="share_bad_code">Code incorrect</string>
+    <string name="share_closed">L\'autre téléphone a fermé après des codes faux : rouvrez-le</string>
+    <string name="share_failed">Échec : %1$s</string>
+    <string name="share_done">%1$d nouveaux rapports sur %2$d reçus (batterie %3$s). Parcourez-les avec la puce batterie dans Rapports.</string>
 </resources>
